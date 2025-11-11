@@ -1,0 +1,41 @@
+{
+  "name": "dev-muse-automaton-backend",
+  "version": "1.0.0",
+  "description": "Dev Muse Automaton Backend - WhatsApp Chatbot Automation",
+  "tasks": {
+    "start": "deno run --allow-net --allow-env --allow-read --unstable-kv main.ts",
+    "dev": "deno run --allow-net --allow-env --allow-read --unstable-kv --watch main.ts"
+  },
+  "imports": {
+    "std/": "https://deno.land/std@0.168.0/",
+    "supabase": "https://esm.sh/@supabase/supabase-js@2.76.1",
+    "jose": "https://deno.land/x/jose@v5.2.0/index.ts",
+    "bcrypt": "https://deno.land/x/bcrypt@v0.4.1/mod.ts"
+  },
+  "compilerOptions": {
+    "allowJs": true,
+    "lib": ["deno.window"],
+    "strict": true
+  },
+  "fmt": {
+    "files": {
+      "include": ["**/*.ts"],
+      "exclude": ["node_modules", "dist", "frontend"]
+    },
+    "options": {
+      "useTabs": false,
+      "lineWidth": 100,
+      "indentWidth": 2,
+      "semiColons": true,
+      "singleQuote": false,
+      "proseWrap": "preserve"
+    }
+  },
+  "lint": {
+    "files": {
+      "include": ["**/*.ts"],
+      "exclude": ["node_modules", "dist", "frontend"]
+    }
+  },
+  "lock": false
+}
