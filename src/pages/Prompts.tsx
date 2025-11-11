@@ -185,7 +185,7 @@ export default function Prompts() {
       // Check if device_id exists in ai_whatsapp table
       const { data: aiWhatsappData, error: checkError } = await supabase
         .from('ai_whatsapp')
-        .select('id')
+        .select('device_id')
         .eq('device_id', prompt.device_id)
         .limit(1)
 
