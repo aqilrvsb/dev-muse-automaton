@@ -308,19 +308,32 @@ export default function DeviceSettings() {
       setCurrentDevice(device)
 
       if (data.status === 'SCAN_QR_CODE') {
-        // Get QR code - correct endpoint is /api/{session}/auth/qr without /sessions/
+        // Get QR code - WAHA returns PNG image directly, not JSON
         const qrResponse = await fetch(`${apiBase}/api/${device.instance}/auth/qr`, {
           headers: {
             'X-Api-Key': apiKey,
           },
         })
 
-        const qrData = await qrResponse.json()
+        // Check if response is an image
+        const contentType = qrResponse.headers.get('content-type')
 
-        if (qrData.qr) {
-          setQrCode(qrData.qr)
+        if (contentType && contentType.includes('image')) {
+          // Convert image to blob and create object URL
+          const blob = await qrResponse.blob()
+          const imageUrl = URL.createObjectURL(blob)
+
+          setQrCode(imageUrl)
           setConnectionStatus('SCAN_QR_CODE')
           setShowQRModal(true)
+        } else {
+          // Try parsing as JSON (fallback for other formats)
+          const qrData = await qrResponse.json()
+          if (qrData.qr) {
+            setQrCode(qrData.qr)
+            setConnectionStatus('SCAN_QR_CODE')
+            setShowQRModal(true)
+          }
         }
       } else if (data.status === 'WORKING') {
         setConnectionStatus('WORKING')
