@@ -12,6 +12,7 @@ This migration updates the `ai_whatsapp` table schema to a simplified version wi
 ### New Columns Added
 - `user_id` (UUID, FK to `"user"(id)`) - Links records to users for RLS
 - `date_insert` (DATE, default CURRENT_DATE) - Date format Y-m-d
+- `detail` (TEXT) - Additional detail information
 
 ### Columns Removed
 - `keywordiklan`
@@ -36,6 +37,7 @@ This migration updates the `ai_whatsapp` table schema to a simplified version wi
 - `conv_last` (text)
 - `conv_current` (text)
 - `human` (integer, default 0)
+- `detail` (text) - NEW
 
 ### Indexes Updated
 **Removed:**
@@ -138,5 +140,6 @@ export type AIWhatsApp = {
   human: number
   date_insert: string  // Y-m-d format
   user_id: string
+  detail: string
 }
 ```

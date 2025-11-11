@@ -4,7 +4,8 @@
 -- First, let's add the new columns if they don't exist
 ALTER TABLE ai_whatsapp
   ADD COLUMN IF NOT EXISTS date_insert DATE DEFAULT CURRENT_DATE,
-  ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES "user"(id) ON DELETE CASCADE;
+  ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES "user"(id) ON DELETE CASCADE,
+  ADD COLUMN IF NOT EXISTS detail TEXT;
 
 -- Rename id_device to device_id if the old column exists
 DO $$
@@ -99,3 +100,4 @@ CREATE POLICY "Users can delete own ai_whatsapp"
 -- human (integer, default 0)
 -- date_insert (date, default CURRENT_DATE)
 -- user_id (uuid, FK to "user"(id))
+-- detail (text)
