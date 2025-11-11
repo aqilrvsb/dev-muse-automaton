@@ -308,8 +308,8 @@ export default function DeviceSettings() {
       setCurrentDevice(device)
 
       if (data.status === 'SCAN_QR_CODE') {
-        // Get QR code
-        const qrResponse = await fetch(`${apiBase}/api/sessions/${device.instance}/auth/qr`, {
+        // Get QR code - correct endpoint is /api/{session}/auth/qr without /sessions/
+        const qrResponse = await fetch(`${apiBase}/api/${device.instance}/auth/qr`, {
           headers: {
             'X-Api-Key': apiKey,
           },
