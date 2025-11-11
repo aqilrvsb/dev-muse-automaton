@@ -11,6 +11,10 @@ export default function DeviceSettings() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingDevice, setEditingDevice] = useState<Device | null>(null)
+  const [showQRModal, setShowQRModal] = useState(false)
+  const [qrCode, setQrCode] = useState<string>('')
+  const [connectionStatus, setConnectionStatus] = useState<string>('')
+  const [currentDevice, setCurrentDevice] = useState<Device | null>(null)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -182,6 +186,170 @@ export default function DeviceSettings() {
     }
   }
 
+  const handleGenerateWebhook = async (device: Device) => {
+    try {
+      const apiBase = 'https://waha-plus-production-705f.up.railway.app'
+      const apiKey = 'dckr_pat_vxeqEu_CqRi5O3CBHnD7FxhnBz0'
+      const sessionName = `UserChatBot_${device.device_id}`
+      const webhook = `https://pening-bot.deno.dev/${device.device_id}/${sessionName}`
+
+      // Delete old session if exists
+      if (device.instance) {
+        await fetch(`${apiBase}/api/sessions/${device.instance}`, {
+          method: 'DELETE',
+          headers: {
+            'X-Api-Key': apiKey,
+          },
+        })
+      }
+
+      // Create new session
+      const createResponse = await fetch(`${apiBase}/api/sessions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Api-Key': apiKey,
+        },
+        body: JSON.stringify({
+          name: sessionName,
+          start: false,
+          config: {
+            debug: false,
+            markSeen: false,
+            noweb: {
+              store: {
+                enabled: true,
+                fullSync: false,
+              },
+            },
+            webhooks: [
+              {
+                url: webhook,
+                events: ['message'],
+                retries: {
+                  attempts: 1,
+                  delay: 3,
+                  policy: 'constant',
+                },
+              },
+            ],
+          },
+        }),
+      })
+
+      const createData = await createResponse.json()
+
+      if (createData.name) {
+        // Start session
+        await fetch(`${apiBase}/api/sessions/${sessionName}/start`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Api-Key': apiKey,
+          },
+        })
+
+        // Update device in database
+        const { error } = await supabase
+          .from('device_setting')
+          .update({
+            instance: createData.name,
+            webhook_id: webhook,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', device.id)
+
+        if (error) throw error
+
+        await Swal.fire({
+          icon: 'success',
+          title: 'Webhook Generated!',
+          text: 'Session created successfully. You can now check status to scan QR code.',
+          timer: 3000,
+          showConfirmButton: false,
+        })
+
+        loadDevices()
+      } else {
+        throw new Error(createData.error || 'Failed to create session')
+      }
+    } catch (error: any) {
+      console.error('Error generating webhook:', error)
+      await Swal.fire({
+        icon: 'error',
+        title: 'Failed to Generate Webhook',
+        text: error.message || 'Failed to generate webhook',
+      })
+    }
+  }
+
+  const handleCheckStatus = async (device: Device) => {
+    if (!device.instance) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'No Instance',
+        text: 'Please generate webhook first',
+      })
+      return
+    }
+
+    try {
+      const apiBase = 'https://waha-plus-production-705f.up.railway.app'
+      const apiKey = 'dckr_pat_vxeqEu_CqRi5O3CBHnD7FxhnBz0'
+
+      const response = await fetch(`${apiBase}/api/sessions/${device.instance}`, {
+        headers: {
+          'X-Api-Key': apiKey,
+        },
+      })
+
+      const data = await response.json()
+
+      setCurrentDevice(device)
+
+      if (data.status === 'SCAN_QR_CODE') {
+        // Get QR code
+        const qrResponse = await fetch(`${apiBase}/api/sessions/${device.instance}/auth/qr`, {
+          headers: {
+            'X-Api-Key': apiKey,
+          },
+        })
+
+        const qrData = await qrResponse.json()
+
+        if (qrData.qr) {
+          setQrCode(qrData.qr)
+          setConnectionStatus('SCAN_QR_CODE')
+          setShowQRModal(true)
+        }
+      } else if (data.status === 'WORKING') {
+        setConnectionStatus('WORKING')
+        setQrCode('')
+        await Swal.fire({
+          icon: 'success',
+          title: 'Connected!',
+          text: 'Your WhatsApp device is connected and working.',
+          timer: 2000,
+          showConfirmButton: false,
+        })
+      } else {
+        setConnectionStatus(data.status || 'UNKNOWN')
+        await Swal.fire({
+          icon: 'info',
+          title: 'Status',
+          text: `Current status: ${data.status || 'Unknown'}`,
+        })
+      }
+    } catch (error: any) {
+      console.error('Error checking status:', error)
+      await Swal.fire({
+        icon: 'error',
+        title: 'Failed to Check Status',
+        text: error.message || 'Failed to check status',
+      })
+    }
+  }
+
   const handleDeleteDevice = async (id: string) => {
     const result = await Swal.fire({
       icon: 'warning',
@@ -270,7 +438,7 @@ export default function DeviceSettings() {
                 <div className="space-y-2 mb-4">
                   <div>
                     <p className="text-gray-600 text-sm">Instance</p>
-                    <p className="text-gray-900 font-medium">{device.instance || '-'}</p>
+                    <p className="text-gray-900 font-medium text-xs break-all">{device.instance || '-'}</p>
                   </div>
                   <div>
                     <p className="text-gray-600 text-sm">Phone Number</p>
@@ -282,19 +450,35 @@ export default function DeviceSettings() {
                   </div>
                 </div>
 
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleEditDevice(device)}
-                    className="flex-1 bg-primary-50 hover:bg-primary-600 border border-primary-200 hover:border-primary-600 text-primary-600 hover:text-white px-4 py-2 rounded-lg transition-colors font-medium"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDeleteDevice(device.id)}
-                    className="flex-1 bg-red-50 hover:bg-red-600 border border-red-200 hover:border-red-600 text-red-600 hover:text-white px-4 py-2 rounded-lg transition-colors font-medium"
-                  >
-                    Delete
-                  </button>
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => handleGenerateWebhook(device)}
+                      className="bg-green-50 hover:bg-green-600 border border-green-200 hover:border-green-600 text-green-600 hover:text-white px-3 py-2 rounded-lg transition-colors font-medium text-sm"
+                    >
+                      Generate
+                    </button>
+                    <button
+                      onClick={() => handleCheckStatus(device)}
+                      className="bg-blue-50 hover:bg-blue-600 border border-blue-200 hover:border-blue-600 text-blue-600 hover:text-white px-3 py-2 rounded-lg transition-colors font-medium text-sm"
+                    >
+                      Status
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => handleEditDevice(device)}
+                      className="bg-primary-50 hover:bg-primary-600 border border-primary-200 hover:border-primary-600 text-primary-600 hover:text-white px-3 py-2 rounded-lg transition-colors font-medium text-sm"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteDevice(device.id)}
+                      className="bg-red-50 hover:bg-red-600 border border-red-200 hover:border-red-600 text-red-600 hover:text-white px-3 py-2 rounded-lg transition-colors font-medium text-sm"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -527,6 +711,70 @@ export default function DeviceSettings() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* QR Code Modal */}
+        {showQRModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
+              <h3 className="text-2xl font-bold text-gray-900 mb-4 text-center">Scan QR Code</h3>
+
+              <div className="mb-4">
+                <p className="text-gray-600 text-center mb-2">
+                  Device: <span className="font-semibold text-gray-900">{currentDevice?.device_id}</span>
+                </p>
+                <div className={`px-4 py-2 rounded-lg text-center font-medium ${
+                  connectionStatus === 'SCAN_QR_CODE'
+                    ? 'bg-yellow-100 text-yellow-800'
+                    : 'bg-green-100 text-green-800'
+                }`}>
+                  {connectionStatus === 'SCAN_QR_CODE' ? 'Waiting for Scan' : 'Connected'}
+                </div>
+              </div>
+
+              {qrCode && (
+                <div className="flex justify-center mb-4 bg-white p-4 rounded-lg border border-gray-200">
+                  <img
+                    src={qrCode}
+                    alt="QR Code"
+                    className="w-64 h-64 object-contain"
+                  />
+                </div>
+              )}
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Instructions:</strong>
+                  <ol className="list-decimal list-inside mt-2 space-y-1">
+                    <li>Open WhatsApp on your phone</li>
+                    <li>Tap Menu or Settings → Linked Devices</li>
+                    <li>Tap "Link a Device"</li>
+                    <li>Point your phone at this screen to scan the QR code</li>
+                  </ol>
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleCheckStatus(currentDevice!)}
+                  className="flex-1 bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                >
+                  Refresh Status
+                </button>
+                <button
+                  onClick={() => {
+                    setShowQRModal(false)
+                    setQrCode('')
+                    setConnectionStatus('')
+                    setCurrentDevice(null)
+                  }}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-medium transition-colors"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         )}
