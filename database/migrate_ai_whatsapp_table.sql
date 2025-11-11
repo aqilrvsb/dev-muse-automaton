@@ -26,18 +26,16 @@ ALTER TABLE ai_whatsapp
   DROP COLUMN IF EXISTS last_node_id,
   DROP COLUMN IF EXISTS current_node_id,
   DROP COLUMN IF EXISTS flow_id,
-  DROP COLUMN IF EXISTS execution_status;
-
--- Update updated_at to be timestamp (already correct type)
--- Just ensure it has default
-ALTER TABLE ai_whatsapp
-  ALTER COLUMN updated_at SET DEFAULT NOW();
+  DROP COLUMN IF EXISTS execution_status,
+  DROP COLUMN IF EXISTS created_at,
+  DROP COLUMN IF EXISTS updated_at;
 
 -- Drop old indexes that reference removed columns
 DROP INDEX IF EXISTS ai_whatsapp_execution_status_idx;
 DROP INDEX IF EXISTS ai_whatsapp_waiting_for_reply_idx;
 DROP INDEX IF EXISTS ai_whatsapp_flow_id_idx;
 DROP INDEX IF EXISTS ai_whatsapp_current_node_id_idx;
+DROP INDEX IF EXISTS ai_whatsapp_created_at_idx;
 
 -- Drop the old id_device index and create new device_id index
 DROP INDEX IF EXISTS ai_whatsapp_id_device_idx;
@@ -48,7 +46,6 @@ CREATE INDEX IF NOT EXISTS ai_whatsapp_device_id_idx ON ai_whatsapp(device_id);
 -- ai_whatsapp_stage_idx
 -- ai_whatsapp_human_idx
 -- ai_whatsapp_niche_idx
--- ai_whatsapp_created_at_idx
 
 -- Add new indexes for the new columns
 CREATE INDEX IF NOT EXISTS ai_whatsapp_user_id_idx ON ai_whatsapp(user_id);
@@ -58,8 +55,8 @@ CREATE INDEX IF NOT EXISTS ai_whatsapp_date_insert_idx ON ai_whatsapp(date_inser
 ALTER TABLE ai_whatsapp
   DROP CONSTRAINT IF EXISTS ai_whatsapp_execution_status_check;
 
--- Update the trigger if needed (keep the existing updated_at trigger)
--- The trigger update_ai_whatsapp_updated_at should continue to work
+-- Drop the updated_at trigger since we're removing that column
+DROP TRIGGER IF EXISTS update_ai_whatsapp_updated_at ON ai_whatsapp;
 
 -- Enable Row Level Security
 ALTER TABLE ai_whatsapp ENABLE ROW LEVEL SECURITY;
@@ -101,6 +98,4 @@ CREATE POLICY "Users can delete own ai_whatsapp"
 -- conv_current (text)
 -- human (integer, default 0)
 -- date_insert (date, default CURRENT_DATE)
--- updated_at (timestamp, default NOW())
 -- user_id (uuid, FK to "user"(id))
--- created_at (timestamp, default NOW())

@@ -22,6 +22,8 @@ This migration updates the `ai_whatsapp` table schema to a simplified version wi
 - `current_node_id`
 - `flow_id`
 - `execution_status`
+- `created_at`
+- `updated_at`
 
 ### Kept Columns
 - `id_prospect` (serial, PK)
@@ -34,8 +36,6 @@ This migration updates the `ai_whatsapp` table schema to a simplified version wi
 - `conv_last` (text)
 - `conv_current` (text)
 - `human` (integer, default 0)
-- `created_at` (timestamp, default NOW())
-- `updated_at` (timestamp, default NOW())
 
 ### Indexes Updated
 **Removed:**
@@ -44,6 +44,7 @@ This migration updates the `ai_whatsapp` table schema to a simplified version wi
 - `ai_whatsapp_flow_id_idx`
 - `ai_whatsapp_current_node_id_idx`
 - `ai_whatsapp_id_device_idx`
+- `ai_whatsapp_created_at_idx`
 
 **Added:**
 - `ai_whatsapp_device_id_idx` (on `device_id`)
@@ -55,7 +56,6 @@ This migration updates the `ai_whatsapp` table schema to a simplified version wi
 - `ai_whatsapp_stage_idx` (on `stage`)
 - `ai_whatsapp_human_idx` (on `human`)
 - `ai_whatsapp_niche_idx` (on `niche`)
-- `ai_whatsapp_created_at_idx` (on `created_at`)
 
 ### Security
 - Enabled Row Level Security (RLS)
@@ -110,7 +110,7 @@ This migration updates the `ai_whatsapp` table schema to a simplified version wi
 
 3. **RLS Impact**: After enabling RLS, queries must be authenticated with a valid user session, or they won't return any rows. Make sure your application passes the user authentication token when querying.
 
-4. **Trigger**: The existing `update_ai_whatsapp_updated_at` trigger will continue to work and automatically update the `updated_at` timestamp on record updates.
+4. **Trigger Removed**: The `update_ai_whatsapp_updated_at` trigger will be dropped since we're removing the `updated_at` column.
 
 ## Rollback (Emergency Only)
 
@@ -137,8 +137,6 @@ export type AIWhatsApp = {
   conv_current: string
   human: number
   date_insert: string  // Y-m-d format
-  created_at: string
-  updated_at: string
   user_id: string
 }
 ```
