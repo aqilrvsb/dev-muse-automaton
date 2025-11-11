@@ -4,6 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import DeviceSettings from './pages/DeviceSettings'
+import Prompts from './pages/Prompts'
 import Profile from './pages/Profile'
 import Billings from './pages/Billings'
 import SetStage from './pages/SetStage'
@@ -27,6 +28,7 @@ function App() {
           {/* Protected routes */}
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/device-settings" element={<ProtectedRoute><DeviceSettings /></ProtectedRoute>} />
+          <Route path="/prompts" element={<ProtectedRoute><Prompts /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/billings" element={<ProtectedRoute><Billings /></ProtectedRoute>} />
           <Route path="/set-stage" element={<ProtectedRoute><SetStage /></ProtectedRoute>} />

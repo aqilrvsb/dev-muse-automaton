@@ -69,3 +69,14 @@ export type Package = {
   created_at: string
   updated_at: string
 }
+
+export type Prompt = {
+  id: string
+  device_id: string
+  niche: string
+  prompts_name: string
+  prompts_data: string
+  user_id: string
+  created_at: string
+  updated_at: string
+}
