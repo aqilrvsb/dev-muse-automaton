@@ -9,6 +9,8 @@ export default function DeviceSettings() {
   const [devices, setDevices] = useState<Device[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingDevice, setEditingDevice] = useState<Device | null>(null)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -114,6 +116,72 @@ export default function DeviceSettings() {
     }
   }
 
+  const handleEditDevice = (device: Device) => {
+    setEditingDevice(device)
+    setFormData({
+      device_id: device.device_id,
+      instance: device.instance || '',
+      webhook_id: device.webhook_id || '',
+      provider: device.provider as any,
+      api_key_option: device.api_key_option || 'openai/gpt-4.1',
+      api_key: device.api_key || '',
+      phone_number: device.phone_number || '',
+    })
+    setShowEditModal(true)
+  }
+
+  const handleUpdateDevice = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!editingDevice) return
+
+    try {
+      const { error } = await supabase
+        .from('device_setting')
+        .update({
+          instance: formData.instance,
+          webhook_id: formData.webhook_id,
+          provider: formData.provider,
+          api_key_option: formData.api_key_option,
+          api_key: formData.api_key,
+          phone_number: formData.phone_number,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', editingDevice.id)
+
+      if (error) throw error
+
+      setShowEditModal(false)
+      setEditingDevice(null)
+      setFormData({
+        device_id: '',
+        instance: '',
+        webhook_id: '',
+        provider: 'waha',
+        api_key_option: 'openai/gpt-4.1',
+        api_key: '',
+        phone_number: '',
+      })
+
+      await Swal.fire({
+        icon: 'success',
+        title: 'Device Updated!',
+        text: 'Your device has been updated successfully.',
+        timer: 2000,
+        showConfirmButton: false,
+      })
+
+      loadDevices()
+    } catch (error: any) {
+      console.error('Error updating device:', error)
+      await Swal.fire({
+        icon: 'error',
+        title: 'Failed to Update Device',
+        text: error.message || 'Failed to update device',
+      })
+    }
+  }
+
   const handleDeleteDevice = async (id: string) => {
     const result = await Swal.fire({
       icon: 'warning',
@@ -214,12 +282,20 @@ export default function DeviceSettings() {
                   </div>
                 </div>
 
-                <button
-                  onClick={() => handleDeleteDevice(device.id)}
-                  className="w-full bg-red-50 hover:bg-red-600 border border-red-200 hover:border-red-600 text-red-600 hover:text-white px-4 py-2 rounded-lg transition-colors"
-                >
-                  Delete Device
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleEditDevice(device)}
+                    className="flex-1 bg-primary-50 hover:bg-primary-600 border border-primary-200 hover:border-primary-600 text-primary-600 hover:text-white px-4 py-2 rounded-lg transition-colors font-medium"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteDevice(device.id)}
+                    className="flex-1 bg-red-50 hover:bg-red-600 border border-red-200 hover:border-red-600 text-red-600 hover:text-white px-4 py-2 rounded-lg transition-colors font-medium"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -250,7 +326,8 @@ export default function DeviceSettings() {
                       type="text"
                       value={formData.instance}
                       onChange={(e) => setFormData({ ...formData, instance: e.target.value })}
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full bg-gray-100 border border-gray-300 text-gray-600 rounded-lg px-4 py-2 cursor-not-allowed"
+                      readOnly
                     />
                   </div>
 
@@ -260,7 +337,8 @@ export default function DeviceSettings() {
                       type="text"
                       value={formData.webhook_id}
                       onChange={(e) => setFormData({ ...formData, webhook_id: e.target.value })}
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full bg-gray-100 border border-gray-300 text-gray-600 rounded-lg px-4 py-2 cursor-not-allowed"
+                      readOnly
                     />
                   </div>
 
@@ -272,8 +350,6 @@ export default function DeviceSettings() {
                       className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
                       <option value="waha">WAHA</option>
-                      <option value="wablas">Wablas</option>
-                      <option value="whacenter">WhaCenter</option>
                     </select>
                   </div>
 
@@ -324,6 +400,127 @@ export default function DeviceSettings() {
                   <button
                     type="button"
                     onClick={() => setShowAddModal(false)}
+                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-medium transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Device Modal */}
+        {showEditModal && editingDevice && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl">
+              <h3 className="text-2xl font-bold text-gray-900 mb-6">Edit Device</h3>
+
+              <form onSubmit={handleUpdateDevice} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Device ID *</label>
+                    <input
+                      type="text"
+                      value={formData.device_id}
+                      className="w-full bg-gray-100 border border-gray-300 text-gray-600 rounded-lg px-4 py-2 cursor-not-allowed"
+                      readOnly
+                      disabled
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Instance</label>
+                    <input
+                      type="text"
+                      value={formData.instance}
+                      className="w-full bg-gray-100 border border-gray-300 text-gray-600 rounded-lg px-4 py-2 cursor-not-allowed"
+                      readOnly
+                      disabled
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Webhook ID</label>
+                    <input
+                      type="text"
+                      value={formData.webhook_id}
+                      className="w-full bg-gray-100 border border-gray-300 text-gray-600 rounded-lg px-4 py-2 cursor-not-allowed"
+                      readOnly
+                      disabled
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Provider *</label>
+                    <select
+                      value={formData.provider}
+                      onChange={(e) => setFormData({ ...formData, provider: e.target.value as any })}
+                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    >
+                      <option value="waha">WAHA</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">AI Model</label>
+                    <select
+                      value={formData.api_key_option}
+                      onChange={(e) => setFormData({ ...formData, api_key_option: e.target.value })}
+                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    >
+                      <option value="openai/gpt-5-chat">GPT-5 Chat</option>
+                      <option value="openai/gpt-5-mini">GPT-5 Mini</option>
+                      <option value="openai/chatgpt-4o-latest">GPT-4o Latest</option>
+                      <option value="openai/gpt-4.1">GPT-4.1</option>
+                      <option value="google/gemini-2.5-pro">Gemini 2.5 Pro</option>
+                      <option value="google/gemini-pro-1.5">Gemini Pro 1.5</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                    <input
+                      type="text"
+                      value={formData.phone_number}
+                      onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
+                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">API Key (OpenRouter)</label>
+                  <textarea
+                    value={formData.api_key}
+                    onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
+                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="flex gap-4 mt-6">
+                  <button
+                    type="submit"
+                    className="flex-1 bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                  >
+                    Update Device
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEditModal(false)
+                      setEditingDevice(null)
+                      setFormData({
+                        device_id: '',
+                        instance: '',
+                        webhook_id: '',
+                        provider: 'waha',
+                        api_key_option: 'openai/gpt-4.1',
+                        api_key: '',
+                        phone_number: '',
+                      })
+                    }}
                     className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-medium transition-colors"
                   >
                     Cancel
