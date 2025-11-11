@@ -1,7 +1,12 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { CSSProperties } from 'react'
 
-export default function Sidebar() {
+type SidebarProps = {
+  style?: CSSProperties
+}
+
+export default function Sidebar({ style }: SidebarProps) {
   const location = useLocation()
   const { user, signOut } = useAuth()
 
@@ -23,7 +28,7 @@ export default function Sidebar() {
   const showPackages = user?.role === 'admin'
 
   return (
-    <div className="w-64 bg-white min-h-screen flex flex-col border-r border-gray-200">
+    <div className="w-64 bg-white min-h-screen flex flex-col border-r border-gray-200" style={style}>
       {/* Logo */}
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center gap-3">
