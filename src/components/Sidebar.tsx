@@ -1,12 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { CSSProperties } from 'react'
 
-type SidebarProps = {
-  style?: CSSProperties
-}
-
-export default function Sidebar({ style }: SidebarProps) {
+export default function Sidebar() {
   const location = useLocation()
   const { user, signOut } = useAuth()
 
@@ -17,18 +12,14 @@ export default function Sidebar({ style }: SidebarProps) {
     { path: '/device-settings', icon: '⚙️', label: 'Device Settings' },
     { path: '/profile', icon: '👤', label: 'Profile' },
     { path: '/billings', icon: '💳', label: 'Billings' },
-    { path: '/set-stage', icon: '🎯', label: 'Set Stage' },
     { path: '/chatbot-ai', icon: '🤖', label: 'Chatbot AI' },
-    { path: '/whatsapp-bot', icon: '💬', label: 'WhatsApp Bot' },
-    { path: '/flow-builder', icon: '🔄', label: 'Flow Builder' },
-    { path: '/flow-manager', icon: '📋', label: 'Flow Manager' },
   ]
 
   // Show packages tab for admin
   const showPackages = user?.role === 'admin'
 
   return (
-    <div className="w-64 bg-white min-h-screen flex flex-col border-r border-gray-200" style={style}>
+    <div className="w-64 bg-white min-h-screen flex flex-col border-r border-gray-200">
       {/* Logo */}
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center gap-3">
