@@ -14,7 +14,7 @@ User sends WhatsApp message
          ↓
 [3] Message Debouncer (deno-backend/services/debounce.ts)
          ↓ (4 second delay)
-[4] Flow Execution Engine (deno-backend/services/flow-execution.ts)
+[4] Chatbot AI Engine (deno-backend/services/flow-execution.ts)
          ↓
 [5] AI Response Generator (deno-backend/services/ai.ts)
          ↓
@@ -76,31 +76,36 @@ User receives response
 }
 ```
 
-### 4. Flow Execution Engine
+### 4. Chatbot AI Engine
 **File:** `deno-backend/services/flow-execution.ts`
 
 **Process:**
-1. Gets device configuration from `device_setting`
-2. Checks for active conversation in `ai_whatsapp` table
-3. If no conversation exists, creates new one
-4. If conversation exists, updates it with new message
-5. Gets associated flow (if configured)
-6. Executes flow node logic OR uses simple AI response
+1. Gets device configuration from `device_setting` using `device_id`
+2. Gets AI prompt from `prompts` table by matching `device_id`
+3. Checks for existing conversation in `ai_whatsapp` table
+4. If no conversation exists, creates new one
+5. If conversation exists, updates it with new message (moves `conv_current` to `conv_last`)
+6. Generates AI response using prompt from `prompts.prompts_data`
 7. Sends response via WhatsApp
+8. Saves bot response to `conv_last`
 
 **Database Tables Used:**
-- `device_setting` - Device configuration
+- `device_setting` - Device configuration (API keys, provider settings)
+- `prompts` - AI prompt configuration per device
 - `ai_whatsapp` - Conversation history and state
-- `prompts` (potentially) - Custom prompts per device
-- `flows` - Flow definitions (if using flows)
 
 **Key Functions:**
 - `processFlowMessage()` - Main processing function
-- `getActiveConversation()` - Finds existing conversation
+- `getActiveConversation()` - Finds existing conversation by device_id and phone
 - `createNewConversation()` - Creates new conversation record
-- `updateConversation()` - Updates conversation with new message
-- `executeFlowNode()` - Executes flow logic
-- `handleSimpleAIResponse()` - Handles non-flow AI responses
+- `updateConversation()` - Moves conv_current to conv_last, saves new message
+- `generateAIResponse()` - Uses prompt_data from prompts table
+- `updateConversationWithResponse()` - Saves bot response to conv_last
+
+**Important Notes:**
+- **No node-based flows** - System uses direct AI prompts only
+- **One prompt per device** - Each device must have a prompt in prompts table
+- **Conversation history** - `conv_last` stores previous exchange, `conv_current` stores user's latest message
 
 ### 5. AI Response Generation
 **File:** `deno-backend/services/ai.ts`
@@ -173,22 +178,23 @@ The system now tracks conversation state directly in the `ai_whatsapp` table usi
    - Improves conversation quality
 
 2. **Multi-Provider Support**
-   - Currently supports WAHA
+   - Currently supports WAHA only
    - Extensible to Wablas, WhatsApp Center
 
 3. **Conversation State Management**
-   - Tracks conversation history
+   - Tracks conversation history in `conv_last` and `conv_current`
    - Maintains conversation stage
-   - Supports human takeover
+   - Supports human takeover (human field: 0=AI, 1=Human)
 
-4. **Flexible AI Integration**
-   - Supports multiple AI models
-   - Custom prompts per device
-   - Flow-based or simple AI responses
+4. **Prompt-Based AI Integration**
+   - Supports multiple AI models via OpenRouter
+   - Custom prompts per device (from `prompts` table)
+   - Direct AI responses (no node-based flows)
+   - Prompts loaded from `prompts.prompts_data` column
 
 5. **Row Level Security (RLS)**
    - Users can only see their own conversations
-   - Enforced at database level
+   - Enforced at database level via user_id
 
 ## Configuration
 
@@ -238,12 +244,28 @@ Stored in `device_setting` table:
 - **Old Queue Threshold:** 10 minutes
 - **Message Limit:** 100 conversations loaded in UI
 
+## Architecture Summary
+
+The current system uses a **simplified prompt-based architecture**:
+
+1. **No Flow Nodes** - Removed all node-based flow execution (message nodes, conditional nodes, etc.)
+2. **Direct AI Prompts** - Each device has ONE prompt in the `prompts` table
+3. **Conversation History** - Uses `conv_last` and `conv_current` for context
+4. **Device Lookup** - Uses `device_id` (not `id_device`) throughout the system
+5. **User Isolation** - RLS policies ensure users only see their own data
+
+## Completed Enhancements
+
+1. ✅ Removed `ai_whatsapp_session` table
+2. ✅ Removed `wasapBot_session` table
+3. ✅ Simplified schema (removed flow-related columns)
+4. ✅ Prompt-based AI system
+
 ## Future Enhancements
 
-1. ✅ Remove `ai_whatsapp_session` table
-2. ✅ Remove `wasapBot_session` table
-3. Add conversation search/filter
-4. Add message history viewer
-5. Add bulk operations
-6. Add conversation analytics
-7. Add conversation export
+1. Add conversation search/filter in ChatbotAI page
+2. Add message history viewer (show conv_last and conv_current)
+3. Add bulk operations (bulk delete, bulk export)
+4. Add conversation analytics dashboard
+5. Add conversation export (CSV, JSON)
+6. Add human takeover UI (toggle human field)

@@ -26,11 +26,12 @@ export async function handleWebhook(
 
   try {
     // Verify device exists
+    // Note: webhookId in URL corresponds to 'instance' field in device_setting table
     const { data: device, error: deviceError } = await supabaseAdmin
       .from("device_setting")
       .select("*")
       .eq("device_id", deviceId)
-      .eq("webhook_id", webhookId)
+      .eq("instance", webhookId)
       .single();
 
     if (deviceError || !device) {
@@ -41,7 +42,7 @@ export async function handleWebhook(
       );
     }
 
-    console.log(`✅ Device found: ${device.id_device} (Provider: ${device.provider})`);
+    console.log(`✅ Device found: ${device.device_id} (Provider: ${device.provider})`);
 
     // ========== GET REQUEST (Webhook Verification) ==========
     if (method === "GET") {
@@ -109,7 +110,7 @@ function handleWebhookVerification(req: Request, device: any): Response {
       success: true,
       message: "Webhook verified",
       device_id: device.device_id,
-      webhook_id: device.webhook_id,
+      instance: device.instance,
       provider: device.provider
     }),
     { status: 200, headers: corsHeaders }
@@ -159,7 +160,7 @@ async function handleWebhookMessage(req: Request, device: any): Promise<Response
     // Queue message for debouncing
     await queueMessageForDebouncing({
       deviceId: device.device_id,
-      webhookId: device.webhook_id,
+      webhookId: device.instance, // instance field is used as webhookId
       phone,
       message,
       name: name || "",
