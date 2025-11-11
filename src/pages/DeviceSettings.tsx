@@ -15,6 +15,9 @@ export default function DeviceSettings() {
   const [qrCode, setQrCode] = useState<string>('')
   const [connectionStatus, setConnectionStatus] = useState<string>('')
   const [currentDevice, setCurrentDevice] = useState<Device | null>(null)
+  const [isCheckingDeviceId, setIsCheckingDeviceId] = useState(false)
+  const [deviceIdExists, setDeviceIdExists] = useState(false)
+  const [deviceIdError, setDeviceIdError] = useState('')
 
   // Form state
   const [formData, setFormData] = useState({
@@ -45,6 +48,53 @@ export default function DeviceSettings() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const checkDeviceIdExists = async (deviceId: string) => {
+    if (!deviceId.trim()) {
+      setDeviceIdExists(false)
+      setDeviceIdError('')
+      return
+    }
+
+    setIsCheckingDeviceId(true)
+    setDeviceIdError('')
+
+    try {
+      const { data, error } = await supabase
+        .from('device_setting')
+        .select('device_id')
+        .eq('device_id', deviceId.trim())
+        .single()
+
+      if (error && error.code !== 'PGRST116') {
+        // PGRST116 means no rows returned (device ID is available)
+        throw error
+      }
+
+      if (data) {
+        setDeviceIdExists(true)
+        setDeviceIdError('This Device ID is already in use. Please choose a different one.')
+      } else {
+        setDeviceIdExists(false)
+        setDeviceIdError('')
+      }
+    } catch (error: any) {
+      console.error('Error checking device ID:', error)
+      setDeviceIdExists(false)
+      setDeviceIdError('')
+    } finally {
+      setIsCheckingDeviceId(false)
+    }
+  }
+
+  const handleDeviceIdChange = (value: string) => {
+    setFormData({ ...formData, device_id: value })
+    // Debounce the check
+    const timer = setTimeout(() => {
+      checkDeviceIdExists(value)
+    }, 500)
+    return () => clearTimeout(timer)
   }
 
   const handleAddDevice = async (e: React.FormEvent) => {
@@ -511,10 +561,23 @@ export default function DeviceSettings() {
                     <input
                       type="text"
                       value={formData.device_id}
-                      onChange={(e) => setFormData({ ...formData, device_id: e.target.value })}
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      onChange={(e) => handleDeviceIdChange(e.target.value)}
+                      className={`w-full bg-white border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 ${
+                        deviceIdError
+                          ? 'border-red-500 focus:ring-red-500'
+                          : 'border-gray-300 focus:ring-primary-500'
+                      } text-gray-900`}
                       required
                     />
+                    {isCheckingDeviceId && (
+                      <p className="text-xs text-gray-500 mt-1">Checking availability...</p>
+                    )}
+                    {deviceIdError && (
+                      <p className="text-xs text-red-600 mt-1">{deviceIdError}</p>
+                    )}
+                    {formData.device_id && !deviceIdError && !isCheckingDeviceId && (
+                      <p className="text-xs text-green-600 mt-1">✓ Device ID is available</p>
+                    )}
                   </div>
 
                   <div>
@@ -590,13 +653,32 @@ export default function DeviceSettings() {
                 <div className="flex gap-4 mt-6">
                   <button
                     type="submit"
-                    className="flex-1 bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                    disabled={deviceIdExists || isCheckingDeviceId || !formData.device_id}
+                    className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${
+                      deviceIdExists || isCheckingDeviceId || !formData.device_id
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-primary-600 hover:bg-primary-700 text-white'
+                    }`}
                   >
                     Add Device
                   </button>
                   <button
                     type="button"
-                    onClick={() => setShowAddModal(false)}
+                    onClick={() => {
+                      setShowAddModal(false)
+                      setFormData({
+                        device_id: '',
+                        instance: '',
+                        webhook_id: '',
+                        provider: 'waha',
+                        api_key_option: 'openai/gpt-4.1',
+                        api_key: '',
+                        phone_number: '',
+                      })
+                      setDeviceIdExists(false)
+                      setDeviceIdError('')
+                      setIsCheckingDeviceId(false)
+                    }}
                     className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-medium transition-colors"
                   >
                     Cancel
