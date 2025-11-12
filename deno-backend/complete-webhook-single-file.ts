@@ -244,13 +244,74 @@ async function executePromptBasedFlow(params: {
     // Step 5: Generate AI response
     console.log(`🤖 Generating AI response with prompt: ${prompt.prompts_name}`);
 
-    const conversationHistory = `Previous: ${conversation.conv_last || ""}\nCurrent: ${message}`;
-    const aiPrompt = prompt.prompts_data || "You are a helpful assistant. Respond naturally to the user.";
+    // Build system content with instructions
+    const systemContent = (prompt.prompts_data || "You are a helpful assistant.") + `
+
+### Instructions:
+1. If the current stage is null or undefined, default to the first stage.
+2. Always analyze the user's input to determine the appropriate stage. If the input context is unclear, guide the user within the default stage context.
+3. Follow all rules and steps strictly. Do not skip or ignore any rules or instructions.
+
+4. **Do not repeat the same sentences or phrases that have been used in the recent conversation history.**
+5. If the input contains the phrase "I want this section in add response format [onemessage]":
+   - Add the \`Jenis\` field with the value \`onemessage\` at the item level for each text response.
+   - The \`Jenis\` field is only added to \`text\` types within the \`Response\` array.
+   - If the directive is not present, omit the \`Jenis\` field entirely.
+
+### Response Format:
+{
+  "Stage": "[Stage]",  // Specify the current stage explicitly.
+  "Response": [
+    {"type": "text", "Jenis": "onemessage", "content": "Provide the first response message here."},
+    {"type": "image", "content": "https://example.com/image1.jpg"},
+    {"type": "text", "Jenis": "onemessage", "content": "Provide the second response message here."}
+  ]
+}
+
+### Example Response:
+// If the directive is present
+{
+  "Stage": "Problem Identification",
+  "Response": [
+    {"type": "text", "Jenis": "onemessage", "content": "Maaf kak, Layla kena reconfirm balik dulu masalah utama anak akak ni."},
+    {"type": "text", "Jenis": "onemessage", "content": "Kurang selera makan, sembelit, atau kerap demam?"}
+  ]
+}
+
+// If the directive is NOT present
+{
+  "Stage": "Problem Identification",
+  "Response": [
+    {"type": "text", "content": "Maaf kak, Layla kena reconfirm balik dulu masalah utama anak akak ni."},
+    {"type": "text", "content": "Kurang selera makan, sembelit, atau kerap demam?"}
+  ]
+}
+
+### Important Rules:
+1. **Include the \`Stage\` field in every response**:
+   - The \`Stage\` field must explicitly specify the current stage.
+   - If the stage is unclear or missing, default to first stage.
+
+2. **Use the Correct Response Format**:
+   - Divide long responses into multiple short "text" segments for better readability.
+   - Include all relevant images provided in the input, interspersed naturally with text responses.
+   - If multiple images are provided, create separate \`image\` entries for each.
+
+3. **Dynamic Field for [onemessage]**:
+   - If the input specifies "I want this section in add response format [onemessage]":
+      - Add \`"Jenis": "onemessage"\` to each \`text\` type in the \`Response\` array.
+   - If the directive is not present, omit the \`Jenis\` field entirely.
+   - Non-text types like \`image\` never include the \`Jenis\` field.
+`;
+
+    const lastText = conversation.conv_last || "";
+    const currentText = message;
 
     // Use OpenRouter API key and model from device settings
     const aiResponse = await generateAIResponse(
-      aiPrompt,
-      conversationHistory,
+      systemContent,
+      lastText,
+      currentText,
       device.api_key,
       device.api_key_option || "openai/gpt-4o-mini"
     );
@@ -276,8 +337,9 @@ async function executePromptBasedFlow(params: {
 // ============================================================================
 
 async function generateAIResponse(
-  systemPrompt: string,
-  conversationHistory: string,
+  systemContent: string,
+  lastText: string,
+  currentText: string,
   openrouterApiKey: string,
   aiModel: string
 ): Promise<string> {
@@ -293,14 +355,20 @@ async function generateAIResponse(
         messages: [
           {
             role: "system",
-            content: systemPrompt,
+            content: systemContent,
+          },
+          {
+            role: "assistant",
+            content: lastText,
           },
           {
             role: "user",
-            content: conversationHistory,
+            content: currentText,
           },
         ],
-        temperature: 0.7,
+        temperature: 0.67,
+        top_p: 1,
+        repetition_penalty: 1,
       }),
     });
 
