@@ -368,10 +368,14 @@ async function executePromptBasedFlow(params: {
     // Step 6: Process and send responses
     const responses = aiResponse.Response || [];
     let allSentMessages: string[] = [];
+    const MESSAGE_DELAY_MS = 5000; // 5 seconds delay between messages
 
-    for (const item of responses) {
+    for (let i = 0; i < responses.length; i++) {
+      const item = responses[i];
+
       if (item.type === "text") {
         // Send text message
+        console.log(`📤 Sending message ${i + 1}/${responses.length} (text)`);
         await sendWhatsAppMessage({
           provider,
           device,
@@ -382,6 +386,7 @@ async function executePromptBasedFlow(params: {
 
       } else if (item.type === "image" && item.content) {
         // Send image
+        console.log(`📤 Sending message ${i + 1}/${responses.length} (image)`);
         await sendWhatsAppMedia({
           provider,
           device,
@@ -394,6 +399,7 @@ async function executePromptBasedFlow(params: {
 
       } else if (item.type === "video" && item.content) {
         // Send video
+        console.log(`📤 Sending message ${i + 1}/${responses.length} (video)`);
         await sendWhatsAppMedia({
           provider,
           device,
@@ -403,6 +409,12 @@ async function executePromptBasedFlow(params: {
           caption: "",
         });
         allSentMessages.push(`Bot: ${item.content}`);
+      }
+
+      // Add delay between messages (except after the last message)
+      if (i < responses.length - 1) {
+        console.log(`⏱️  Waiting ${MESSAGE_DELAY_MS}ms (${MESSAGE_DELAY_MS / 1000}s) before next message...`);
+        await new Promise(resolve => setTimeout(resolve, MESSAGE_DELAY_MS));
       }
     }
 
