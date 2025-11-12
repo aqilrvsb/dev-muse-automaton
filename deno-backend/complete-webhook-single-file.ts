@@ -247,8 +247,13 @@ async function executePromptBasedFlow(params: {
     const conversationHistory = `Previous: ${conversation.conv_last || ""}\nCurrent: ${message}`;
     const aiPrompt = prompt.prompts_data || "You are a helpful assistant. Respond naturally to the user.";
 
-    // Use OpenRouter API key from device settings
-    const aiResponse = await generateAIResponse(aiPrompt, conversationHistory, device.api_key);
+    // Use OpenRouter API key and model from device settings
+    const aiResponse = await generateAIResponse(
+      aiPrompt,
+      conversationHistory,
+      device.api_key,
+      device.api_key_option || "openai/gpt-4o-mini"
+    );
 
     console.log(`✅ AI Response generated: ${aiResponse.substring(0, 100)}...`);
 
@@ -273,7 +278,8 @@ async function executePromptBasedFlow(params: {
 async function generateAIResponse(
   systemPrompt: string,
   conversationHistory: string,
-  openrouterApiKey: string
+  openrouterApiKey: string,
+  aiModel: string
 ): Promise<string> {
   try {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -283,7 +289,7 @@ async function generateAIResponse(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "openai/gpt-4o-mini",
+        model: aiModel,
         messages: [
           {
             role: "system",
