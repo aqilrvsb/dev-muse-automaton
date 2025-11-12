@@ -8,7 +8,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const JWT_SECRET = Deno.env.get("JWT_SECRET")!;
 const DEBOUNCE_DELAY_MS = parseInt(Deno.env.get("DEBOUNCE_DELAY_MS") || "4000");
 const WAHA_API_URL = Deno.env.get("WAHA_API_URL") || "https://waha-plus-production-705f.up.railway.app";
-const WAHA_API_KEY = Deno.env.get("WAHA_API_KEY") || "";
+const WAHA_API_KEY = Deno.env.get("WAHA_API_KEY") || "dckr_pat_vxeqEu_CqRi5O3CBHnD7FxhnBz0";
 
 // Initialize Supabase clients
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -335,6 +335,7 @@ async function sendWhatsAppMessage(params: {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "X-Api-Key": WAHA_API_KEY,
       },
       body: JSON.stringify({
         session: device.instance,  // ✅ FIXED: Changed from device.webhook_id to device.instance
