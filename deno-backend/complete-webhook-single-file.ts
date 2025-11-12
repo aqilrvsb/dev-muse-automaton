@@ -7,6 +7,8 @@ const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const JWT_SECRET = Deno.env.get("JWT_SECRET")!;
 const DEBOUNCE_DELAY_MS = parseInt(Deno.env.get("DEBOUNCE_DELAY_MS") || "4000");
+const WAHA_API_URL = Deno.env.get("WAHA_API_URL") || "https://waha-plus-production-705f.up.railway.app";
+const WAHA_API_KEY = Deno.env.get("WAHA_API_KEY") || "";
 
 // Initialize Supabase clients
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -245,7 +247,8 @@ async function executePromptBasedFlow(params: {
     const conversationHistory = `Previous: ${conversation.conv_last || ""}\nCurrent: ${message}`;
     const aiPrompt = prompt.prompts_data || "You are a helpful assistant. Respond naturally to the user.";
 
-    const aiResponse = await generateAIResponse(aiPrompt, conversationHistory);
+    // Use OpenRouter API key from device settings
+    const aiResponse = await generateAIResponse(aiPrompt, conversationHistory, device.api_key);
 
     console.log(`✅ AI Response generated: ${aiResponse.substring(0, 100)}...`);
 
@@ -269,13 +272,14 @@ async function executePromptBasedFlow(params: {
 
 async function generateAIResponse(
   systemPrompt: string,
-  conversationHistory: string
+  conversationHistory: string,
+  openrouterApiKey: string
 ): Promise<string> {
   try {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${Deno.env.get("OPENROUTER_API_KEY")}`,
+        "Authorization": `Bearer ${openrouterApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -324,7 +328,8 @@ async function sendWhatsAppMessage(params: {
   }
 
   try {
-    const wahaUrl = `${device.api_key}/api/sendText`;
+    // Use hardcoded WAHA API URL
+    const wahaUrl = `${WAHA_API_URL}/api/sendText`;
 
     const response = await fetch(wahaUrl, {
       method: "POST",
