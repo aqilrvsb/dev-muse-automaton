@@ -161,26 +161,105 @@ async function executePromptBasedFlow(params: {
 
   console.log(`✅ Device found: ${device.device_id}`);
 
-  // Step 1.5: Check if there's already a process running for this conversation
+  // Step 2: Get prompt from prompts table
+  const { data: prompt, error: promptError } = await supabaseAdmin
+    .from("prompts")
+    .select("*")
+    .eq("device_id", deviceId)
+    .single();
+
+  if (promptError || !prompt) {
+    console.error("❌ No prompt configured for this device");
+    return;
+  }
+
+  console.log(`✅ Found prompt: ${prompt.prompts_name}`);
+
+  // Step 3: Check if conversation exists
+  const { data: existingConversation } = await supabaseAdmin
+    .from("ai_whatsapp")
+    .select("*")
+    .eq("device_id", device.device_id)
+    .eq("prospect_num", phone)
+    .single();
+
+  let conversation = existingConversation;
+
+  // Step 4: Create or update conversation
+  if (!conversation) {
+    // Create new conversation
+    const today = new Date().toISOString().split("T")[0]; // Y-m-d format
+
+    const conversationData = {
+      device_id: device.device_id,
+      prospect_num: phone,
+      prospect_name: name || "Unknown",
+      niche: prompt.niche || "",  // ✅ Get niche from prompts table
+      intro: "",
+      stage: null,  // ✅ FIXED: Default to null instead of "active"
+      conv_current: message,
+      conv_last: "",
+      human: 0,
+      date_insert: today,
+      user_id: device.user_id,
+      detail: "",
+    };
+
+    const { data: newConversation, error: createError } = await supabaseAdmin
+      .from("ai_whatsapp")
+      .insert(conversationData)
+      .select()
+      .single();
+
+    if (createError) {
+      console.error("❌ Failed to create conversation:", createError);
+      return;
+    }
+
+    conversation = newConversation;
+    console.log(`✅ New conversation created: ${conversation.id_prospect}`);
+  } else {
+    // Update existing conversation - move current to last, new message to current
+    await supabaseAdmin
+      .from("ai_whatsapp")
+      .update({
+        conv_last: conversation.conv_current || "",
+        conv_current: message,
+      })
+      .eq("id_prospect", conversation.id_prospect);
+
+    console.log(`✅ Conversation updated: ${conversation.id_prospect}`);
+
+    // Refresh conversation data
+    const { data: updatedConv } = await supabaseAdmin
+      .from("ai_whatsapp")
+      .select("*")
+      .eq("id_prospect", conversation.id_prospect)
+      .single();
+
+    conversation = updatedConv || conversation;
+  }
+
+  // Step 4.5: Check processing lock and insert
   const { data: existingProcess } = await supabaseAdmin
     .from("processing_tracker")
     .select("*")
-    .eq("id_prospect", phone)
+    .eq("id_prospect", conversation.id_prospect)
     .eq("flow_type", "Chatbot AI")
     .single();
 
   if (existingProcess) {
-    console.log(`⚠️  Process already running for ${phone}, skipping execution`);
+    console.log(`⚠️  Process already running for id_prospect: ${conversation.id_prospect}, skipping execution`);
     return;
   }
 
   console.log(`✅ No existing process, proceeding with execution`);
 
-  // Step 1.6: Insert processing lock record
+  // Insert processing lock record
   const { error: insertLockError } = await supabaseAdmin
     .from("processing_tracker")
     .insert({
-      id_prospect: phone,
+      id_prospect: conversation.id_prospect,
       flow_type: "Chatbot AI",
       created_at: new Date().toISOString(),
     });
@@ -190,89 +269,10 @@ async function executePromptBasedFlow(params: {
     return;
   }
 
-  console.log(`🔒 Processing lock created for ${phone}`);
+  console.log(`🔒 Processing lock created for id_prospect: ${conversation.id_prospect}`);
 
   // Wrap everything in try/finally to ensure lock is released
   try {
-  // Step 2: Get prompt from prompts table
-    const { data: prompt, error: promptError } = await supabaseAdmin
-      .from("prompts")
-      .select("*")
-      .eq("device_id", deviceId)
-      .single();
-
-    if (promptError || !prompt) {
-      console.error("❌ No prompt configured for this device");
-      return;
-    }
-
-    console.log(`✅ Found prompt: ${prompt.prompts_name}`);
-
-    // Step 3: Check if conversation exists
-    const { data: existingConversation } = await supabaseAdmin
-      .from("ai_whatsapp")
-      .select("*")
-      .eq("device_id", device.device_id)
-      .eq("prospect_num", phone)
-      .single();
-
-    let conversation = existingConversation;
-
-    // Step 4: Create or update conversation
-    if (!conversation) {
-      // Create new conversation
-      const today = new Date().toISOString().split("T")[0]; // Y-m-d format
-
-      const conversationData = {
-        device_id: device.device_id,
-        prospect_num: phone,
-        prospect_name: name || "Unknown",
-        niche: prompt.niche || "",  // ✅ Get niche from prompts table
-        intro: "",
-        stage: "active",
-        conv_current: message,
-        conv_last: "",
-        human: 0,
-        date_insert: today,
-        user_id: device.user_id,
-        detail: "",
-      };
-
-      const { data: newConversation, error: createError } = await supabaseAdmin
-        .from("ai_whatsapp")
-        .insert(conversationData)
-        .select()
-        .single();
-
-      if (createError) {
-        console.error("❌ Failed to create conversation:", createError);
-        return;
-      }
-
-      conversation = newConversation;
-      console.log(`✅ New conversation created: ${conversation.id_prospect}`);
-    } else {
-      // Update existing conversation - move current to last, new message to current
-      await supabaseAdmin
-        .from("ai_whatsapp")
-        .update({
-          conv_last: conversation.conv_current || "",
-          conv_current: message,
-        })
-        .eq("id_prospect", conversation.id_prospect);
-
-      console.log(`✅ Conversation updated: ${conversation.id_prospect}`);
-
-      // Refresh conversation data
-      const { data: updatedConv } = await supabaseAdmin
-        .from("ai_whatsapp")
-        .select("*")
-        .eq("id_prospect", conversation.id_prospect)
-        .single();
-
-      conversation = updatedConv || conversation;
-    }
-
     // Step 5: Generate AI response
     console.log(`🤖 Generating AI response with prompt: ${prompt.prompts_name}`);
 
@@ -428,14 +428,16 @@ async function executePromptBasedFlow(params: {
       convLast += "\n" + botMsg;
     }
 
+    // Update conversation with conv_last and stage from AI response
     await supabaseAdmin
       .from("ai_whatsapp")
       .update({
         conv_last: convLast,
+        stage: aiResponse.Stage || null,  // ✅ FIXED: Update stage from AI response
       })
       .eq("id_prospect", conversation.id_prospect);
 
-    console.log(`✅ Updated conv_last with conversation history`);
+    console.log(`✅ Updated conv_last and stage (${aiResponse.Stage}) for conversation`);
 
     console.log(`✅ === PROMPT-BASED FLOW EXECUTION COMPLETE ===\n`);
   } catch (error) {
@@ -445,13 +447,13 @@ async function executePromptBasedFlow(params: {
     const { error: deleteLockError } = await supabaseAdmin
       .from("processing_tracker")
       .delete()
-      .eq("id_prospect", phone)
+      .eq("id_prospect", conversation.id_prospect)  // ✅ FIXED: Use id_prospect from conversation
       .eq("flow_type", "Chatbot AI");
 
     if (deleteLockError) {
       console.error("❌ Failed to delete processing lock:", deleteLockError);
     } else {
-      console.log(`🔓 Processing lock released for ${phone}`);
+      console.log(`🔓 Processing lock released for id_prospect: ${conversation.id_prospect}`);
     }
   }
 }
