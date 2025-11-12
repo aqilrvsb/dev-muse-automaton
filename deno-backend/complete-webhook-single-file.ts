@@ -308,7 +308,7 @@ async function executePromptBasedFlow(params: {
     const currentText = message;
 
     // Use OpenRouter API key and model from device settings
-    const aiResponse = await generateAIResponse(
+    const aiResponseRaw = await generateAIResponse(
       systemContent,
       lastText,
       currentText,
@@ -316,15 +316,74 @@ async function executePromptBasedFlow(params: {
       device.api_key_option || "openai/gpt-4o-mini"
     );
 
-    console.log(`✅ AI Response generated: ${aiResponse.substring(0, 100)}...`);
+    console.log(`✅ AI Response Raw:`, aiResponseRaw);
 
-    // Step 6: Send response via WhatsApp
-    await sendWhatsAppMessage({
-      provider,
-      device,
-      phone,
-      message: aiResponse,
-    });
+    // Parse AI response JSON
+    let aiResponse;
+    try {
+      aiResponse = JSON.parse(aiResponseRaw);
+      console.log(`✅ AI Response Parsed:`, JSON.stringify(aiResponse, null, 2));
+    } catch (error) {
+      console.error(`❌ Failed to parse AI response:`, error);
+      aiResponse = {
+        Stage: "Unknown",
+        Response: [
+          { type: "text", content: aiResponseRaw }
+        ]
+      };
+    }
+
+    // Step 6: Process and send responses
+    const responses = aiResponse.Response || [];
+    let allSentMessages: string[] = [];
+
+    for (const item of responses) {
+      if (item.type === "text") {
+        // Send text message
+        await sendWhatsAppMessage({
+          provider,
+          device,
+          phone,
+          message: item.content,
+        });
+        allSentMessages.push(item.content);
+
+      } else if (item.type === "image" && item.content) {
+        // Send image
+        await sendWhatsAppMedia({
+          provider,
+          device,
+          phone,
+          mediaUrl: item.content,
+          mediaType: "image",
+          caption: "",
+        });
+        allSentMessages.push(item.content);
+
+      } else if (item.type === "video" && item.content) {
+        // Send video
+        await sendWhatsAppMedia({
+          provider,
+          device,
+          phone,
+          mediaUrl: item.content,
+          mediaType: "video",
+          caption: "",
+        });
+        allSentMessages.push(item.content);
+      }
+    }
+
+    // Update conv_last with all sent messages (bot responses)
+    const botResponse = allSentMessages.join("\n");
+    await supabaseAdmin
+      .from("ai_whatsapp")
+      .update({
+        conv_last: botResponse,
+      })
+      .eq("id_prospect", conversation.id_prospect);
+
+    console.log(`✅ Updated conv_last with bot response`);
 
     console.log(`✅ === PROMPT-BASED FLOW EXECUTION COMPLETE ===\n`);
   } catch (error) {
@@ -422,9 +481,94 @@ async function sendWhatsAppMessage(params: {
       throw new Error(`WAHA API error: ${response.statusText}`);
     }
 
-    console.log(`✅ WAHA message sent to ${phone}`);
+    console.log(`✅ WAHA text message sent to ${phone}`);
   } catch (error) {
     console.error("❌ Failed to send WhatsApp message:", error);
+  }
+}
+
+async function sendWhatsAppMedia(params: {
+  provider: string;
+  device: any;
+  phone: string;
+  mediaUrl: string;
+  mediaType: string;
+  caption: string;
+}): Promise<void> {
+  const { provider, device, phone, mediaUrl, mediaType, caption } = params;
+
+  if (provider !== "waha") {
+    console.error(`❌ Unsupported provider: ${provider}`);
+    return;
+  }
+
+  try {
+    let endpoint = "";
+    let payload: any = {};
+
+    const chatId = `${phone}@c.us`;
+    const session = device.instance;
+
+    // Determine media type by extension
+    const ext = mediaUrl.split(".").pop()?.toLowerCase() || "";
+
+    if (ext === "mp4" || mediaType === "video") {
+      // Video
+      endpoint = `${WAHA_API_URL}/api/sendVideo`;
+      payload = {
+        session,
+        chatId,
+        file: {
+          mimetype: "video/mp4",
+          url: mediaUrl,
+          filename: "Video",
+        },
+        caption: caption || "",
+      };
+    } else if (ext === "mp3" || ext === "wav" || mediaType === "audio") {
+      // Audio/File
+      endpoint = `${WAHA_API_URL}/api/sendFile`;
+      payload = {
+        session,
+        chatId,
+        file: {
+          mimetype: "audio/mp3",
+          url: mediaUrl,
+          filename: "Audio",
+        },
+        caption: caption || "",
+      };
+    } else {
+      // Image (default)
+      endpoint = `${WAHA_API_URL}/api/sendImage`;
+      payload = {
+        session,
+        chatId,
+        file: {
+          mimetype: "image/jpeg",
+          url: mediaUrl,
+          filename: "Image",
+        },
+        caption: caption || "",
+      };
+    }
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Api-Key": WAHA_API_KEY,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`WAHA API error: ${response.statusText}`);
+    }
+
+    console.log(`✅ WAHA ${mediaType} sent to ${phone}`);
+  } catch (error) {
+    console.error(`❌ Failed to send WhatsApp ${mediaType}:`, error);
   }
 }
 
