@@ -162,6 +162,41 @@ async function executePromptBasedFlow(params: {
 
     console.log(`✅ Device found: ${device.device_id}`);
 
+    // Step 1.5: Check if there's already a process running for this conversation
+    const { data: existingProcess } = await supabaseAdmin
+      .from("processing_tracker")
+      .select("*")
+      .eq("device_id", device.device_id)
+      .eq("prospect_num", phone)
+      .eq("flow_type", "Chatbot AI")
+      .single();
+
+    if (existingProcess) {
+      console.log(`⚠️  Process already running for ${phone}, skipping execution`);
+      return;
+    }
+
+    console.log(`✅ No existing process, proceeding with execution`);
+
+    // Step 1.6: Insert processing lock record
+    const { error: insertLockError } = await supabaseAdmin
+      .from("processing_tracker")
+      .insert({
+        device_id: device.device_id,
+        prospect_num: phone,
+        flow_type: "Chatbot AI",
+        created_at: new Date().toISOString(),
+      });
+
+    if (insertLockError) {
+      console.error("❌ Failed to insert processing lock:", insertLockError);
+      return;
+    }
+
+    console.log(`🔒 Processing lock created for ${phone}`);
+
+    // Wrap everything in try/finally to ensure lock is released
+    try {
     // Step 2: Get prompt from prompts table
     const { data: prompt, error: promptError } = await supabaseAdmin
       .from("prompts")
@@ -408,6 +443,20 @@ async function executePromptBasedFlow(params: {
     console.log(`✅ === PROMPT-BASED FLOW EXECUTION COMPLETE ===\n`);
   } catch (error) {
     console.error("❌ Flow execution error:", error);
+  } finally {
+    // Step 7: Delete processing lock record (always execute, even on error)
+    const { error: deleteLockError } = await supabaseAdmin
+      .from("processing_tracker")
+      .delete()
+      .eq("device_id", device.device_id)
+      .eq("prospect_num", phone)
+      .eq("flow_type", "Chatbot AI");
+
+    if (deleteLockError) {
+      console.error("❌ Failed to delete processing lock:", deleteLockError);
+    } else {
+      console.log(`🔓 Processing lock released for ${phone}`);
+    }
   }
 }
 
