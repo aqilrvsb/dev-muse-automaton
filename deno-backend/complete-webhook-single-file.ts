@@ -346,7 +346,7 @@ async function executePromptBasedFlow(params: {
           phone,
           message: item.content,
         });
-        allSentMessages.push(item.content);
+        allSentMessages.push(`Bot: ${item.content}`);
 
       } else if (item.type === "image" && item.content) {
         // Send image
@@ -358,7 +358,7 @@ async function executePromptBasedFlow(params: {
           mediaType: "image",
           caption: "",
         });
-        allSentMessages.push(item.content);
+        allSentMessages.push(`Bot: ${item.content}`);
 
       } else if (item.type === "video" && item.content) {
         // Send video
@@ -370,20 +370,40 @@ async function executePromptBasedFlow(params: {
           mediaType: "video",
           caption: "",
         });
-        allSentMessages.push(item.content);
+        allSentMessages.push(`Bot: ${item.content}`);
       }
     }
 
-    // Update conv_last with all sent messages (bot responses)
-    const botResponse = allSentMessages.join("\n");
+    // Update conv_last - Append to existing conversation history
+    const { data: currentConv } = await supabaseAdmin
+      .from("ai_whatsapp")
+      .select("conv_last")
+      .eq("id_prospect", conversation.id_prospect)
+      .single();
+
+    let convLast = currentConv?.conv_last || "";
+
+    // Add user message first
+    const userLine = `User: ${message}`;
+    if (convLast) {
+      convLast += "\n" + userLine;
+    } else {
+      convLast = userLine;
+    }
+
+    // Add all bot responses
+    for (const botMsg of allSentMessages) {
+      convLast += "\n" + botMsg;
+    }
+
     await supabaseAdmin
       .from("ai_whatsapp")
       .update({
-        conv_last: botResponse,
+        conv_last: convLast,
       })
       .eq("id_prospect", conversation.id_prospect);
 
-    console.log(`✅ Updated conv_last with bot response`);
+    console.log(`✅ Updated conv_last with conversation history`);
 
     console.log(`✅ === PROMPT-BASED FLOW EXECUTION COMPLETE ===\n`);
   } catch (error) {
