@@ -146,58 +146,57 @@ async function executePromptBasedFlow(params: {
   console.log(`📞 Phone: ${phone}`);
   console.log(`💬 Message: ${message}`);
 
+  // Step 1: Get device details
+  const { data: device, error: deviceError } = await supabaseAdmin
+    .from("device_setting")
+    .select("*")
+    .eq("device_id", deviceId)
+    .eq("instance", webhookId)  // ✅ FIXED: Changed from webhook_id to instance
+    .single();
+
+  if (deviceError || !device) {
+    console.error("❌ Device not found:", deviceError);
+    return;
+  }
+
+  console.log(`✅ Device found: ${device.device_id}`);
+
+  // Step 1.5: Check if there's already a process running for this conversation
+  const { data: existingProcess } = await supabaseAdmin
+    .from("processing_tracker")
+    .select("*")
+    .eq("device_id", device.device_id)
+    .eq("prospect_num", phone)
+    .eq("flow_type", "Chatbot AI")
+    .single();
+
+  if (existingProcess) {
+    console.log(`⚠️  Process already running for ${phone}, skipping execution`);
+    return;
+  }
+
+  console.log(`✅ No existing process, proceeding with execution`);
+
+  // Step 1.6: Insert processing lock record
+  const { error: insertLockError } = await supabaseAdmin
+    .from("processing_tracker")
+    .insert({
+      device_id: device.device_id,
+      prospect_num: phone,
+      flow_type: "Chatbot AI",
+      created_at: new Date().toISOString(),
+    });
+
+  if (insertLockError) {
+    console.error("❌ Failed to insert processing lock:", insertLockError);
+    return;
+  }
+
+  console.log(`🔒 Processing lock created for ${phone}`);
+
+  // Wrap everything in try/finally to ensure lock is released
   try {
-    // Step 1: Get device details
-    const { data: device, error: deviceError } = await supabaseAdmin
-      .from("device_setting")
-      .select("*")
-      .eq("device_id", deviceId)
-      .eq("instance", webhookId)  // ✅ FIXED: Changed from webhook_id to instance
-      .single();
-
-    if (deviceError || !device) {
-      console.error("❌ Device not found:", deviceError);
-      return;
-    }
-
-    console.log(`✅ Device found: ${device.device_id}`);
-
-    // Step 1.5: Check if there's already a process running for this conversation
-    const { data: existingProcess } = await supabaseAdmin
-      .from("processing_tracker")
-      .select("*")
-      .eq("device_id", device.device_id)
-      .eq("prospect_num", phone)
-      .eq("flow_type", "Chatbot AI")
-      .single();
-
-    if (existingProcess) {
-      console.log(`⚠️  Process already running for ${phone}, skipping execution`);
-      return;
-    }
-
-    console.log(`✅ No existing process, proceeding with execution`);
-
-    // Step 1.6: Insert processing lock record
-    const { error: insertLockError } = await supabaseAdmin
-      .from("processing_tracker")
-      .insert({
-        device_id: device.device_id,
-        prospect_num: phone,
-        flow_type: "Chatbot AI",
-        created_at: new Date().toISOString(),
-      });
-
-    if (insertLockError) {
-      console.error("❌ Failed to insert processing lock:", insertLockError);
-      return;
-    }
-
-    console.log(`🔒 Processing lock created for ${phone}`);
-
-    // Wrap everything in try/finally to ensure lock is released
-    try {
-    // Step 2: Get prompt from prompts table
+  // Step 2: Get prompt from prompts table
     const { data: prompt, error: promptError } = await supabaseAdmin
       .from("prompts")
       .select("*")
