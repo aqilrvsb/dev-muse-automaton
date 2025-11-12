@@ -165,8 +165,7 @@ async function executePromptBasedFlow(params: {
   const { data: existingProcess } = await supabaseAdmin
     .from("processing_tracker")
     .select("*")
-    .eq("device_id", device.device_id)
-    .eq("prospect_num", phone)
+    .eq("id_prospect", phone)
     .eq("flow_type", "Chatbot AI")
     .single();
 
@@ -181,8 +180,7 @@ async function executePromptBasedFlow(params: {
   const { error: insertLockError } = await supabaseAdmin
     .from("processing_tracker")
     .insert({
-      device_id: device.device_id,
-      prospect_num: phone,
+      id_prospect: phone,
       flow_type: "Chatbot AI",
       created_at: new Date().toISOString(),
     });
@@ -447,8 +445,7 @@ async function executePromptBasedFlow(params: {
     const { error: deleteLockError } = await supabaseAdmin
       .from("processing_tracker")
       .delete()
-      .eq("device_id", device.device_id)
-      .eq("prospect_num", phone)
+      .eq("id_prospect", phone)
       .eq("flow_type", "Chatbot AI");
 
     if (deleteLockError) {
