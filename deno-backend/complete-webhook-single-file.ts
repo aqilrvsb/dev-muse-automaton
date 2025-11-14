@@ -924,7 +924,7 @@ async function handleGetAllConversations(request: Request): Promise<Response> {
       .from("ai_whatsapp")
       .select("*")
       .eq("user_id", userData.user.id)
-      .order("created_at", { ascending: false });
+      .order("date_insert", { ascending: false });
 
     if (convError) {
       console.error("❌ Error fetching conversations:", convError);

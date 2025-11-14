@@ -11,7 +11,6 @@ type AIConversation = {
   stage: string
   human: number
   date_insert: string
-  created_at: string
   conv_last: string
   detail: string
 }
@@ -62,7 +61,7 @@ export default function ChatbotAI() {
       const { data, error } = await supabase
         .from('ai_whatsapp')
         .select('*')
-        .order('created_at', { ascending: false })
+        .order('date_insert', { ascending: false })
 
       if (error) throw error
 
@@ -98,8 +97,8 @@ export default function ChatbotAI() {
     // Date range filter
     if (startDate || endDate) {
       filtered = filtered.filter(c => {
-        if (!c.created_at) return false
-        const convDate = new Date(c.created_at)
+        if (!c.date_insert) return false
+        const convDate = new Date(c.date_insert)
         const dateStr = convDate.toISOString().split('T')[0]
 
         if (startDate && dateStr < startDate) return false
@@ -150,7 +149,7 @@ export default function ChatbotAI() {
     let csv = 'No,ID Device,Date,Name,Phone Number,Niche,Stage,Reply Status\n'
 
     filteredConversations.forEach((conv, index) => {
-      const dateFormatted = conv.created_at ? new Date(conv.created_at).toLocaleDateString() : '-'
+      const dateFormatted = conv.date_insert ? new Date(conv.date_insert).toLocaleDateString() : '-'
       const replyStatus = conv.human === 1 ? 'Human' : 'AI'
 
       csv += `${index + 1},"${conv.device_id || '-'}","${dateFormatted}","${conv.prospect_name || '-'}","${conv.prospect_num || '-'}","${conv.niche || '-'}","${conv.stage || 'Welcome Message'}","${replyStatus}"\n`
@@ -345,8 +344,8 @@ ${conv.conv_last || 'No conversation history'}
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {filteredConversations.map((conv, index) => {
-                    const dateFormatted = conv.created_at
-                      ? new Date(conv.created_at).toLocaleDateString('en-GB')
+                    const dateFormatted = conv.date_insert
+                      ? new Date(conv.date_insert).toLocaleDateString('en-GB')
                       : '-'
 
                     return (
