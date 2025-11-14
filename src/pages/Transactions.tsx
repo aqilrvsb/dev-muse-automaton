@@ -38,6 +38,10 @@ export default function Transactions() {
   const [recheckingPayments, setRecheckingPayments] = useState<Set<string>>(new Set())
 
   useEffect(() => {
+    setDefaultDates()
+  }, [])
+
+  useEffect(() => {
     // Check if user is admin
     if (user && user.role !== 'admin') {
       Swal.fire({
@@ -49,8 +53,20 @@ export default function Transactions() {
       })
       return
     }
-    loadPayments()
+    if (startDate && endDate) {
+      loadPayments()
+    }
   }, [user, navigate, startDate, endDate, statusFilter])
+
+  const setDefaultDates = () => {
+    const today = new Date()
+    const year = today.getFullYear()
+    const month = String(today.getMonth() + 1).padStart(2, '0')
+    const day = String(today.getDate()).padStart(2, '0')
+
+    setStartDate(`${year}-${month}-01`)
+    setEndDate(`${year}-${month}-${day}`)
+  }
 
   const loadPayments = async () => {
     try {
@@ -59,11 +75,12 @@ export default function Transactions() {
         .select('*, user(*), packages(*)')
         .order('created_at', { ascending: false })
 
+      // Filter using date only (Y-m-d format) by using date range
       if (startDate) {
-        query = query.gte('created_at', startDate + 'T00:00:00.000Z')
+        query = query.gte('created_at', `${startDate}T00:00:00`)
       }
       if (endDate) {
-        query = query.lte('created_at', endDate + 'T23:59:59.999Z')
+        query = query.lte('created_at', `${endDate}T23:59:59`)
       }
       if (statusFilter !== 'all') {
         query = query.eq('status', statusFilter)
@@ -147,6 +164,11 @@ export default function Transactions() {
       style: 'currency',
       currency: currency || 'MYR',
     }).format(amount)
+  }
+
+  const resetFilters = () => {
+    setStatusFilter('all')
+    setDefaultDates()
   }
 
   // Calculate statistics
@@ -264,6 +286,14 @@ export default function Transactions() {
                 <option value="failed">Failed</option>
               </select>
             </div>
+          </div>
+          <div className="mt-4">
+            <button
+              onClick={resetFilters}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2 rounded-lg transition-colors font-medium"
+            >
+              Reset Filters
+            </button>
           </div>
         </div>
 
