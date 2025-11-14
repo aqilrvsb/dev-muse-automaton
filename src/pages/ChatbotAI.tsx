@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
 import { supabase } from '../lib/supabase'
+import Swal from 'sweetalert2'
 
 type AIConversation = {
   id_prospect: number
@@ -167,22 +168,41 @@ export default function ChatbotAI() {
   }
 
   const viewConversation = (conv: AIConversation) => {
-    const message = `
-Phone: ${conv.prospect_num || '-'}
-Name: ${conv.prospect_name || '-'}
-Device: ${conv.device_id || '-'}
-Niche: ${conv.niche || '-'}
-Stage: ${conv.stage || 'Welcome Message'}
-
-Conversation History:
+    Swal.fire({
+      title: 'Conversation History',
+      html: `
+        <div style="text-align: left; font-family: monospace; font-size: 14px;">
+          <p><strong>Phone:</strong> ${conv.prospect_num || '-'}</p>
+          <p><strong>Name:</strong> ${conv.prospect_name || '-'}</p>
+          <p><strong>Device:</strong> ${conv.device_id || '-'}</p>
+          <p><strong>Niche:</strong> ${conv.niche || '-'}</p>
+          <p><strong>Stage:</strong> ${conv.stage || 'Welcome Message'}</p>
+          <hr style="margin: 15px 0;">
+          <p><strong>Conversation History:</strong></p>
+          <div style="background: #f5f5f5; padding: 10px; border-radius: 5px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; text-align: left;">
 ${conv.conv_last || 'No conversation history'}
-    `.trim()
-
-    alert(message)
+          </div>
+        </div>
+      `,
+      width: '600px',
+      confirmButtonText: 'OK',
+      confirmButtonColor: '#667eea',
+    })
   }
 
   const deleteConversation = async (prospectNum: string) => {
-    if (!confirm('Are you sure you want to delete this conversation?')) return
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: 'Do you want to delete this conversation?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'Cancel'
+    })
+
+    if (!result.isConfirmed) return
 
     try {
       const { error } = await supabase
@@ -192,11 +212,21 @@ ${conv.conv_last || 'No conversation history'}
 
       if (error) throw error
 
-      alert('Conversation deleted successfully')
+      Swal.fire({
+        title: 'Deleted!',
+        text: 'Conversation deleted successfully',
+        icon: 'success',
+        confirmButtonColor: '#667eea',
+      })
       loadConversations()
     } catch (error) {
       console.error('Error deleting conversation:', error)
-      alert('Failed to delete conversation')
+      Swal.fire({
+        title: 'Error!',
+        text: 'Failed to delete conversation',
+        icon: 'error',
+        confirmButtonColor: '#d33',
+      })
     }
   }
 
