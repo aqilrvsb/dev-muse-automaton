@@ -143,20 +143,31 @@ export default function ChatbotAI() {
 
   const exportToCSV = () => {
     if (filteredConversations.length === 0) {
-      alert('No conversations to export')
+      Swal.fire({
+        title: 'No Data',
+        text: 'No conversations to export',
+        icon: 'warning',
+        confirmButtonColor: '#667eea',
+      })
       return
     }
 
-    let csv = 'No,ID Device,Date,Name,Phone Number,Niche,Stage,Reply Status\n'
+    // CSV header with conversation history column
+    let csv = 'No,ID Device,Date,Name,Phone Number,Niche,Stage,Reply Status,Conversation History\n'
 
     filteredConversations.forEach((conv, index) => {
       const dateFormatted = conv.date_insert ? new Date(conv.date_insert).toLocaleDateString() : '-'
       const replyStatus = conv.human === 1 ? 'Human' : 'AI'
 
-      csv += `${index + 1},"${conv.device_id || '-'}","${dateFormatted}","${conv.prospect_name || '-'}","${conv.prospect_num || '-'}","${conv.niche || '-'}","${conv.stage || 'Welcome Message'}","${replyStatus}"\n`
+      // Clean and escape conversation history for CSV
+      const convHistory = (conv.conv_last || 'No conversation history')
+        .replace(/"/g, '""') // Escape double quotes
+        .replace(/\n/g, ' | ') // Replace newlines with pipe separator for readability
+
+      csv += `${index + 1},"${conv.device_id || '-'}","${dateFormatted}","${conv.prospect_name || '-'}","${conv.prospect_num || '-'}","${conv.niche || '-'}","${conv.stage || 'Welcome Message'}","${replyStatus}","${convHistory}"\n`
     })
 
-    const blob = new Blob([csv], { type: 'text/csv' })
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -165,6 +176,13 @@ export default function ChatbotAI() {
     a.click()
     document.body.removeChild(a)
     window.URL.revokeObjectURL(url)
+
+    Swal.fire({
+      title: 'Success!',
+      text: `Exported ${filteredConversations.length} conversations to CSV`,
+      icon: 'success',
+      confirmButtonColor: '#667eea',
+    })
   }
 
   const viewConversation = (conv: AIConversation) => {
