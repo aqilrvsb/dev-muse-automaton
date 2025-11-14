@@ -159,10 +159,9 @@ export default function ChatbotAI() {
       const dateFormatted = conv.date_insert ? new Date(conv.date_insert).toLocaleDateString() : '-'
       const replyStatus = conv.human === 1 ? 'Human' : 'AI'
 
-      // Clean and escape conversation history for CSV
+      // Escape conversation history for CSV while preserving newlines
       const convHistory = (conv.conv_last || 'No conversation history')
         .replace(/"/g, '""') // Escape double quotes
-        .replace(/\n/g, ' | ') // Replace newlines with pipe separator for readability
 
       csv += `${index + 1},"${conv.device_id || '-'}","${dateFormatted}","${conv.prospect_name || '-'}","${conv.prospect_num || '-'}","${conv.niche || '-'}","${conv.stage || 'Welcome Message'}","${replyStatus}","${convHistory}"\n`
     })
