@@ -77,6 +77,15 @@ export default function Transactions() {
         .select('*, user(*), packages(*)')
         .order('created_at', { ascending: false })
 
+      // First, let's get ALL payments to see what's in the database
+      const { data: allPayments } = await supabase
+        .from('payments')
+        .select('created_at')
+        .order('created_at', { ascending: false })
+        .limit(5)
+
+      console.log('Sample payment dates from DB:', allPayments?.map(p => p.created_at))
+
       // Filter using date only (Y-m-d format) by using date range
       if (startDate) {
         query = query.gte('created_at', `${startDate}T00:00:00.000Z`)
