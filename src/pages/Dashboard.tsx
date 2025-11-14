@@ -1,7 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Layout from '../components/Layout'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { Chart, registerables } from 'chart.js'
+
+Chart.register(...registerables)
 
 type Stats = {
   totalConversations: number
@@ -25,6 +28,11 @@ export default function Dashboard() {
   const [endDate, setEndDate] = useState('')
   const [devices, setDevices] = useState<string[]>([])
   const [stages, setStages] = useState<string[]>([])
+
+  // Chart refs and state
+  const dailyTrendsChartRef = useRef<HTMLCanvasElement>(null)
+  const dailyTrendsChartInstance = useRef<Chart | null>(null)
+  const [stageDistribution, setStageDistribution] = useState<Array<{ stage: string; count: number; percentage: number }>>([])
 
   useEffect(() => {
     setDefaultDates()
@@ -63,7 +71,11 @@ export default function Dashboard() {
 
       // Apply stage filter
       if (stageFilter) {
-        query = query.eq('stage', stageFilter)
+        if (stageFilter === 'Welcome Message') {
+          query = query.is('stage', null)
+        } else {
+          query = query.eq('stage', stageFilter)
+        }
       }
 
       // Apply date range filter using date_insert
@@ -83,7 +95,7 @@ export default function Dashboard() {
 
       if (allConversations) {
         const uniqueDevices = [...new Set(allConversations.map(c => c.device_id).filter(Boolean))]
-        const uniqueStages = [...new Set(allConversations.map(c => c.stage).filter(Boolean))]
+        const uniqueStages = [...new Set(allConversations.map(c => c.stage || 'Welcome Message'))]
         setDevices(uniqueDevices)
         setStages(uniqueStages)
       }
@@ -100,6 +112,12 @@ export default function Dashboard() {
         chatbotAI: aiCount,
         activeDevices: devicesData?.length || 0,
       })
+
+      // Render charts with filtered data
+      if (aiConversations && aiConversations.length > 0) {
+        renderDailyTrendsChart(aiConversations)
+        renderStageDistribution(aiConversations)
+      }
     } catch (error) {
       console.error('Error loading dashboard data:', error)
     } finally {
@@ -111,6 +129,99 @@ export default function Dashboard() {
     setDeviceFilter('')
     setStageFilter('')
     setDefaultDates()
+  }
+
+  const renderDailyTrendsChart = (conversations: any[]) => {
+    if (!dailyTrendsChartRef.current) return
+
+    // Group conversations by date
+    const dateGroups: Record<string, number> = {}
+    conversations.forEach(conv => {
+      if (conv.date_insert) {
+        const date = new Date(conv.date_insert)
+        const dateStr = `${date.getMonth() + 1}/${date.getDate()}`
+        dateGroups[dateStr] = (dateGroups[dateStr] || 0) + 1
+      }
+    })
+
+    // Get last 7 days
+    const labels: string[] = []
+    const data: number[] = []
+    const today = new Date()
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today)
+      d.setDate(d.getDate() - i)
+      const dateStr = `${d.getMonth() + 1}/${d.getDate()}`
+      labels.push(dateStr)
+      data.push(dateGroups[dateStr] || 0)
+    }
+
+    // Destroy previous chart if exists
+    if (dailyTrendsChartInstance.current) {
+      dailyTrendsChartInstance.current.destroy()
+    }
+
+    // Create new chart
+    const ctx = dailyTrendsChartRef.current.getContext('2d')
+    if (!ctx) return
+
+    dailyTrendsChartInstance.current = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Conversations',
+          data: data,
+          borderColor: '#667eea',
+          backgroundColor: 'rgba(102, 126, 234, 0.1)',
+          borderWidth: 3,
+          fill: true,
+          tension: 0.4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              stepSize: 1
+            }
+          }
+        }
+      }
+    })
+  }
+
+  const renderStageDistribution = (conversations: any[]) => {
+    // Count conversations by stage
+    const stageCounts: Record<string, number> = {}
+    conversations.forEach(conv => {
+      const stage = conv.stage || 'Welcome Message'
+      stageCounts[stage] = (stageCounts[stage] || 0) + 1
+    })
+
+    // Sort by count and get top 5 stages
+    const sortedStages = Object.entries(stageCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+
+    const total = conversations.length
+
+    const distribution = sortedStages.map(([stage, count]) => ({
+      stage,
+      count,
+      percentage: parseFloat(((count / total) * 100).toFixed(1))
+    }))
+
+    setStageDistribution(distribution)
   }
 
   const StatCard = ({ title, value, icon, color, subtitle }: { title: string; value: number; icon: string; color: string; subtitle: string }) => (
@@ -225,18 +336,41 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Charts Placeholder */}
+        {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
             <h3 className="text-xl font-bold text-gray-900 mb-4">Conversation Trends</h3>
-            <div className="h-64 flex items-center justify-center text-gray-400">
-              <p>Chart visualization coming soon</p>
+            <div className="h-64">
+              <canvas ref={dailyTrendsChartRef}></canvas>
             </div>
           </div>
           <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
             <h3 className="text-xl font-bold text-gray-900 mb-4">Stage Distribution</h3>
-            <div className="h-64 flex items-center justify-center text-gray-400">
-              <p>Chart visualization coming soon</p>
+            <div className="h-64 overflow-y-auto">
+              {stageDistribution.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-gray-400">
+                  <p>No data available</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {stageDistribution.map((item, index) => (
+                    <div key={index} className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-gray-700">{item.stage}</span>
+                        <span className="text-sm text-gray-500">{item.count} conversations</span>
+                      </div>
+                      <div className="relative w-full h-8 bg-gray-100 rounded-lg overflow-hidden">
+                        <div
+                          className="absolute top-0 left-0 h-full bg-gradient-to-r from-primary-500 to-primary-600 flex items-center justify-end pr-3"
+                          style={{ width: `${item.percentage}%` }}
+                        >
+                          <span className="text-xs font-semibold text-white">{item.percentage}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
