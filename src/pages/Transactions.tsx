@@ -70,6 +70,8 @@ export default function Transactions() {
 
   const loadPayments = async () => {
     try {
+      console.log('Loading payments with filters:', { startDate, endDate, statusFilter })
+
       let query = supabase
         .from('payments')
         .select('*, user(*), packages(*)')
@@ -87,6 +89,8 @@ export default function Transactions() {
       }
 
       const { data, error } = await query
+
+      console.log('Payments query result:', { data, error, count: data?.length })
 
       if (error) throw error
       setPayments(data || [])
