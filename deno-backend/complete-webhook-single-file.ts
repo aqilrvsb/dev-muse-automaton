@@ -837,13 +837,23 @@ async function handleGetUser(request: Request): Promise<Response> {
   try {
     const authHeader = request.headers.get("Authorization");
     if (!authHeader) {
-      throw new Error("No authorization header");
+      console.log("⚠️  /user endpoint called without Authorization header (expected for unauthenticated requests)");
+      return new Response(
+        JSON.stringify({ success: false, error: "No authorization header" }),
+        { status: 401, headers: corsHeaders }
+      );
     }
 
     const token = authHeader.replace("Bearer ", "");
     const { data, error } = await supabase.auth.getUser(token);
 
-    if (error) throw error;
+    if (error) {
+      console.log("⚠️  Invalid or expired token in /user request");
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid token" }),
+        { status: 401, headers: corsHeaders }
+      );
+    }
 
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("user")
@@ -851,16 +861,24 @@ async function handleGetUser(request: Request): Promise<Response> {
       .eq("id", data.user.id)
       .single();
 
-    if (profileError) throw profileError;
+    if (profileError) {
+      console.log("⚠️  User profile not found for authenticated user");
+      return new Response(
+        JSON.stringify({ success: false, error: "Profile not found" }),
+        { status: 404, headers: corsHeaders }
+      );
+    }
 
+    console.log(`✅ User profile retrieved: ${data.user.id}`);
     return new Response(
       JSON.stringify({ success: true, user: profile }),
       { status: 200, headers: corsHeaders }
     );
   } catch (error) {
+    console.error("❌ Unexpected error in /user endpoint:", error);
     return new Response(
-      JSON.stringify({ success: false, error: String(error) }),
-      { status: 401, headers: corsHeaders }
+      JSON.stringify({ success: false, error: "Internal server error" }),
+      { status: 500, headers: corsHeaders }
     );
   }
 }
