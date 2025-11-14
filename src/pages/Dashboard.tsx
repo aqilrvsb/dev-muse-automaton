@@ -18,19 +18,78 @@ export default function Dashboard() {
   })
   const [loading, setLoading] = useState(true)
 
+  // Filter states
+  const [deviceFilter, setDeviceFilter] = useState('')
+  const [stageFilter, setStageFilter] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [devices, setDevices] = useState<string[]>([])
+  const [stages, setStages] = useState<string[]>([])
+
   useEffect(() => {
+    setDefaultDates()
     loadDashboardData()
   }, [])
 
+  useEffect(() => {
+    if (startDate && endDate) {
+      loadDashboardData()
+    }
+  }, [deviceFilter, stageFilter, startDate, endDate])
+
+  const setDefaultDates = () => {
+    const today = new Date()
+    const year = today.getFullYear()
+    const month = String(today.getMonth() + 1).padStart(2, '0')
+    const day = String(today.getDate()).padStart(2, '0')
+
+    setStartDate(`${year}-${month}-01`)
+    setEndDate(`${year}-${month}-${day}`)
+  }
+
   const loadDashboardData = async () => {
     try {
-      // Fetch AI WhatsApp conversations
-      const { data: aiConversations } = await supabase
+      setLoading(true)
+
+      // Build query for AI WhatsApp conversations with filters
+      let query = supabase
         .from('ai_whatsapp')
-        .select('id_prospect', { count: 'exact' })
+        .select('*')
+
+      // Apply device filter
+      if (deviceFilter) {
+        query = query.eq('device_id', deviceFilter)
+      }
+
+      // Apply stage filter
+      if (stageFilter) {
+        query = query.eq('stage', stageFilter)
+      }
+
+      // Apply date range filter using date_insert
+      if (startDate) {
+        query = query.gte('date_insert', startDate)
+      }
+      if (endDate) {
+        query = query.lte('date_insert', endDate)
+      }
+
+      const { data: aiConversations } = await query
+
+      // Extract unique devices and stages for filter dropdowns
+      const { data: allConversations } = await supabase
+        .from('ai_whatsapp')
+        .select('device_id, stage')
+
+      if (allConversations) {
+        const uniqueDevices = [...new Set(allConversations.map(c => c.device_id).filter(Boolean))]
+        const uniqueStages = [...new Set(allConversations.map(c => c.stage).filter(Boolean))]
+        setDevices(uniqueDevices)
+        setStages(uniqueStages)
+      }
 
       // Fetch active devices
-      const { data: devices } = await supabase
+      const { data: devicesData } = await supabase
         .from('device_setting')
         .select('id', { count: 'exact' })
 
@@ -39,13 +98,19 @@ export default function Dashboard() {
       setStats({
         totalConversations: aiCount,
         chatbotAI: aiCount,
-        activeDevices: devices?.length || 0,
+        activeDevices: devicesData?.length || 0,
       })
     } catch (error) {
       console.error('Error loading dashboard data:', error)
     } finally {
       setLoading(false)
     }
+  }
+
+  const resetFilters = () => {
+    setDeviceFilter('')
+    setStageFilter('')
+    setDefaultDates()
   }
 
   const StatCard = ({ title, value, icon, color, subtitle }: { title: string; value: number; icon: string; color: string; subtitle: string }) => (
@@ -107,20 +172,36 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Device</label>
-              <select className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500">
-                <option>All Devices</option>
+              <select
+                value={deviceFilter}
+                onChange={(e) => setDeviceFilter(e.target.value)}
+                className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="">All Devices</option>
+                {devices.map(device => (
+                  <option key={device} value={device}>{device}</option>
+                ))}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Stage</label>
-              <select className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500">
-                <option>All Stages</option>
+              <select
+                value={stageFilter}
+                onChange={(e) => setStageFilter(e.target.value)}
+                className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="">All Stages</option>
+                {stages.map(stage => (
+                  <option key={stage} value={stage}>{stage}</option>
+                ))}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">From Date</label>
               <input
                 type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
                 className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
@@ -128,15 +209,17 @@ export default function Dashboard() {
               <label className="block text-sm font-medium text-gray-700 mb-2">To Date</label>
               <input
                 type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
                 className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
           </div>
           <div className="mt-4 flex gap-4">
-            <button className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-lg transition-colors font-medium">
-              Apply Filters
-            </button>
-            <button className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2 rounded-lg transition-colors font-medium">
+            <button
+              onClick={resetFilters}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2 rounded-lg transition-colors font-medium"
+            >
               Reset Filters
             </button>
           </div>
