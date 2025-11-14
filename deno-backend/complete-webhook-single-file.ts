@@ -60,6 +60,9 @@ interface WebhookPayload {
 // DEBOUNCE SERVICE
 // ============================================================================
 
+// Store timers in memory (not in KV since timers can't be serialized)
+const messageTimers = new Map<string, number>();
+
 async function queueMessageForDebouncing(params: {
   deviceId: string;
   webhookId: string;
@@ -72,12 +75,16 @@ async function queueMessageForDebouncing(params: {
 
   // Get current queue for this device + phone combination
   const queueKey = ["message_queue", deviceId, phone];
+  const timerKey = `${deviceId}:${phone}`;
+
   const result = await kv.get<QueuedMessage>(queueKey);
   const existingQueue = result.value;
 
-  if (existingQueue && existingQueue.timer) {
-    // Cancel existing timer
-    clearTimeout(existingQueue.timer);
+  // Cancel existing timer if it exists
+  const existingTimer = messageTimers.get(timerKey);
+  if (existingTimer) {
+    clearTimeout(existingTimer);
+    messageTimers.delete(timerKey);
     console.log(`⏱️  Existing timer cancelled, restarting debounce...`);
   }
 
@@ -93,7 +100,7 @@ async function queueMessageForDebouncing(params: {
   ];
 
   console.log(
-    `📬 Message queued for debouncing (${DEBOUNCE_DELAY_MS}ms delay)`
+    `📬 Message queued for debouncing (${DEBOUNCE_DELAY_MS}ms delay). Total messages in queue: ${updatedMessages.length}`
   );
 
   // Set new timer
@@ -102,6 +109,7 @@ async function queueMessageForDebouncing(params: {
 
     // Combine all messages
     const combinedMessage = updatedMessages.map((m) => m.message).join("\n");
+    console.log(`📝 Combined message:\n${combinedMessage}`);
 
     // Execute flow
     await executePromptBasedFlow({
@@ -113,14 +121,17 @@ async function queueMessageForDebouncing(params: {
       provider,
     });
 
-    // Clear queue
+    // Clear queue and timer
     await kv.delete(queueKey);
+    messageTimers.delete(timerKey);
   }, DEBOUNCE_DELAY_MS);
 
-  // Save updated queue
+  // Store timer in memory map
+  messageTimers.set(timerKey, timer);
+
+  // Save updated queue (without timer - just data)
   await kv.set(queueKey, {
     messages: updatedMessages,
-    timer,
     deviceId,
     webhookId,
     provider,
@@ -443,16 +454,17 @@ async function executePromptBasedFlow(params: {
       convLast += "\n" + botMsg;
     }
 
-    // Update conversation with conv_last and stage from AI response
+    // Update conversation with conv_last, stage, and clear conv_current
     await supabaseAdmin
       .from("ai_whatsapp")
       .update({
         conv_last: convLast,
         stage: aiResponse.Stage || null,  // ✅ FIXED: Update stage from AI response
+        conv_current: null,  // ✅ Clear conv_current after processing
       })
       .eq("id_prospect", conversation.id_prospect);
 
-    console.log(`✅ Updated conv_last and stage (${aiResponse.Stage}) for conversation`);
+    console.log(`✅ Updated conv_last, stage (${aiResponse.Stage}), and cleared conv_current for conversation`);
 
     console.log(`✅ === PROMPT-BASED FLOW EXECUTION COMPLETE ===\n`);
   } catch (error) {
