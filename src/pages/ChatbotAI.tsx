@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 import Swal from 'sweetalert2'
 
 type AIConversation = {
@@ -17,6 +18,7 @@ type AIConversation = {
 }
 
 export default function ChatbotAI() {
+  const { user } = useAuth()
   const [conversations, setConversations] = useState<AIConversation[]>([])
   const [filteredConversations, setFilteredConversations] = useState<AIConversation[]>([])
   const [loading, setLoading] = useState(true)
@@ -59,10 +61,29 @@ export default function ChatbotAI() {
 
   const loadConversations = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch user's devices first (for non-admin users)
+      let userDeviceIds: string[] = []
+      if (user && user.role !== 'admin') {
+        const { data: userDevices } = await supabase
+          .from('device_setting')
+          .select('device_id')
+          .eq('user_id', user.id)
+
+        userDeviceIds = userDevices?.map(d => d.device_id) || []
+      }
+
+      // Build query for AI WhatsApp conversations
+      let query = supabase
         .from('ai_whatsapp')
         .select('*')
         .order('date_insert', { ascending: false })
+
+      // For non-admin users, filter by their device IDs
+      if (user && user.role !== 'admin' && userDeviceIds.length > 0) {
+        query = query.in('device_id', userDeviceIds)
+      }
+
+      const { data, error } = await query
 
       if (error) throw error
 
