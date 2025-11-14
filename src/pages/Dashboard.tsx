@@ -6,7 +6,6 @@ import { useAuth } from '../contexts/AuthContext'
 type Stats = {
   totalConversations: number
   chatbotAI: number
-  whatsappBot: number
   activeDevices: number
 }
 
@@ -15,7 +14,6 @@ export default function Dashboard() {
   const [stats, setStats] = useState<Stats>({
     totalConversations: 0,
     chatbotAI: 0,
-    whatsappBot: 0,
     activeDevices: 0,
   })
   const [loading, setLoading] = useState(true)
@@ -31,23 +29,16 @@ export default function Dashboard() {
         .from('ai_whatsapp')
         .select('id_prospect', { count: 'exact' })
 
-      // Fetch WhatsApp Bot conversations
-      const { data: botConversations } = await supabase
-        .from('wasapbot')
-        .select('id_prospect', { count: 'exact' })
-
       // Fetch active devices
       const { data: devices } = await supabase
         .from('device_setting')
         .select('id', { count: 'exact' })
 
       const aiCount = aiConversations?.length || 0
-      const botCount = botConversations?.length || 0
 
       setStats({
-        totalConversations: aiCount + botCount,
+        totalConversations: aiCount,
         chatbotAI: aiCount,
-        whatsappBot: botCount,
         activeDevices: devices?.length || 0,
       })
     } catch (error) {
@@ -86,7 +77,7 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <StatCard
             title="Total Conversations"
             value={stats.totalConversations}
@@ -100,13 +91,6 @@ export default function Dashboard() {
             icon="🤖"
             color="bg-purple-100"
             subtitle="AI conversations"
-          />
-          <StatCard
-            title="WhatsApp Bot"
-            value={stats.whatsappBot}
-            icon="📱"
-            color="bg-green-100"
-            subtitle="Bot conversations"
           />
           <StatCard
             title="Active Devices"
