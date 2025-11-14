@@ -70,39 +70,36 @@ export default function Transactions() {
 
   const loadPayments = async () => {
     try {
-      console.log('Loading payments with filters:', { startDate, endDate, statusFilter })
-
+      // First, get all payments without date filter
       let query = supabase
         .from('payments')
         .select('*, user(*), packages(*)')
         .order('created_at', { ascending: false })
 
-      // First, let's get ALL payments to see what's in the database
-      const { data: allPayments } = await supabase
-        .from('payments')
-        .select('created_at')
-        .order('created_at', { ascending: false })
-        .limit(5)
-
-      console.log('Sample payment dates from DB:', allPayments?.map(p => p.created_at))
-
-      // Filter using date only (Y-m-d format) by using date range
-      if (startDate) {
-        query = query.gte('created_at', `${startDate}T00:00:00.000Z`)
-      }
-      if (endDate) {
-        query = query.lte('created_at', `${endDate}T23:59:59.999Z`)
-      }
       if (statusFilter !== 'all') {
         query = query.eq('status', statusFilter)
       }
 
       const { data, error } = await query
 
-      console.log('Payments query result:', { data, error, count: data?.length })
-
       if (error) throw error
-      setPayments(data || [])
+
+      // Filter by date on the client side using Y-m-d format
+      let filteredData = data || []
+      if (startDate || endDate) {
+        filteredData = filteredData.filter(payment => {
+          if (!payment.created_at) return false
+
+          // Extract Y-m-d from created_at (handles both date strings and timestamps)
+          const paymentDate = payment.created_at.split('T')[0]
+
+          if (startDate && paymentDate < startDate) return false
+          if (endDate && paymentDate > endDate) return false
+          return true
+        })
+      }
+
+      setPayments(filteredData)
     } catch (error) {
       console.error('Error loading payments:', error)
       await Swal.fire({

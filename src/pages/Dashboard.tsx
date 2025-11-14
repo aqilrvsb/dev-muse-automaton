@@ -59,10 +59,26 @@ export default function Dashboard() {
     try {
       setLoading(true)
 
+      // Fetch user's devices first (for non-admin users)
+      let userDeviceIds: string[] = []
+      if (user && user.role !== 'admin') {
+        const { data: userDevices } = await supabase
+          .from('device_setting')
+          .select('device_id')
+          .eq('user_id', user.id)
+
+        userDeviceIds = userDevices?.map(d => d.device_id) || []
+      }
+
       // Build query for AI WhatsApp conversations with filters
       let query = supabase
         .from('ai_whatsapp')
         .select('*')
+
+      // For non-admin users, filter by their device IDs
+      if (user && user.role !== 'admin' && userDeviceIds.length > 0) {
+        query = query.in('device_id', userDeviceIds)
+      }
 
       // Apply device filter
       if (deviceFilter) {
@@ -89,9 +105,16 @@ export default function Dashboard() {
       const { data: aiConversations } = await query
 
       // Extract unique devices and stages for filter dropdowns
-      const { data: allConversations } = await supabase
+      let allConversationsQuery = supabase
         .from('ai_whatsapp')
         .select('device_id, stage')
+
+      // For non-admin users, filter dropdown options by their devices
+      if (user && user.role !== 'admin' && userDeviceIds.length > 0) {
+        allConversationsQuery = allConversationsQuery.in('device_id', userDeviceIds)
+      }
+
+      const { data: allConversations } = await allConversationsQuery
 
       if (allConversations) {
         const uniqueDevices = [...new Set(allConversations.map(c => c.device_id).filter(Boolean))]
@@ -100,10 +123,16 @@ export default function Dashboard() {
         setStages(uniqueStages)
       }
 
-      // Fetch active devices
-      const { data: devicesData } = await supabase
+      // Fetch active devices (admin sees all, users see only their own)
+      let devicesQuery = supabase
         .from('device_setting')
         .select('id', { count: 'exact' })
+
+      if (user && user.role !== 'admin') {
+        devicesQuery = devicesQuery.eq('user_id', user.id)
+      }
+
+      const { data: devicesData } = await devicesQuery
 
       const aiCount = aiConversations?.length || 0
 
@@ -117,6 +146,13 @@ export default function Dashboard() {
       if (aiConversations && aiConversations.length > 0) {
         renderDailyTrendsChart(aiConversations)
         renderStageDistribution(aiConversations)
+      } else {
+        // Clear charts if no data
+        if (dailyTrendsChartInstance.current) {
+          dailyTrendsChartInstance.current.destroy()
+          dailyTrendsChartInstance.current = null
+        }
+        setStageDistribution([])
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error)
