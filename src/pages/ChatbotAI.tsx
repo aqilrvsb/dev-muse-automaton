@@ -11,27 +11,70 @@ type AIConversation = {
   stage: string
   human: number
   date_insert: string
+  created_at: string
+  conv_last: string
   detail: string
 }
 
 export default function ChatbotAI() {
   const [conversations, setConversations] = useState<AIConversation[]>([])
+  const [filteredConversations, setFilteredConversations] = useState<AIConversation[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Filter states
+  const [deviceFilter, setDeviceFilter] = useState('')
+  const [stageFilter, setStageFilter] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+
+  // Analytics states
+  const [totalConversations, setTotalConversations] = useState(0)
+  const [aiConversations, setAiConversations] = useState(0)
+  const [humanConversations, setHumanConversations] = useState(0)
+  const [activeDevices, setActiveDevices] = useState(0)
+
+  // Unique values for filters
+  const [devices, setDevices] = useState<string[]>([])
+  const [stages, setStages] = useState<string[]>([])
 
   useEffect(() => {
     loadConversations()
+    setDefaultDates()
   }, [])
+
+  useEffect(() => {
+    applyFilters()
+  }, [conversations, deviceFilter, stageFilter, startDate, endDate, searchQuery])
+
+  const setDefaultDates = () => {
+    const today = new Date()
+    const year = today.getFullYear()
+    const month = String(today.getMonth() + 1).padStart(2, '0')
+    const day = String(today.getDate()).padStart(2, '0')
+
+    setStartDate(`${year}-${month}-01`)
+    setEndDate(`${year}-${month}-${day}`)
+  }
 
   const loadConversations = async () => {
     try {
       const { data, error } = await supabase
         .from('ai_whatsapp')
         .select('*')
-        .order('date_insert', { ascending: false })
-        .limit(100)
+        .order('created_at', { ascending: false })
 
       if (error) throw error
-      setConversations(data || [])
+
+      const convData = data || []
+      setConversations(convData)
+
+      // Extract unique devices and stages for filters
+      const uniqueDevices = [...new Set(convData.map(c => c.device_id).filter(Boolean))]
+      const uniqueStages = [...new Set(convData.map(c => c.stage || 'Welcome Message'))]
+      setDevices(uniqueDevices)
+      setStages(uniqueStages)
+
     } catch (error) {
       console.error('Error loading conversations:', error)
     } finally {
@@ -39,58 +82,323 @@ export default function ChatbotAI() {
     }
   }
 
+  const applyFilters = () => {
+    let filtered = [...conversations]
+
+    // Device filter
+    if (deviceFilter) {
+      filtered = filtered.filter(c => c.device_id === deviceFilter)
+    }
+
+    // Stage filter
+    if (stageFilter) {
+      filtered = filtered.filter(c => (c.stage || 'Welcome Message') === stageFilter)
+    }
+
+    // Date range filter
+    if (startDate || endDate) {
+      filtered = filtered.filter(c => {
+        if (!c.created_at) return false
+        const convDate = new Date(c.created_at)
+        const dateStr = convDate.toISOString().split('T')[0]
+
+        if (startDate && dateStr < startDate) return false
+        if (endDate && dateStr > endDate) return false
+        return true
+      })
+    }
+
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(c =>
+        (c.prospect_name && c.prospect_name.toLowerCase().includes(query)) ||
+        (c.prospect_num && c.prospect_num.toLowerCase().includes(query)) ||
+        (c.niche && c.niche.toLowerCase().includes(query))
+      )
+    }
+
+    setFilteredConversations(filtered)
+    calculateAnalytics(filtered)
+  }
+
+  const calculateAnalytics = (data: AIConversation[]) => {
+    const total = data.length
+    const aiCount = data.filter(c => !c.human || c.human === 0).length
+    const humanCount = data.filter(c => c.human === 1).length
+    const deviceCount = [...new Set(data.map(c => c.device_id))].length
+
+    setTotalConversations(total)
+    setAiConversations(aiCount)
+    setHumanConversations(humanCount)
+    setActiveDevices(deviceCount)
+  }
+
+  const resetFilters = () => {
+    setDeviceFilter('')
+    setStageFilter('')
+    setSearchQuery('')
+    setDefaultDates()
+  }
+
+  const exportToCSV = () => {
+    if (filteredConversations.length === 0) {
+      alert('No conversations to export')
+      return
+    }
+
+    let csv = 'No,ID Device,Date,Name,Phone Number,Niche,Stage,Reply Status\n'
+
+    filteredConversations.forEach((conv, index) => {
+      const dateFormatted = conv.created_at ? new Date(conv.created_at).toLocaleDateString() : '-'
+      const replyStatus = conv.human === 1 ? 'Human' : 'AI'
+
+      csv += `${index + 1},"${conv.device_id || '-'}","${dateFormatted}","${conv.prospect_name || '-'}","${conv.prospect_num || '-'}","${conv.niche || '-'}","${conv.stage || 'Welcome Message'}","${replyStatus}"\n`
+    })
+
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `chatbot-ai-conversations-${Date.now()}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+  }
+
+  const viewConversation = (conv: AIConversation) => {
+    const message = `
+Phone: ${conv.prospect_num || '-'}
+Name: ${conv.prospect_name || '-'}
+Device: ${conv.device_id || '-'}
+Niche: ${conv.niche || '-'}
+Stage: ${conv.stage || 'Welcome Message'}
+
+Conversation History:
+${conv.conv_last || 'No conversation history'}
+    `.trim()
+
+    alert(message)
+  }
+
+  const deleteConversation = async (prospectNum: string) => {
+    if (!confirm('Are you sure you want to delete this conversation?')) return
+
+    try {
+      const { error } = await supabase
+        .from('ai_whatsapp')
+        .delete()
+        .eq('prospect_num', prospectNum)
+
+      if (error) throw error
+
+      alert('Conversation deleted successfully')
+      loadConversations()
+    } catch (error) {
+      console.error('Error deleting conversation:', error)
+      alert('Failed to delete conversation')
+    }
+  }
+
+  const aiPercent = totalConversations > 0 ? ((aiConversations / totalConversations) * 100).toFixed(1) : '0'
+  const humanPercent = totalConversations > 0 ? ((humanConversations / totalConversations) * 100).toFixed(1) : '0'
+
   return (
     <Layout>
       <div className="p-8">
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900">Chatbot AI Conversations</h2>
-          <p className="text-gray-600">View and manage AI-powered conversations</p>
+          <p className="text-gray-600">Monitor and manage your AI-powered chatbot interactions</p>
         </div>
 
+        {/* Analytics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="bg-gradient-to-br from-purple-500 to-purple-700 rounded-xl p-6 text-white">
+            <div className="text-3xl font-bold mb-2">{totalConversations}</div>
+            <div className="text-purple-100">Total Conversations</div>
+          </div>
+
+          <div className="bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl p-6 text-white">
+            <div className="text-3xl font-bold mb-2">{aiConversations}</div>
+            <div className="text-blue-100">AI Conversations</div>
+            <div className="text-sm text-blue-200 mt-1">{aiPercent}% of total</div>
+          </div>
+
+          <div className="bg-gradient-to-br from-pink-500 to-pink-700 rounded-xl p-6 text-white">
+            <div className="text-3xl font-bold mb-2">{humanConversations}</div>
+            <div className="text-pink-100">Human Takeovers</div>
+            <div className="text-sm text-pink-200 mt-1">{humanPercent}% of total</div>
+          </div>
+
+          <div className="bg-gradient-to-br from-cyan-500 to-cyan-700 rounded-xl p-6 text-white">
+            <div className="text-3xl font-bold mb-2">{activeDevices}</div>
+            <div className="text-cyan-100">Active Devices</div>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="bg-white rounded-xl p-6 shadow-sm mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Device</label>
+              <select
+                value={deviceFilter}
+                onChange={(e) => setDeviceFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="">All Devices</option>
+                {devices.map(d => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Stage</label>
+              <select
+                value={stageFilter}
+                onChange={(e) => setStageFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="">All Stages</option>
+                {stages.map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Name, phone, niche..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={resetFilters}
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+            >
+              🔄 Reset Filters
+            </button>
+            <button
+              onClick={exportToCSV}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+            >
+              📥 Export CSV
+            </button>
+          </div>
+        </div>
+
+        {/* Table */}
         {loading ? (
           <div className="text-center py-12">
-            <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-primary-500 border-r-transparent"></div>
+            <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-purple-500 border-r-transparent"></div>
           </div>
-        ) : conversations.length === 0 ? (
+        ) : filteredConversations.length === 0 ? (
           <div className="bg-white border border-gray-200 rounded-xl p-12 text-center shadow-sm">
-            <p className="text-gray-600">No AI conversations yet</p>
+            <p className="text-gray-600">No conversations found matching your filters</p>
           </div>
         ) : (
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Number</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Device</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Niche</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Stage</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Human</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {conversations.map((conv) => (
-                  <tr key={conv.id_prospect} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm text-gray-900">{conv.prospect_name || 'Unknown'}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{conv.prospect_num}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{conv.device_id}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{conv.niche || '-'}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{conv.stage || '-'}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{conv.date_insert || '-'}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        conv.human === 1
-                          ? 'bg-yellow-100 text-yellow-700'
-                          : 'bg-green-100 text-green-700'
-                      }`}>
-                        {conv.human === 1 ? 'Human' : 'AI'}
-                      </span>
-                    </td>
+          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">No</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Device</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Phone</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Niche</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Stage</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">History</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {filteredConversations.map((conv, index) => {
+                    const dateFormatted = conv.created_at
+                      ? new Date(conv.created_at).toLocaleDateString('en-GB')
+                      : '-'
+
+                    return (
+                      <tr key={conv.id_prospect} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 text-sm font-bold text-gray-900">{index + 1}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600">{conv.device_id || '-'}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600">{dateFormatted}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900">{conv.prospect_name || '-'}</td>
+                        <td className="px-6 py-4 text-sm font-bold text-gray-900">{conv.prospect_num}</td>
+                        <td className="px-6 py-4">
+                          <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700">
+                            {conv.niche || '-'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-700">
+                            {conv.stage || 'Welcome Message'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <button
+                            onClick={() => viewConversation(conv)}
+                            className="text-blue-600 hover:text-blue-800"
+                            title="View Conversation"
+                          >
+                            👁️
+                          </button>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            conv.human === 1
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : 'bg-green-100 text-green-700'
+                          }`}>
+                            {conv.human === 1 ? 'Human' : 'AI'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <button
+                            onClick={() => deleteConversation(conv.prospect_num)}
+                            className="text-red-600 hover:text-red-800"
+                            title="Delete"
+                          >
+                            🗑️
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
