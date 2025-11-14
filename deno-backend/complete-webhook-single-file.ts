@@ -896,6 +896,116 @@ async function handleGetUser(request: Request): Promise<Response> {
 }
 
 // ============================================================================
+// CONVERSATIONS API HANDLERS
+// ============================================================================
+
+async function handleGetAllConversations(request: Request): Promise<Response> {
+  try {
+    const authHeader = request.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ success: false, error: "No authorization header" }),
+        { status: 401, headers: corsHeaders }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
+
+    if (userError || !userData.user) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid token" }),
+        { status: 401, headers: corsHeaders }
+      );
+    }
+
+    // Get all conversations for this user from ai_whatsapp table
+    const { data: conversations, error: convError } = await supabaseAdmin
+      .from("ai_whatsapp")
+      .select("*")
+      .eq("user_id", userData.user.id)
+      .order("created_at", { ascending: false });
+
+    if (convError) {
+      console.error("❌ Error fetching conversations:", convError);
+      return new Response(
+        JSON.stringify({ success: false, error: "Failed to fetch conversations" }),
+        { status: 500, headers: corsHeaders }
+      );
+    }
+
+    // Map field names to match frontend expectations
+    const mappedConversations = conversations.map(conv => ({
+      ...conv,
+      id_device: conv.device_id,  // Map device_id to id_device for frontend
+    }));
+
+    console.log(`✅ Fetched ${conversations.length} conversations for user ${userData.user.id}`);
+
+    return new Response(
+      JSON.stringify({ success: true, conversations: mappedConversations }),
+      { status: 200, headers: corsHeaders }
+    );
+  } catch (error) {
+    console.error("❌ Get conversations error:", error);
+    return new Response(
+      JSON.stringify({ success: false, error: "Internal server error" }),
+      { status: 500, headers: corsHeaders }
+    );
+  }
+}
+
+async function handleDeleteConversation(request: Request, prospectNum: string): Promise<Response> {
+  try {
+    const authHeader = request.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ success: false, error: "No authorization header" }),
+        { status: 401, headers: corsHeaders }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
+
+    if (userError || !userData.user) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid token" }),
+        { status: 401, headers: corsHeaders }
+      );
+    }
+
+    // Delete conversation from ai_whatsapp table
+    const { error: deleteError } = await supabaseAdmin
+      .from("ai_whatsapp")
+      .delete()
+      .eq("prospect_num", prospectNum)
+      .eq("user_id", userData.user.id);
+
+    if (deleteError) {
+      console.error("❌ Error deleting conversation:", deleteError);
+      return new Response(
+        JSON.stringify({ success: false, message: "Failed to delete conversation" }),
+        { status: 500, headers: corsHeaders }
+      );
+    }
+
+    console.log(`✅ Deleted conversation for prospect: ${prospectNum}`);
+
+    return new Response(
+      JSON.stringify({ success: true, message: "Conversation deleted successfully" }),
+      { status: 200, headers: corsHeaders }
+    );
+  } catch (error) {
+    console.error("❌ Delete conversation error:", error);
+    return new Response(
+      JSON.stringify({ success: false, message: "Internal server error" }),
+      { status: 500, headers: corsHeaders }
+    );
+  }
+}
+
+// ============================================================================
 // MAIN SERVER
 // ============================================================================
 
@@ -931,6 +1041,20 @@ serve(async (request: Request) => {
 
     if (path === "/auth/user" && method === "GET") {
       return await handleGetUser(request);
+    }
+
+    if (path === "/api/auth/profile" && method === "GET") {
+      return await handleGetUser(request);  // Same as /auth/user
+    }
+
+    // Conversations endpoints
+    if (path === "/api/conversations/all" && method === "GET") {
+      return await handleGetAllConversations(request);
+    }
+
+    if (path.startsWith("/api/conversations/") && method === "DELETE") {
+      const prospectNum = path.split("/api/conversations/")[1];
+      return await handleDeleteConversation(request, prospectNum);
     }
 
     // Webhook endpoint - matches pattern /:device_id/:instance
