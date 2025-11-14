@@ -11,9 +11,9 @@ export default function Sidebar() {
     { path: '/dashboard', icon: '📊', label: 'Dashboard' },
     { path: '/device-settings', icon: '⚙️', label: 'Device Settings' },
     { path: '/prompts', icon: '📝', label: 'Prompts' },
+    { path: '/chatbot-ai', icon: '🤖', label: 'Chatbot AI' },
     { path: '/profile', icon: '👤', label: 'Profile' },
     { path: '/billings', icon: '💳', label: 'Billings' },
-    { path: '/chatbot-ai', icon: '🤖', label: 'Chatbot AI' },
   ]
 
   // Show packages tab for admin
