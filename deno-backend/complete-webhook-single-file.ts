@@ -219,11 +219,11 @@ async function executePromptBasedFlow(params: {
     conversation = newConversation;
     console.log(`✅ New conversation created: ${conversation.id_prospect}`);
   } else {
-    // Update existing conversation - move current to last, new message to current
+    // Update existing conversation - just update conv_current
+    // DON'T touch conv_last here - it will be updated later with proper User:/Bot: format
     await supabaseAdmin
       .from("ai_whatsapp")
       .update({
-        conv_last: conversation.conv_current || "",
         conv_current: message,
       })
       .eq("id_prospect", conversation.id_prospect);
@@ -427,12 +427,15 @@ async function executePromptBasedFlow(params: {
 
     let convLast = currentConv?.conv_last || "";
 
-    // Add user message first
-    const userLine = `User: ${message}`;
-    if (convLast) {
-      convLast += "\n" + userLine;
-    } else {
-      convLast = userLine;
+    // Add user messages - split multi-line messages and add User: prefix to each line
+    const userMessages = message.split("\n").filter(line => line.trim() !== "");
+    for (const userMsg of userMessages) {
+      const userLine = `User: ${userMsg}`;
+      if (convLast) {
+        convLast += "\n" + userLine;
+      } else {
+        convLast = userLine;
+      }
     }
 
     // Add all bot responses
