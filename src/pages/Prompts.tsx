@@ -12,6 +12,7 @@ export default function Prompts() {
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showInfoModal, setShowInfoModal] = useState(false)
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null)
 
   // Form state
@@ -250,13 +251,23 @@ export default function Prompts() {
             <h2 className="text-3xl font-bold text-primary-600 mb-2">Prompts</h2>
             <p className="text-gray-600">Manage your AI prompts for each device</p>
           </div>
-          <button
-            onClick={openAddModal}
-            className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
-          >
-            <span className="text-xl">+</span>
-            <span>Add Prompt</span>
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowInfoModal(true)}
+              className="bg-blue-50 hover:bg-blue-100 text-blue-600 px-4 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 border border-blue-200"
+              title="Help & Information"
+            >
+              <span className="text-xl">ℹ️</span>
+              <span>Info</span>
+            </button>
+            <button
+              onClick={openAddModal}
+              className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
+            >
+              <span className="text-xl">+</span>
+              <span>Add Prompt</span>
+            </button>
+          </div>
         </div>
 
         {/* Prompts List */}
@@ -501,6 +512,73 @@ export default function Prompts() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Info Modal */}
+        {showInfoModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-xl">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <span className="text-blue-600">ℹ️</span>
+                  Cara Penggunaan Prompt
+                </h3>
+                <button
+                  onClick={() => setShowInfoModal(false)}
+                  className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="space-y-6 text-sm">
+                {/* Section 1: Cara Panggil Value dari Contact */}
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <h4 className="font-bold text-gray-900 mb-3">1. Cara Panggil Value dari Contact:</h4>
+                  <p className="text-gray-700 mb-3">Gunakan syntax berikut untuk auto-replace dengan data contact:</p>
+                  <ul className="list-disc list-inside space-y-2 text-gray-700 ml-2">
+                    <li><code className="bg-gray-200 px-2 py-1 rounded text-xs">{'{{name}}'}</code> - Nama contact</li>
+                    <li><code className="bg-gray-200 px-2 py-1 rounded text-xs">{'{{phone}}'}</code> - Nombor telefon</li>
+                    <li><code className="bg-gray-200 px-2 py-1 rounded text-xs">{'{{product}}'}</code> - Nama produk</li>
+                    <li><code className="bg-gray-200 px-2 py-1 rounded text-xs">{'{{info}}'}</code> - Info tambahan</li>
+                  </ul>
+                </div>
+
+                {/* Section 2: Cara Save Stage (Dynamic) */}
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <h4 className="font-bold text-gray-900 mb-3">2. Cara Save Stage (Dynamic):</h4>
+                  <p className="text-gray-700 mb-3">Gunakan format <code className="bg-gray-200 px-2 py-1 rounded text-xs">!!Stage [Nama Stage]!!</code></p>
+                  <div className="bg-white p-3 rounded border border-gray-300 font-mono text-xs text-gray-700 whitespace-pre-wrap">
+{`!!Stage Welcome Message!!
+Punpose: Greet customer
+Tanya: "Assalamualaikum {{name}}, saya dari..."
+
+!!Stage Product Offer!!
+Punpose: Offer product
+Tanya: "Saya ingin tawarkan {{product}}..."`}
+                  </div>
+                </div>
+
+                {/* Section 3: Cara Save Details Penting */}
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <h4 className="font-bold text-gray-900 mb-3">3. Cara Save Details Penting:</h4>
+                  <p className="text-gray-700 mb-3">Gunakan format <code className="bg-gray-200 px-2 py-1 rounded text-xs">%%[label]%%</code> untuk simpan info:</p>
+                  <div className="bg-white p-3 rounded border border-gray-300 font-mono text-xs text-gray-700">
+                    Contoh: "Baik, %%customer_interest%% saya catat."
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setShowInfoModal(false)}
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                >
+                  OK
+                </button>
+              </div>
             </div>
           </div>
         )}
