@@ -261,31 +261,31 @@ export default function Dashboard() {
   }
 
   const StatCard = ({ title, value, icon, color, subtitle }: { title: string; value: number; icon: string; color: string; subtitle: string }) => (
-    <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-white rounded-xl p-6 card-soft card-hover transition-smooth">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-gray-600 text-sm font-medium">{title}</h3>
-        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${color}`}>
+        <h3 className="text-gray-600 text-sm font-semibold uppercase tracking-wide">{title}</h3>
+        <div className={`p-2.5 rounded-xl flex items-center justify-center ${color} card-soft`}>
           <span className="text-xl">{icon}</span>
         </div>
       </div>
       <div className="text-3xl font-bold text-gray-900">
         {loading ? (
-          <div className="h-9 w-20 bg-gray-200 animate-pulse rounded"></div>
+          <div className="h-9 w-20 bg-gradient-subtle animate-pulse rounded-lg"></div>
         ) : (
           value
         )}
       </div>
-      <p className="text-xs text-gray-500 mt-2">{subtitle}</p>
+      <p className="text-xs text-gray-600 mt-2 font-medium">{subtitle}</p>
     </div>
   )
 
   return (
     <Layout>
-      <div className="p-8">
+      <div className="p-8 max-w-7xl mx-auto animate-fade-in-up">
         {/* Header */}
         <div className="mb-8">
-          <h2 className="text-3xl font-bold text-primary-600 mb-2">Welcome back, {user?.full_name || 'User'}!</h2>
-          <p className="text-gray-600">Here's an overview of your system and performance.</p>
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-2">Welcome back, {user?.full_name || 'User'}!</h2>
+          <p className="text-gray-600 font-medium">Here's an overview of your system and performance.</p>
         </div>
 
         {/* Stats Grid */}
@@ -314,15 +314,15 @@ export default function Dashboard() {
         </div>
 
         {/* Filters */}
-        <div className="bg-white border border-gray-200 rounded-xl p-6 mb-8 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Filter by Date Range</h3>
+        <div className="bg-white rounded-xl p-6 mb-8 card-soft transition-smooth">
+          <h3 className="text-lg font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-4">Filter by Date Range</h3>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Device</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Device</label>
               <select
                 value={deviceFilter}
                 onChange={(e) => setDeviceFilter(e.target.value)}
-                className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full bg-white border-2 border-gray-200 text-gray-900 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth font-medium"
               >
                 <option value="">All Devices</option>
                 {devices.map(device => (
@@ -331,11 +331,11 @@ export default function Dashboard() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Stage</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Stage</label>
               <select
                 value={stageFilter}
                 onChange={(e) => setStageFilter(e.target.value)}
-                className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full bg-white border-2 border-gray-200 text-gray-900 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth font-medium"
               >
                 <option value="">All Stages</option>
                 {stages.map(stage => (
@@ -344,28 +344,28 @@ export default function Dashboard() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">From Date</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">From Date</label>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full bg-white border-2 border-gray-200 text-gray-900 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth font-medium"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">To Date</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">To Date</label>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full bg-white border-2 border-gray-200 text-gray-900 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth font-medium"
               />
             </div>
           </div>
-          <div className="mt-4 flex gap-4">
+          <div className="mt-5 flex gap-4">
             <button
               onClick={resetFilters}
-              className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2 rounded-lg transition-colors font-medium"
+              className="bg-white hover:bg-gray-50 text-gray-700 px-6 py-2.5 rounded-xl transition-smooth font-medium card-soft border border-gray-200"
             >
               Reset Filters
             </button>
@@ -374,33 +374,33 @@ export default function Dashboard() {
 
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Conversation Trends</h3>
+          <div className="bg-white rounded-xl p-6 card-soft transition-smooth">
+            <h3 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-4">Conversation Trends</h3>
             <div className="h-64">
               <canvas ref={dailyTrendsChartRef}></canvas>
             </div>
           </div>
-          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Stage Distribution</h3>
+          <div className="bg-white rounded-xl p-6 card-soft transition-smooth">
+            <h3 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-4">Stage Distribution</h3>
             <div className="h-64 overflow-y-auto">
               {stageDistribution.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-gray-400">
-                  <p>No data available</p>
+                <div className="h-full flex items-center justify-center text-gray-500 bg-gradient-subtle rounded-lg">
+                  <p className="font-medium">No data available</p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {stageDistribution.map((item, index) => (
                     <div key={index} className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium text-gray-700">{item.stage}</span>
-                        <span className="text-sm text-gray-500">{item.count} conversations</span>
+                        <span className="text-sm font-semibold text-gray-700">{item.stage}</span>
+                        <span className="text-sm text-gray-600 font-medium">{item.count} conversations</span>
                       </div>
-                      <div className="relative w-full h-8 bg-gray-100 rounded-lg overflow-hidden">
+                      <div className="relative w-full h-8 bg-gray-200 rounded-xl overflow-hidden">
                         <div
-                          className="absolute top-0 left-0 h-full bg-gradient-to-r from-primary-500 to-primary-600 flex items-center justify-end pr-3"
+                          className="absolute top-0 left-0 h-full bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-end pr-3 transition-all duration-500 ease-out"
                           style={{ width: `${item.percentage}%` }}
                         >
-                          <span className="text-xs font-semibold text-white">{item.percentage}%</span>
+                          <span className="text-xs font-bold text-white">{item.percentage}%</span>
                         </div>
                       </div>
                     </div>

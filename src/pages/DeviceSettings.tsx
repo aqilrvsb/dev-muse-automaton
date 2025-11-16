@@ -452,13 +452,13 @@ export default function DeviceSettings() {
 
   return (
     <Layout>
-      <div className="p-8">
+      <div className="p-8 animate-fade-in-up">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h2 className="text-3xl font-bold text-gray-900">Device Settings</h2>
-            <p className="text-gray-600">Manage your WhatsApp devices and configurations</p>
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Device Settings</h2>
+            <p className="text-gray-600 font-medium">Manage your WhatsApp devices and configurations</p>
             {!loading && (
-              <div className="mt-2 inline-flex items-center gap-2 bg-primary-50 text-primary-700 px-3 py-1 rounded-lg text-sm font-medium">
+              <div className="mt-2 inline-flex items-center gap-2 bg-gradient-subtle text-primary-700 px-3 py-1 rounded-xl text-sm font-semibold">
                 <span>📱</span>
                 <span>Devices: {devices.length}/{user?.max_devices || 1}</span>
               </div>
@@ -466,7 +466,7 @@ export default function DeviceSettings() {
           </div>
           <button
             onClick={() => setShowAddModal(true)}
-            className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors shadow-sm"
+            className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl font-semibold transition-smooth shadow-sm"
           >
             + Add New Device
           </button>
@@ -475,18 +475,18 @@ export default function DeviceSettings() {
         {/* Devices List */}
         {loading ? (
           <div className="text-center py-12">
-            <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-primary-500 border-r-transparent"></div>
-            <p className="mt-4 text-gray-600">Loading devices...</p>
+            <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-purple-500 border-r-transparent"></div>
+            <p className="mt-4 text-gray-600 font-medium">Loading devices...</p>
           </div>
         ) : devices.length === 0 ? (
-          <div className="bg-white border border-gray-200 rounded-xl p-12 text-center shadow-sm">
-            <p className="text-gray-600 text-lg">No devices configured yet</p>
+          <div className="card-soft rounded-xl p-12 text-center">
+            <p className="text-gray-600 text-lg font-medium">No devices configured yet</p>
             <p className="text-gray-500 mt-2">Click "Add New Device" to get started</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {devices.map((device) => (
-              <div key={device.id} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
+              <div key={device.id} className="card-soft card-hover rounded-xl p-6 transition-smooth">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-bold text-gray-900">{device.device_id}</h3>
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -500,15 +500,15 @@ export default function DeviceSettings() {
 
                 <div className="space-y-2 mb-4">
                   <div>
-                    <p className="text-gray-600 text-sm">Instance</p>
+                    <p className="text-gray-600 text-sm font-semibold">Instance</p>
                     <p className="text-gray-900 font-medium text-xs break-all">{device.instance || '-'}</p>
                   </div>
                   <div>
-                    <p className="text-gray-600 text-sm">Phone Number</p>
+                    <p className="text-gray-600 text-sm font-semibold">Phone Number</p>
                     <p className="text-gray-900 font-medium">{device.phone_number || '-'}</p>
                   </div>
                   <div>
-                    <p className="text-gray-600 text-sm">AI Model</p>
+                    <p className="text-gray-600 text-sm font-semibold">AI Model</p>
                     <p className="text-gray-900 font-medium">{device.api_key_option}</p>
                   </div>
                 </div>
@@ -517,13 +517,13 @@ export default function DeviceSettings() {
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => handleGenerateWebhook(device)}
-                      className="bg-green-50 hover:bg-green-600 border border-green-200 hover:border-green-600 text-green-600 hover:text-white px-3 py-2 rounded-lg transition-colors font-medium text-sm"
+                      className="bg-green-50 hover:bg-green-600 border border-green-200 hover:border-green-600 text-green-600 hover:text-white px-3 py-2 rounded-xl transition-smooth font-semibold text-sm"
                     >
                       Generate
                     </button>
                     <button
                       onClick={() => handleCheckStatus(device)}
-                      className="bg-blue-50 hover:bg-blue-600 border border-blue-200 hover:border-blue-600 text-blue-600 hover:text-white px-3 py-2 rounded-lg transition-colors font-medium text-sm"
+                      className="bg-blue-50 hover:bg-blue-600 border border-blue-200 hover:border-blue-600 text-blue-600 hover:text-white px-3 py-2 rounded-xl transition-smooth font-semibold text-sm"
                     >
                       Status
                     </button>
@@ -531,13 +531,13 @@ export default function DeviceSettings() {
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => handleEditDevice(device)}
-                      className="bg-primary-50 hover:bg-primary-600 border border-primary-200 hover:border-primary-600 text-primary-600 hover:text-white px-3 py-2 rounded-lg transition-colors font-medium text-sm"
+                      className="bg-primary-50 hover:bg-primary-600 border border-primary-200 hover:border-primary-600 text-primary-600 hover:text-white px-3 py-2 rounded-xl transition-smooth font-semibold text-sm"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => handleDeleteDevice(device.id)}
-                      className="bg-red-50 hover:bg-red-600 border border-red-200 hover:border-red-600 text-red-600 hover:text-white px-3 py-2 rounded-lg transition-colors font-medium text-sm"
+                      className="bg-red-50 hover:bg-red-600 border border-red-200 hover:border-red-600 text-red-600 hover:text-white px-3 py-2 rounded-xl transition-smooth font-semibold text-sm"
                     >
                       Delete
                     </button>
@@ -551,22 +551,22 @@ export default function DeviceSettings() {
         {/* Add Device Modal */}
         {showAddModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl">
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Add New Device</h3>
+            <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl animate-fade-in-up">
+              <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-6">Add New Device</h3>
 
               <form onSubmit={handleAddDevice} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Device ID *</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Device ID *</label>
                     <input
                       type="text"
                       value={formData.device_id}
                       onChange={(e) => handleDeviceIdChange(e.target.value)}
-                      className={`w-full bg-white border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 ${
+                      className={`w-full bg-white rounded-xl px-4 py-2 transition-smooth ${
                         deviceIdError
-                          ? 'border-red-500 focus:ring-red-500'
-                          : 'border-gray-300 focus:ring-primary-500'
-                      } text-gray-900`}
+                          ? 'border-2 border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500'
+                          : 'border-2 border-gray-200 focus:ring-2 focus:ring-purple-500 focus:border-purple-500'
+                      } text-gray-900 focus:outline-none`}
                       required
                     />
                     {isCheckingDeviceId && (
@@ -581,44 +581,44 @@ export default function DeviceSettings() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Instance</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Instance</label>
                     <input
                       type="text"
                       value={formData.instance}
                       onChange={(e) => setFormData({ ...formData, instance: e.target.value })}
-                      className="w-full bg-gray-100 border border-gray-300 text-gray-600 rounded-lg px-4 py-2 cursor-not-allowed"
+                      className="w-full bg-gray-100 border-2 border-gray-200 text-gray-600 rounded-xl px-4 py-2 cursor-not-allowed"
                       readOnly
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Webhook ID</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Webhook ID</label>
                     <input
                       type="text"
                       value={formData.webhook_id}
                       onChange={(e) => setFormData({ ...formData, webhook_id: e.target.value })}
-                      className="w-full bg-gray-100 border border-gray-300 text-gray-600 rounded-lg px-4 py-2 cursor-not-allowed"
+                      className="w-full bg-gray-100 border-2 border-gray-200 text-gray-600 rounded-xl px-4 py-2 cursor-not-allowed"
                       readOnly
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Provider *</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Provider *</label>
                     <select
                       value={formData.provider}
                       onChange={(e) => setFormData({ ...formData, provider: e.target.value as any })}
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full bg-white border-2 border-gray-200 text-gray-900 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth"
                     >
                       <option value="waha">WAHA</option>
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">AI Model</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">AI Model</label>
                     <select
                       value={formData.api_key_option}
                       onChange={(e) => setFormData({ ...formData, api_key_option: e.target.value })}
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full bg-white border-2 border-gray-200 text-gray-900 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth"
                     >
                       <option value="openai/gpt-5-chat">GPT-5 Chat</option>
                       <option value="openai/gpt-5-mini">GPT-5 Mini</option>
@@ -630,22 +630,22 @@ export default function DeviceSettings() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
                     <input
                       type="text"
                       value={formData.phone_number}
                       onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full bg-white border-2 border-gray-200 text-gray-900 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">API Key (OpenRouter)</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">API Key (OpenRouter)</label>
                   <textarea
                     value={formData.api_key}
                     onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
-                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full bg-white border-2 border-gray-200 text-gray-900 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth"
                     rows={3}
                   />
                 </div>
@@ -654,10 +654,10 @@ export default function DeviceSettings() {
                   <button
                     type="submit"
                     disabled={deviceIdExists || isCheckingDeviceId || !formData.device_id}
-                    className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${
+                    className={`flex-1 px-6 py-3 rounded-xl font-semibold transition-smooth ${
                       deviceIdExists || isCheckingDeviceId || !formData.device_id
                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-primary-600 hover:bg-primary-700 text-white'
+                        : 'bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white'
                     }`}
                   >
                     Add Device
@@ -679,7 +679,7 @@ export default function DeviceSettings() {
                       setDeviceIdError('')
                       setIsCheckingDeviceId(false)
                     }}
-                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-medium transition-colors"
+                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-semibold transition-smooth"
                   >
                     Cancel
                   </button>
@@ -692,61 +692,61 @@ export default function DeviceSettings() {
         {/* Edit Device Modal */}
         {showEditModal && editingDevice && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl">
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Edit Device</h3>
+            <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl animate-fade-in-up">
+              <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-6">Edit Device</h3>
 
               <form onSubmit={handleUpdateDevice} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Device ID *</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Device ID *</label>
                     <input
                       type="text"
                       value={formData.device_id}
-                      className="w-full bg-gray-100 border border-gray-300 text-gray-600 rounded-lg px-4 py-2 cursor-not-allowed"
+                      className="w-full bg-gray-100 border-2 border-gray-200 text-gray-600 rounded-xl px-4 py-2 cursor-not-allowed"
                       readOnly
                       disabled
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Instance</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Instance</label>
                     <input
                       type="text"
                       value={formData.instance}
-                      className="w-full bg-gray-100 border border-gray-300 text-gray-600 rounded-lg px-4 py-2 cursor-not-allowed"
+                      className="w-full bg-gray-100 border-2 border-gray-200 text-gray-600 rounded-xl px-4 py-2 cursor-not-allowed"
                       readOnly
                       disabled
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Webhook ID</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Webhook ID</label>
                     <input
                       type="text"
                       value={formData.webhook_id}
-                      className="w-full bg-gray-100 border border-gray-300 text-gray-600 rounded-lg px-4 py-2 cursor-not-allowed"
+                      className="w-full bg-gray-100 border-2 border-gray-200 text-gray-600 rounded-xl px-4 py-2 cursor-not-allowed"
                       readOnly
                       disabled
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Provider *</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Provider *</label>
                     <select
                       value={formData.provider}
                       onChange={(e) => setFormData({ ...formData, provider: e.target.value as any })}
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full bg-white border-2 border-gray-200 text-gray-900 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth"
                     >
                       <option value="waha">WAHA</option>
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">AI Model</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">AI Model</label>
                     <select
                       value={formData.api_key_option}
                       onChange={(e) => setFormData({ ...formData, api_key_option: e.target.value })}
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full bg-white border-2 border-gray-200 text-gray-900 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth"
                     >
                       <option value="openai/gpt-5-chat">GPT-5 Chat</option>
                       <option value="openai/gpt-5-mini">GPT-5 Mini</option>
@@ -758,22 +758,22 @@ export default function DeviceSettings() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
                     <input
                       type="text"
                       value={formData.phone_number}
                       onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full bg-white border-2 border-gray-200 text-gray-900 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">API Key (OpenRouter)</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">API Key (OpenRouter)</label>
                   <textarea
                     value={formData.api_key}
                     onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
-                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full bg-white border-2 border-gray-200 text-gray-900 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth"
                     rows={3}
                   />
                 </div>
@@ -781,7 +781,7 @@ export default function DeviceSettings() {
                 <div className="flex gap-4 mt-6">
                   <button
                     type="submit"
-                    className="flex-1 bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                    className="flex-1 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl font-semibold transition-smooth"
                   >
                     Update Device
                   </button>
@@ -800,7 +800,7 @@ export default function DeviceSettings() {
                         phone_number: '',
                       })
                     }}
-                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-medium transition-colors"
+                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-semibold transition-smooth"
                   >
                     Cancel
                   </button>
@@ -813,14 +813,14 @@ export default function DeviceSettings() {
         {/* QR Code Modal */}
         {showQRModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
-              <h3 className="text-2xl font-bold text-gray-900 mb-4 text-center">Scan QR Code</h3>
+            <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl animate-fade-in-up">
+              <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-4 text-center">Scan QR Code</h3>
 
               <div className="mb-4">
-                <p className="text-gray-600 text-center mb-2">
+                <p className="text-gray-600 text-center mb-2 font-medium">
                   Device: <span className="font-semibold text-gray-900">{currentDevice?.device_id}</span>
                 </p>
-                <div className={`px-4 py-2 rounded-lg text-center font-medium ${
+                <div className={`px-4 py-2 rounded-xl text-center font-semibold ${
                   connectionStatus === 'SCAN_QR_CODE'
                     ? 'bg-yellow-100 text-yellow-800'
                     : 'bg-green-100 text-green-800'
@@ -830,7 +830,7 @@ export default function DeviceSettings() {
               </div>
 
               {qrCode && (
-                <div className="flex justify-center mb-4 bg-white p-4 rounded-lg border border-gray-200">
+                <div className="flex justify-center mb-4 bg-white p-4 rounded-xl border-2 border-gray-200">
                   <img
                     src={qrCode}
                     alt="QR Code"
@@ -839,10 +839,10 @@ export default function DeviceSettings() {
                 </div>
               )}
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <div className="bg-gradient-subtle border-2 border-blue-200 rounded-xl p-4 mb-4">
                 <p className="text-sm text-blue-800">
-                  <strong>Instructions:</strong>
-                  <ol className="list-decimal list-inside mt-2 space-y-1">
+                  <strong className="font-semibold">Instructions:</strong>
+                  <ol className="list-decimal list-inside mt-2 space-y-1 font-medium">
                     <li>Open WhatsApp on your phone</li>
                     <li>Tap Menu or Settings → Linked Devices</li>
                     <li>Tap "Link a Device"</li>
@@ -854,7 +854,7 @@ export default function DeviceSettings() {
               <div className="flex gap-3">
                 <button
                   onClick={() => handleCheckStatus(currentDevice!)}
-                  className="flex-1 bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                  className="flex-1 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl font-semibold transition-smooth"
                 >
                   Refresh Status
                 </button>
@@ -865,7 +865,7 @@ export default function DeviceSettings() {
                     setConnectionStatus('')
                     setCurrentDevice(null)
                   }}
-                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-medium transition-colors"
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-semibold transition-smooth"
                 >
                   Close
                 </button>

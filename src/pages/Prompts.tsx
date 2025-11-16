@@ -243,16 +243,16 @@ export default function Prompts() {
 
   return (
     <Layout>
-      <div className="p-8">
+      <div className="p-8 animate-fade-in-up">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h2 className="text-3xl font-bold text-primary-600 mb-2">Prompts</h2>
-            <p className="text-gray-600">Manage your AI prompts for each device</p>
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-2">Prompts</h2>
+            <p className="text-gray-600 font-medium">Manage your AI prompts for each device</p>
           </div>
           <button
             onClick={openAddModal}
-            className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
+            className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl font-semibold transition-smooth flex items-center gap-2"
           >
             <span className="text-xl">+</span>
             <span>Add Prompt</span>
@@ -262,16 +262,16 @@ export default function Prompts() {
         {/* Prompts List */}
         {loading ? (
           <div className="flex justify-center items-center h-64">
-            <div className="text-gray-500">Loading prompts...</div>
+            <div className="text-gray-500 font-medium">Loading prompts...</div>
           </div>
         ) : prompts.length === 0 ? (
-          <div className="bg-white border border-gray-200 rounded-xl p-12 text-center shadow-sm">
+          <div className="card-soft rounded-xl p-12 text-center">
             <div className="text-6xl mb-4">📝</div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">No Prompts Yet</h3>
-            <p className="text-gray-600 mb-6">Get started by creating your first prompt</p>
+            <p className="text-gray-600 mb-6 font-medium">Get started by creating your first prompt</p>
             <button
               onClick={openAddModal}
-              className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+              className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl font-semibold transition-smooth"
             >
               Add Your First Prompt
             </button>
@@ -281,12 +281,12 @@ export default function Prompts() {
             {prompts.map((prompt) => (
               <div
                 key={prompt.id}
-                className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
+                className="card-soft card-hover rounded-xl p-6 transition-smooth"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <h3 className="text-lg font-bold text-gray-900 mb-1">{prompt.prompts_name}</h3>
-                    <span className="inline-block bg-primary-100 text-primary-800 text-xs px-2 py-1 rounded">
+                    <span className="inline-block bg-gradient-subtle text-primary-800 text-xs px-2 py-1 rounded-xl font-semibold">
                       {prompt.device_id}
                     </span>
                   </div>
@@ -294,19 +294,19 @@ export default function Prompts() {
 
                 <div className="space-y-2 mb-4">
                   <div>
-                    <p className="text-gray-600 text-sm">Niche</p>
+                    <p className="text-gray-600 text-sm font-semibold">Niche</p>
                     <p className="text-gray-900 font-medium">{prompt.niche}</p>
                   </div>
                   <div>
-                    <p className="text-gray-600 text-sm">Prompt Data</p>
-                    <p className="text-gray-900 text-sm line-clamp-3">{prompt.prompts_data}</p>
+                    <p className="text-gray-600 text-sm font-semibold">Prompt Data</p>
+                    <p className="text-gray-900 text-sm line-clamp-3 font-medium">{prompt.prompts_data}</p>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
                     <div>
-                      <p>Created: {prompt.created_at}</p>
+                      <p className="font-medium">Created: {prompt.created_at}</p>
                     </div>
                     <div>
-                      <p>Updated: {prompt.updated_at}</p>
+                      <p className="font-medium">Updated: {prompt.updated_at}</p>
                     </div>
                   </div>
                 </div>
@@ -314,13 +314,13 @@ export default function Prompts() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleEditPrompt(prompt)}
-                    className="flex-1 bg-primary-50 hover:bg-primary-600 border border-primary-200 hover:border-primary-600 text-primary-600 hover:text-white px-4 py-2 rounded-lg transition-colors font-medium text-sm"
+                    className="flex-1 bg-primary-50 hover:bg-primary-600 border border-primary-200 hover:border-primary-600 text-primary-600 hover:text-white px-4 py-2 rounded-xl transition-smooth font-semibold text-sm"
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => handleDeletePrompt(prompt)}
-                    className="flex-1 bg-red-50 hover:bg-red-600 border border-red-200 hover:border-red-600 text-red-600 hover:text-white px-4 py-2 rounded-lg transition-colors font-medium text-sm"
+                    className="flex-1 bg-red-50 hover:bg-red-600 border border-red-200 hover:border-red-600 text-red-600 hover:text-white px-4 py-2 rounded-xl transition-smooth font-semibold text-sm"
                   >
                     Delete
                   </button>
@@ -333,16 +333,16 @@ export default function Prompts() {
         {/* Add Prompt Modal */}
         {showAddModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl">
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Add New Prompt</h3>
+            <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl animate-fade-in-up">
+              <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-6">Add New Prompt</h3>
 
               <form onSubmit={handleAddPrompt} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Device ID *</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Device ID *</label>
                   <select
                     value={formData.device_id}
                     onChange={(e) => setFormData({ ...formData, device_id: e.target.value })}
-                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full bg-white border-2 border-gray-200 text-gray-900 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth"
                     required
                   >
                     <option value="">Select a device</option>
@@ -360,33 +360,33 @@ export default function Prompts() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Niche *</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Niche *</label>
                   <input
                     type="text"
                     value={formData.niche}
                     onChange={(e) => setFormData({ ...formData, niche: e.target.value })}
-                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full bg-white border-2 border-gray-200 text-gray-900 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Prompt Name *</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Prompt Name *</label>
                   <input
                     type="text"
                     value={formData.prompts_name}
                     onChange={(e) => setFormData({ ...formData, prompts_name: e.target.value })}
-                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full bg-white border-2 border-gray-200 text-gray-900 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Prompt Data *</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Prompt Data *</label>
                   <textarea
                     value={formData.prompts_data}
                     onChange={(e) => setFormData({ ...formData, prompts_data: e.target.value })}
-                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full bg-white border-2 border-gray-200 text-gray-900 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth"
                     rows={8}
                     required
                   />
@@ -396,10 +396,10 @@ export default function Prompts() {
                   <button
                     type="submit"
                     disabled={availableDevices.length === 0}
-                    className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${
+                    className={`flex-1 px-6 py-3 rounded-xl font-semibold transition-smooth ${
                       availableDevices.length === 0
                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-primary-600 hover:bg-primary-700 text-white'
+                        : 'bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white'
                     }`}
                   >
                     Add Prompt
@@ -415,7 +415,7 @@ export default function Prompts() {
                         prompts_data: '',
                       })
                     }}
-                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-medium transition-colors"
+                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-semibold transition-smooth"
                   >
                     Cancel
                   </button>
@@ -428,49 +428,49 @@ export default function Prompts() {
         {/* Edit Prompt Modal */}
         {showEditModal && editingPrompt && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl">
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Edit Prompt</h3>
+            <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl animate-fade-in-up">
+              <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-6">Edit Prompt</h3>
 
               <form onSubmit={handleUpdatePrompt} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Device ID</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Device ID</label>
                   <input
                     type="text"
                     value={formData.device_id}
-                    className="w-full bg-gray-100 border border-gray-300 text-gray-600 rounded-lg px-4 py-2 cursor-not-allowed"
+                    className="w-full bg-gray-100 border-2 border-gray-200 text-gray-600 rounded-xl px-4 py-2 cursor-not-allowed"
                     readOnly
                     disabled
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Niche *</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Niche *</label>
                   <input
                     type="text"
                     value={formData.niche}
                     onChange={(e) => setFormData({ ...formData, niche: e.target.value })}
-                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full bg-white border-2 border-gray-200 text-gray-900 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Prompt Name *</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Prompt Name *</label>
                   <input
                     type="text"
                     value={formData.prompts_name}
                     onChange={(e) => setFormData({ ...formData, prompts_name: e.target.value })}
-                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full bg-white border-2 border-gray-200 text-gray-900 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Prompt Data *</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Prompt Data *</label>
                   <textarea
                     value={formData.prompts_data}
                     onChange={(e) => setFormData({ ...formData, prompts_data: e.target.value })}
-                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full bg-white border-2 border-gray-200 text-gray-900 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth"
                     rows={8}
                     required
                   />
@@ -479,7 +479,7 @@ export default function Prompts() {
                 <div className="flex gap-4 mt-6">
                   <button
                     type="submit"
-                    className="flex-1 bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                    className="flex-1 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl font-semibold transition-smooth"
                   >
                     Update Prompt
                   </button>
@@ -495,7 +495,7 @@ export default function Prompts() {
                         prompts_data: '',
                       })
                     }}
-                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-medium transition-colors"
+                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-semibold transition-smooth"
                   >
                     Cancel
                   </button>

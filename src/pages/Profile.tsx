@@ -53,30 +53,30 @@ export default function Profile() {
 
   return (
     <Layout>
-      <div className="p-8 max-w-4xl">
+      <div className="p-8 max-w-4xl animate-fade-in-up">
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900">Profile Settings</h2>
-          <p className="text-gray-600">Manage your account information</p>
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Profile Settings</h2>
+          <p className="text-gray-600 font-medium">Manage your account information</p>
         </div>
 
         {message.text && (
-          <div className={`mb-6 px-4 py-3 rounded-lg ${
+          <div className={`mb-6 px-4 py-3 rounded-xl font-medium ${
             message.type === 'success'
-              ? 'bg-green-100 border border-green-300 text-green-700'
-              : 'bg-red-100 border border-red-300 text-red-700'
+              ? 'bg-green-100 border-2 border-green-300 text-green-700'
+              : 'bg-red-100 border-2 border-red-300 text-red-700'
           }`}>
             {message.text}
           </div>
         )}
 
         {/* Profile Info */}
-        <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6 shadow-sm hover:shadow-md transition-shadow">
+        <div className="card-soft card-hover rounded-xl p-6 mb-6 transition-smooth">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-bold text-gray-900">Personal Information</h3>
+            <h3 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Personal Information</h3>
             {!editing && (
               <button
                 onClick={() => setEditing(true)}
-                className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors"
+                className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-4 py-2 rounded-xl transition-smooth font-semibold"
               >
                 Edit Profile
               </button>
@@ -85,37 +85,37 @@ export default function Profile() {
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-2">Full Name</label>
+              <label className="block text-sm font-semibold text-gray-600 mb-2">Full Name</label>
               {editing ? (
                 <input
                   type="text"
                   value={formData.full_name}
                   onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                  className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full bg-white border-2 border-gray-200 text-gray-900 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth"
                 />
               ) : (
-                <p className="text-gray-900">{user?.full_name || 'Not set'}</p>
+                <p className="text-gray-900 font-medium">{user?.full_name || 'Not set'}</p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-2">Email Address</label>
-              <p className="text-gray-900">{user?.email}</p>
+              <label className="block text-sm font-semibold text-gray-600 mb-2">Email Address</label>
+              <p className="text-gray-900 font-medium">{user?.email}</p>
               <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-2">Phone Number</label>
+              <label className="block text-sm font-semibold text-gray-600 mb-2">Phone Number</label>
               {editing ? (
                 <input
                   type="tel"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full bg-white border-2 border-gray-200 text-gray-900 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth"
                   placeholder="+60123456789"
                 />
               ) : (
-                <p className="text-gray-900">{user?.phone || 'Not set'}</p>
+                <p className="text-gray-900 font-medium">{user?.phone || 'Not set'}</p>
               )}
             </div>
           </div>
@@ -125,7 +125,7 @@ export default function Profile() {
               <button
                 onClick={handleSave}
                 disabled={loading}
-                className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-lg transition-colors disabled:opacity-50"
+                className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-6 py-2 rounded-xl transition-smooth disabled:opacity-50 font-semibold"
               >
                 {loading ? 'Saving...' : 'Save Changes'}
               </button>
@@ -137,7 +137,7 @@ export default function Profile() {
                     phone: user?.phone || '',
                   })
                 }}
-                className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2 rounded-lg transition-colors"
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2 rounded-xl transition-smooth font-semibold"
               >
                 Cancel
               </button>
@@ -146,13 +146,13 @@ export default function Profile() {
         </div>
 
         {/* Account Details */}
-        <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6 shadow-sm hover:shadow-md transition-shadow">
-          <h3 className="text-xl font-bold text-gray-900 mb-6">Account Details</h3>
+        <div className="card-soft card-hover rounded-xl p-6 mb-6 transition-smooth">
+          <h3 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-6">Account Details</h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-2">Account Status</label>
-              <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+              <label className="block text-sm font-semibold text-gray-600 mb-2">Account Status</label>
+              <span className={`inline-block px-3 py-1 rounded-xl text-sm font-semibold ${
                 user?.is_active
                   ? 'bg-green-100 text-green-700'
                   : 'bg-red-100 text-red-700'
@@ -162,8 +162,8 @@ export default function Profile() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-2">Subscription Status</label>
-              <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+              <label className="block text-sm font-semibold text-gray-600 mb-2">Subscription Status</label>
+              <span className={`inline-block px-3 py-1 rounded-xl text-sm font-semibold ${
                 user?.subscription_status === 'active'
                   ? 'bg-green-100 text-green-700'
                   : 'bg-yellow-100 text-yellow-700'
@@ -173,31 +173,31 @@ export default function Profile() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-2">Max Devices</label>
-              <p className="text-gray-900">{user?.max_devices || 1}</p>
+              <label className="block text-sm font-semibold text-gray-600 mb-2">Max Devices</label>
+              <p className="text-gray-900 font-medium">{user?.max_devices || 1}</p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-2">Member Since</label>
-              <p className="text-gray-900">{formatDate(user?.created_at)}</p>
+              <label className="block text-sm font-semibold text-gray-600 mb-2">Member Since</label>
+              <p className="text-gray-900 font-medium">{formatDate(user?.created_at)}</p>
             </div>
 
             {user?.subscription_end && (
               <div>
-                <label className="block text-sm font-medium text-gray-600 mb-2">Subscription Expires</label>
-                <p className="text-gray-900">{formatDate(user.subscription_end)}</p>
+                <label className="block text-sm font-semibold text-gray-600 mb-2">Subscription Expires</label>
+                <p className="text-gray-900 font-medium">{formatDate(user.subscription_end)}</p>
               </div>
             )}
           </div>
         </div>
 
         {/* Danger Zone */}
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6 shadow-sm">
+        <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6 card-soft">
           <h3 className="text-xl font-bold text-red-600 mb-4">Danger Zone</h3>
-          <p className="text-gray-600 mb-4">
+          <p className="text-gray-600 mb-4 font-medium">
             Delete your account and all associated data. This action cannot be undone.
           </p>
-          <button className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition-colors">
+          <button className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-xl transition-smooth font-semibold">
             Delete Account
           </button>
         </div>
