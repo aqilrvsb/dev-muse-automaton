@@ -74,6 +74,17 @@ export default function Sidebar() {
               <span className="text-xl">💰</span>
               <span className="font-medium text-sm">Transactions</span>
             </Link>
+            <Link
+              to="/user-register"
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                isActive('/user-register')
+                  ? 'bg-primary-600 text-white shadow-md'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <span className="text-xl">👥</span>
+              <span className="font-medium text-sm">User Register</span>
+            </Link>
           </>
         )}
       </nav>
