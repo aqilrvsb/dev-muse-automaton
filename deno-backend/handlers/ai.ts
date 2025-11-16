@@ -14,7 +14,7 @@ const corsHeaders = {
 };
 
 /**
- * AI Chat Completion
+ * AI Chat Completion with Dynamic Prompt Support
  * POST /api/ai/chat
  */
 async function chat(req: Request): Promise<Response> {
@@ -63,39 +63,77 @@ async function chat(req: Request): Promise<Response> {
       );
     }
 
-    // Get conversation history if phone is provided
-    let conversationHistory = [];
-    if (phone) {
-      const { data: history } = await supabaseAdmin
-        .from("wasapbot")
-        .select("message, response, created_at")
-        .eq("device_id", device_id)
-        .eq("phone", phone)
-        .order("created_at", { ascending: false })
-        .limit(10);
+    // Get prompt data for this device
+    const { data: prompt } = await supabaseAdmin
+      .from("prompts")
+      .select("prompts_data, niche")
+      .eq("device_id", device_id)
+      .single();
 
-      conversationHistory = history || [];
+    if (!prompt || !prompt.prompts_data) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "No prompt configured for this device. Please set up a prompt first."
+        }),
+        { status: 404, headers: corsHeaders }
+      );
     }
 
-    // TODO: Integrate with actual AI service (OpenAI, Anthropic, etc.)
-    // For now, return a placeholder response
-    const aiResponse = {
-      message: "This is a placeholder AI response. Integrate with your preferred AI service.",
-      model: "placeholder",
-      tokens_used: 0,
-      context_used: conversationHistory.length
-    };
+    // Get conversation history and current stage
+    let conversationHistoryText = "";
+    let currentStage: string | null = null;
 
-    // Log AI interaction
+    if (phone) {
+      const { data: aiHistory } = await supabaseAdmin
+        .from("ai_whatsapp")
+        .select("prospect_num, conv_last, stage, date_insert")
+        .eq("device_id", device_id)
+        .eq("prospect_num", phone)
+        .order("date_insert", { ascending: false })
+        .limit(10);
+
+      if (aiHistory && aiHistory.length > 0) {
+        // Get current stage from most recent conversation
+        currentStage = aiHistory[0].stage || null;
+
+        // Build conversation history text
+        conversationHistoryText = aiHistory
+          .reverse()
+          .map(h => `[${h.date_insert}] Customer: ${h.conv_last}`)
+          .join("\n");
+      }
+    }
+
+    console.log(`💬 Processing message from ${phone || 'unknown'}`);
+    console.log(`📋 Current Stage: ${currentStage || 'First Stage'}`);
+
+    // Import AI service functions
+    const { generateFlowAIResponse } = await import("../services/ai.ts");
+
+    // Generate AI response with dynamic prompt
+    const aiResponse = await generateFlowAIResponse(
+      conversationHistoryText,
+      message,
+      prompt.prompts_data,
+      device,
+      currentStage,
+      false // useOneMessage - can be made configurable
+    );
+
+    // Log AI interaction with stage and details
     const { error: logError } = await supabaseAdmin
       .from("ai_whatsapp")
       .insert({
         device_id,
-        phone: phone || "system",
-        user_message: message,
-        ai_response: aiResponse.message,
-        context: context || null,
-        created_at: new Date().toISOString()
+        prospect_num: phone || "system",
+        prospect_name: context?.name || phone || "Unknown",
+        niche: prompt.niche || "General",
+        stage: aiResponse.stage,
+        conv_last: message,
+        detail: aiResponse.details,
+        human: 0, // AI response
+        date_insert: new Date().toISOString()
       });
 
     if (logError) {
@@ -106,11 +144,13 @@ async function chat(req: Request): Promise<Response> {
       JSON.stringify({
         success: true,
         data: {
-          response: aiResponse.message,
+          response: aiResponse.cleanContent,
+          stage: aiResponse.stage,
+          has_details: aiResponse.hasDetails,
           metadata: {
-            model: aiResponse.model,
-            tokens_used: aiResponse.tokens_used,
-            conversation_history_count: aiResponse.context_used
+            stage_detected: aiResponse.hasStageMarker,
+            details_captured: aiResponse.hasDetails,
+            current_stage: aiResponse.stage
           }
         }
       }),

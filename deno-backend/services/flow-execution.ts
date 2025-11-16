@@ -197,7 +197,7 @@ async function updateConversationWithResponse(conversation: any, response: strin
 }
 
 /**
- * Generate AI response using prompt from prompts table
+ * Generate AI response using dynamic prompt with stage tracking and detail capture
  */
 async function generateAIResponse(
   device: any,
@@ -207,23 +207,76 @@ async function generateAIResponse(
   prompt: any
 ): Promise<string> {
   try {
-    // Build conversation history
-    const conversationHistory = `Previous: ${conversation.conv_last || ""}\nCurrent: ${message}`;
+    // Build conversation history from ai_whatsapp table
+    const { data: history } = await supabaseAdmin
+      .from("ai_whatsapp")
+      .select("prospect_num, conv_last, stage, date_insert")
+      .eq("device_id", device.device_id)
+      .eq("prospect_num", phone)
+      .order("date_insert", { ascending: false})
+      .limit(10);
 
-    // Use prompt_data from prompts table as the flow context
-    const flowContext = prompt.prompts_data || "You are a helpful assistant. Respond naturally to the user.";
+    let conversationHistoryText = "";
+    let currentStage: string | null = null;
+
+    if (history && history.length > 0) {
+      // Get current stage from most recent conversation
+      currentStage = history[0].stage || null;
+
+      // Build conversation history text
+      conversationHistoryText = history
+        .reverse()
+        .map(h => `[${h.date_insert}] Customer: ${h.conv_last}`)
+        .join("\n");
+    }
+
+    // Use prompt_data from prompts table as the dynamic prompt
+    const promptData = prompt.prompts_data || "You are a helpful assistant. Respond naturally to the user.";
 
     console.log(`🤖 Generating AI response with prompt: ${prompt.prompts_name}`);
+    console.log(`📊 Current Stage: ${currentStage || 'First Stage'}`);
 
-    // Generate AI response
-    const response = await generateFlowAIResponse(
-      conversationHistory,
+    // Generate AI response with dynamic prompt support
+    const aiResponse = await generateFlowAIResponse(
+      conversationHistoryText,
       message,
-      flowContext,
-      device
+      promptData,
+      device,
+      currentStage,
+      false // useOneMessage - can be made configurable
     );
 
-    return response;
+    console.log(`✅ AI Response Generated:`);
+    console.log(`   Stage: ${aiResponse.stage || 'None'}`);
+    console.log(`   Has Details: ${aiResponse.hasDetails ? 'Yes' : 'No'}`);
+    console.log(`   Content: ${aiResponse.cleanContent.substring(0, 100)}...`);
+
+    // Update conversation with stage and details
+    if (aiResponse.stage || aiResponse.details) {
+      const updateData: any = {};
+
+      if (aiResponse.stage) {
+        updateData.stage = aiResponse.stage;
+      }
+
+      if (aiResponse.details) {
+        updateData.detail = aiResponse.details;
+      }
+
+      await supabaseAdmin
+        .from("ai_whatsapp")
+        .update(updateData)
+        .eq("id_prospect", conversation.id_prospect);
+
+      console.log(`💾 Updated conversation with stage and details`);
+    }
+
+    // Warn if stage marker is missing
+    if (!aiResponse.hasStageMarker) {
+      console.warn(`⚠️ Warning: AI response missing !!Stage!! marker. Prompt may need adjustment.`);
+    }
+
+    return aiResponse.cleanContent;
   } catch (error) {
     console.error("AI response generation error:", error);
     return "Maaf, saya mengalami kendala teknis. Silakan coba lagi nanti.";
