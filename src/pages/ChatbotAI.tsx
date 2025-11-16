@@ -301,116 +301,118 @@ ${conv.conv_last || 'No conversation history'}
 
   return (
     <Layout>
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="p-6 max-w-7xl mx-auto animate-fade-in-up">
         {/* Page Header */}
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-2">
-            <Phone className="w-8 h-8 text-purple-600" />
-            <h1 className="text-3xl font-bold text-gray-900">Call Logs</h1>
+            <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl card-soft">
+              <Phone className="w-6 h-6 text-white" />
+            </div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Call Logs</h1>
           </div>
-          <p className="text-gray-600">Lihat semua rekod panggilan dari voice agent</p>
+          <p className="text-gray-600 font-medium">Lihat semua rekod panggilan dari voice agent</p>
         </div>
 
         {/* Top Stats Cards - 6 cards in a row */}
         <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
           {/* Total Contacts */}
-          <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+          <div className="bg-white rounded-xl p-4 card-soft card-hover transition-smooth border border-gray-100">
             <div className="flex items-center gap-2 mb-2">
               <Phone className="w-5 h-5 text-purple-600" />
-              <span className="text-sm text-gray-600">Total Contacts</span>
+              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Total Contacts</span>
             </div>
             <div className="text-2xl font-bold text-gray-900">{activeDevices}</div>
           </div>
 
           {/* Total Calls */}
-          <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+          <div className="bg-white rounded-xl p-4 card-soft card-hover transition-smooth border border-gray-100">
             <div className="flex items-center gap-2 mb-2">
               <Phone className="w-5 h-5 text-blue-600" />
-              <span className="text-sm text-gray-600">Total Calls</span>
+              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Total Calls</span>
             </div>
             <div className="text-2xl font-bold text-gray-900">{totalConversations}</div>
           </div>
 
           {/* Answered */}
-          <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+          <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-4 card-soft card-hover transition-smooth border border-green-100">
             <div className="flex items-center gap-2 mb-2">
               <CheckCircle className="w-5 h-5 text-green-600" />
-              <span className="text-sm text-gray-600">Answered</span>
+              <span className="text-xs font-semibold text-green-700 uppercase tracking-wide">Answered</span>
             </div>
             <div className="text-2xl font-bold text-green-600">{aiConversations}</div>
           </div>
 
           {/* Unanswered */}
-          <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+          <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl p-4 card-soft card-hover transition-smooth border border-orange-100">
             <div className="flex items-center gap-2 mb-2">
               <XCircle className="w-5 h-5 text-orange-600" />
-              <span className="text-sm text-gray-600">Unanswered</span>
+              <span className="text-xs font-semibold text-orange-700 uppercase tracking-wide">Unanswered</span>
             </div>
             <div className="text-2xl font-bold text-orange-600">0</div>
           </div>
 
           {/* Failed */}
-          <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+          <div className="bg-gradient-to-br from-red-50 to-pink-50 rounded-xl p-4 card-soft card-hover transition-smooth border border-red-100">
             <div className="flex items-center gap-2 mb-2">
               <XCircle className="w-5 h-5 text-red-600" />
-              <span className="text-sm text-gray-600">Failed</span>
+              <span className="text-xs font-semibold text-red-700 uppercase tracking-wide">Failed</span>
             </div>
             <div className="text-2xl font-bold text-red-600">0</div>
           </div>
 
           {/* Voicemail */}
-          <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+          <div className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-xl p-4 card-soft card-hover transition-smooth border border-purple-100">
             <div className="flex items-center gap-2 mb-2">
               <Volume2 className="w-5 h-5 text-purple-600" />
-              <span className="text-sm text-gray-600">Voicemail</span>
+              <span className="text-xs font-semibold text-purple-700 uppercase tracking-wide">Voicemail</span>
             </div>
             <div className="text-2xl font-bold text-purple-600">0</div>
           </div>
         </div>
 
         {/* Total Minutes Card - Separate */}
-        <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 mb-6">
-          <div className="flex items-center gap-2 mb-2">
-            <Timer className="w-5 h-5 text-purple-600" />
-            <span className="text-sm text-gray-600">Total Minutes</span>
+        <div className="bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl p-6 card-medium card-hover transition-smooth mb-6">
+          <div className="flex items-center gap-3 mb-2">
+            <Timer className="w-6 h-6 text-white" />
+            <span className="text-sm font-semibold text-purple-100 uppercase tracking-wide">Total Minutes</span>
           </div>
-          <div className="text-3xl font-bold text-purple-600">{totalMinutes} min</div>
+          <div className="text-4xl font-bold text-white">{totalMinutes} <span className="text-2xl text-purple-100">min</span></div>
         </div>
 
 
         {/* Dynamic Stage Analytics */}
-        <div className="bg-white rounded-xl p-6 shadow-sm mb-6">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-              <span className="text-purple-600 text-xl">📊</span>
+        <div className="bg-white rounded-xl p-6 card-soft mb-6 transition-smooth">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2.5 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl card-soft">
+              <span className="text-white text-xl">📊</span>
             </div>
             <div>
-              <h3 className="text-lg font-bold text-gray-900">Dynamic Stage Analytics</h3>
-              <p className="text-sm text-gray-600">Distribution of answered calls by conversation stage</p>
+              <h3 className="text-lg font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Dynamic Stage Analytics</h3>
+              <p className="text-sm text-gray-600 font-medium">Distribution of answered calls by conversation stage</p>
             </div>
           </div>
 
           {stageAnalytics.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-12 text-gray-500 bg-gradient-subtle rounded-lg">
               No stage analytics available
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
               {stageAnalytics.map((stage, index) => (
-                <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                  <div className="mb-2">
-                    <span className="text-xs text-gray-600">Stage</span>
-                    <div className="text-sm font-semibold text-purple-600 mb-1">
+                <div key={index} className="gradient-card rounded-xl p-4 card-soft card-hover transition-smooth border border-purple-100">
+                  <div className="mb-3">
+                    <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">Stage</span>
+                    <div className="text-lg font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mt-1">
                       {stage.percentage}%
                     </div>
                   </div>
-                  <div className="mb-2">
-                    <h4 className="font-bold text-gray-900 text-sm">{stage.stage}</h4>
-                    <p className="text-xs text-gray-600">{stage.count} calls</p>
+                  <div className="mb-3">
+                    <h4 className="font-bold text-gray-900 text-sm mb-1">{stage.stage}</h4>
+                    <p className="text-xs text-gray-600 font-medium">{stage.count} calls</p>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
                     <div
-                      className="bg-purple-600 h-2 rounded-full transition-all duration-300"
+                      className="bg-gradient-to-r from-purple-600 to-blue-600 h-2 rounded-full transition-all duration-500 ease-out"
                       style={{ width: `${stage.percentage}%` }}
                     />
                   </div>
@@ -421,18 +423,18 @@ ${conv.conv_last || 'No conversation history'}
         </div>
 
         {/* Search and Filter Bar */}
-        <div className="bg-white rounded-lg shadow-sm mb-6">
-          <div className="p-4 flex items-center gap-4">
+        <div className="bg-white rounded-xl card-soft mb-6 transition-smooth overflow-hidden">
+          <div className="p-5 flex items-center gap-4">
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by name, caller, or prompt..."
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="flex-1 px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth font-medium"
             />
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition flex items-center gap-2"
+              className="px-5 py-2.5 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl hover:from-purple-600 hover:to-purple-700 transition-smooth flex items-center gap-2 font-medium card-soft"
             >
               <span>🔍</span>
               <span>Filters</span>
@@ -441,11 +443,11 @@ ${conv.conv_last || 'No conversation history'}
 
           {/* Collapsible Filter Section */}
           {showFilters && (
-            <div className="border-t border-gray-200 p-4">
+            <div className="border-t border-gray-200 p-5 bg-gradient-subtle">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {/* From Date */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
                     📅 From Date
                   </label>
                   <input
@@ -453,13 +455,13 @@ ${conv.conv_last || 'No conversation history'}
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
                     placeholder="dd/mm/yyyy"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth font-medium"
                   />
                 </div>
 
                 {/* To Date */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
                     📅 To Date
                   </label>
                   <input
@@ -467,19 +469,19 @@ ${conv.conv_last || 'No conversation history'}
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
                     placeholder="dd/mm/yyyy"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth font-medium"
                   />
                 </div>
 
                 {/* Call Status (Device Filter) */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
                     📞 Call Status
                   </label>
                   <select
                     value={deviceFilter}
                     onChange={(e) => setDeviceFilter(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth font-medium"
                   >
                     <option value="">Semua Panggilan</option>
                     {devices.map(d => (
@@ -490,7 +492,7 @@ ${conv.conv_last || 'No conversation history'}
 
                 {/* Stage */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
                     🔍 Stage
                   </label>
                   <input
@@ -498,22 +500,22 @@ ${conv.conv_last || 'No conversation history'}
                     value={stageFilter}
                     onChange={(e) => setStageFilter(e.target.value)}
                     placeholder="e.g. confirmation"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth font-medium"
                   />
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-3 mt-4">
+              <div className="flex gap-3 mt-5">
                 <button
                   onClick={resetFilters}
-                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+                  className="px-5 py-2.5 bg-white text-gray-700 rounded-xl hover:bg-gray-50 transition-smooth flex items-center gap-2 font-medium card-soft border border-gray-200"
                 >
                   🔄 Reset Filters
                 </button>
                 <button
                   onClick={exportToCSV}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                  className="px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-smooth flex items-center gap-2 font-medium card-soft"
                 >
                   📥 Export CSV
                 </button>
@@ -523,37 +525,39 @@ ${conv.conv_last || 'No conversation history'}
         </div>
 
         {/* Total Count */}
-        <div className="mb-4">
-          <p className="text-sm text-gray-600">
-            Total: <span className="font-bold text-purple-600">{filteredConversations.length} call logs</span>
+        <div className="mb-5">
+          <p className="text-sm text-gray-600 font-medium">
+            Total: <span className="font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">{filteredConversations.length} call logs</span>
           </p>
         </div>
 
         {/* Table */}
         {loading ? (
-          <div className="text-center py-12">
-            <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-purple-500 border-r-transparent"></div>
+          <div className="text-center py-16 bg-white rounded-xl card-soft">
+            <div className="inline-block h-14 w-14 animate-spin rounded-full border-4 border-solid border-purple-500 border-r-transparent"></div>
+            <p className="mt-4 text-gray-600 font-medium">Loading conversations...</p>
           </div>
         ) : filteredConversations.length === 0 ? (
-          <div className="bg-white border border-gray-200 rounded-xl p-12 text-center shadow-sm">
-            <p className="text-gray-600">No conversations found matching your filters</p>
+          <div className="bg-white rounded-xl p-16 text-center card-soft">
+            <div className="text-6xl mb-4">📭</div>
+            <p className="text-gray-600 font-medium text-lg">No conversations found matching your filters</p>
           </div>
         ) : (
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+          <div className="bg-white rounded-xl overflow-hidden card-soft transition-smooth">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50">
+                <thead className="bg-gradient-subtle">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">No</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Device</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Phone</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Niche</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Stage</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">History</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Action</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">No</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Device</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Date</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Name</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Phone</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Niche</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Stage</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">History</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Status</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -563,36 +567,36 @@ ${conv.conv_last || 'No conversation history'}
                       : '-'
 
                     return (
-                      <tr key={conv.id_prospect} className="hover:bg-gray-50">
+                      <tr key={conv.id_prospect} className="hover:bg-gradient-subtle transition-smooth">
                         <td className="px-6 py-4 text-sm font-bold text-gray-900">{index + 1}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600">{conv.device_id || '-'}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600">{dateFormatted}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{conv.prospect_name || '-'}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600 font-medium">{conv.device_id || '-'}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600 font-medium">{dateFormatted}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900 font-semibold">{conv.prospect_name || '-'}</td>
                         <td className="px-6 py-4 text-sm font-bold text-gray-900">{conv.prospect_num}</td>
                         <td className="px-6 py-4">
-                          <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700">
+                          <span className="px-3 py-1.5 text-xs font-semibold rounded-full bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 border border-blue-200">
                             {conv.niche || '-'}
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-700">
+                          <span className="px-3 py-1.5 text-xs font-semibold rounded-full bg-gradient-to-r from-purple-50 to-purple-100 text-purple-700 border border-purple-200">
                             {conv.stage || 'Welcome Message'}
                           </span>
                         </td>
                         <td className="px-6 py-4">
                           <button
                             onClick={() => viewConversation(conv)}
-                            className="text-blue-600 hover:text-blue-800"
+                            className="text-blue-600 hover:text-blue-800 transition-smooth hover:scale-110 inline-block"
                             title="View Conversation"
                           >
                             👁️
                           </button>
                         </td>
                         <td className="px-6 py-4">
-                          <span className={`px-2 py-1 text-xs rounded-full ${
+                          <span className={`px-3 py-1.5 text-xs font-semibold rounded-full ${
                             conv.human === 1
-                              ? 'bg-yellow-100 text-yellow-700'
-                              : 'bg-green-100 text-green-700'
+                              ? 'bg-gradient-to-r from-yellow-50 to-yellow-100 text-yellow-700 border border-yellow-200'
+                              : 'bg-gradient-to-r from-green-50 to-green-100 text-green-700 border border-green-200'
                           }`}>
                             {conv.human === 1 ? 'Human' : 'AI'}
                           </span>
@@ -600,7 +604,7 @@ ${conv.conv_last || 'No conversation history'}
                         <td className="px-6 py-4">
                           <button
                             onClick={() => deleteConversation(conv.prospect_num)}
-                            className="text-red-600 hover:text-red-800"
+                            className="text-red-600 hover:text-red-800 transition-smooth hover:scale-110 inline-block"
                             title="Delete"
                           >
                             🗑️
