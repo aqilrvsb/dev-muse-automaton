@@ -40,7 +40,6 @@ export default function ChatbotAI() {
   // Analytics states
   const [totalConversations, setTotalConversations] = useState(0)
   const [aiConversations, setAiConversations] = useState(0)
-  const [humanConversations, setHumanConversations] = useState(0)
   const [activeDevices, setActiveDevices] = useState(0)
   const [stageAnalytics, setStageAnalytics] = useState<StageAnalytics[]>([])
 
@@ -154,12 +153,10 @@ export default function ChatbotAI() {
   const calculateAnalytics = (data: AIConversation[]) => {
     const total = data.length
     const aiCount = data.filter(c => !c.human || c.human === 0).length
-    const humanCount = data.filter(c => c.human === 1).length
     const deviceCount = [...new Set(data.map(c => c.device_id))].length
 
     setTotalConversations(total)
     setAiConversations(aiCount)
-    setHumanConversations(humanCount)
     setActiveDevices(deviceCount)
 
     // Calculate stage analytics for AI conversations
