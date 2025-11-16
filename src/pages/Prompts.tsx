@@ -12,6 +12,7 @@ export default function Prompts() {
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showInfoModal, setShowInfoModal] = useState(false)
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null)
 
   // Form state
@@ -250,13 +251,22 @@ export default function Prompts() {
             <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-2">Prompts</h2>
             <p className="text-gray-600 font-medium">Manage your AI prompts for each device</p>
           </div>
-          <button
-            onClick={openAddModal}
-            className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl font-semibold transition-smooth flex items-center gap-2"
-          >
-            <span className="text-xl">+</span>
-            <span>Add Prompt</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowInfoModal(true)}
+              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-3 rounded-xl font-semibold transition-smooth flex items-center gap-2"
+            >
+              <span className="text-xl">ℹ️</span>
+              <span>Info</span>
+            </button>
+            <button
+              onClick={openAddModal}
+              className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl font-semibold transition-smooth flex items-center gap-2"
+            >
+              <span className="text-xl">+</span>
+              <span>Add Prompt</span>
+            </button>
+          </div>
         </div>
 
         {/* Prompts List */}
@@ -501,6 +511,112 @@ export default function Prompts() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Info Modal */}
+        {showInfoModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl p-8 w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-xl animate-fade-in-up">
+              <div className="flex justify-between items-start mb-6">
+                <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  Cara Penggunaan Prompt
+                </h3>
+                <button
+                  onClick={() => setShowInfoModal(false)}
+                  className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="space-y-6 text-gray-700">
+                {/* Section 1 */}
+                <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
+                  <h4 className="font-bold text-lg mb-3 text-blue-900">1. Cara Panggil Value dari Contact:</h4>
+                  <p className="mb-3 font-medium">Gunakan syntax berikut untuk auto-replace dengan data contact:</p>
+                  <ul className="space-y-2 ml-4">
+                    <li className="flex items-start gap-2">
+                      <span className="text-blue-600 font-bold">•</span>
+                      <span><code className="bg-white px-2 py-1 rounded text-sm font-mono text-blue-600">{'{{name}}'}</code> - Nama contact</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-blue-600 font-bold">•</span>
+                      <span><code className="bg-white px-2 py-1 rounded text-sm font-mono text-blue-600">{'{{phone}}'}</code> - Nombor telefon</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-blue-600 font-bold">•</span>
+                      <span><code className="bg-white px-2 py-1 rounded text-sm font-mono text-blue-600">{'{{product}}'}</code> - Nama produk</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-blue-600 font-bold">•</span>
+                      <span><code className="bg-white px-2 py-1 rounded text-sm font-mono text-blue-600">{'{{info}}'}</code> - Info tambahan</span>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Section 2 */}
+                <div className="bg-purple-50 rounded-xl p-6 border border-purple-200">
+                  <h4 className="font-bold text-lg mb-3 text-purple-900">2. Cara Save Stage (Dynamic):</h4>
+                  <p className="mb-3 font-medium">Gunakan format <code className="bg-white px-2 py-1 rounded text-sm font-mono text-purple-600">!!Stage [Nama_Stage]!!</code></p>
+                  <div className="bg-white rounded-lg p-4 border border-purple-200">
+                    <p className="font-semibold text-purple-900 mb-2">Contoh:</p>
+                    <pre className="text-sm font-mono text-gray-800 whitespace-pre-wrap">
+!!Stage Welcome Message!!
+Purpose: Greet customer
+Tanya: "Assalamualaikum {'{{name}}'}, saya dari..."
+
+!!Stage Product Offer!!
+Purpose: Offer product
+Tanya: "Saya ingin tawarkan {'{{product}}'}...."
+                    </pre>
+                  </div>
+                </div>
+
+                {/* Section 3 */}
+                <div className="bg-green-50 rounded-xl p-6 border border-green-200">
+                  <h4 className="font-bold text-lg mb-3 text-green-900">3. Cara Save Details Penting:</h4>
+                  <p className="mb-3 font-medium">Gunakan format <code className="bg-white px-2 py-1 rounded text-sm font-mono text-green-600">%%[label]%%</code> untuk simpan info:</p>
+                  <div className="bg-white rounded-lg p-4 border border-green-200">
+                    <p className="font-semibold text-green-900 mb-2">Contoh:</p>
+                    <pre className="text-sm font-mono text-gray-800">
+Contoh: "Baik, %%Customer_interest%% saya catat."
+                    </pre>
+                  </div>
+                </div>
+
+                {/* Section 4 */}
+                <div className="bg-red-50 rounded-xl p-6 border border-red-200">
+                  <h4 className="font-bold text-lg mb-3 text-red-900">4. Cara End Call:</h4>
+                  <p className="mb-3 font-medium">Gunakan keyword <code className="bg-white px-2 py-1 rounded text-sm font-mono text-red-600">end_call</code> dalam prompt untuk tamatkan panggilan:</p>
+                  <div className="bg-white rounded-lg p-4 border border-red-200">
+                    <p className="font-semibold text-red-900 mb-2">Contoh:</p>
+                    <pre className="text-sm font-mono text-gray-800">
+"Terima kasih atas masa anda. Selamat tinggal! [end_call]"
+                    </pre>
+                  </div>
+                </div>
+
+                {/* Info Note */}
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+                  <div className="flex items-start gap-2">
+                    <span className="text-xl">💡</span>
+                    <p className="text-sm font-medium text-yellow-800">
+                      Sistem akan automatically detect stage, save details, dan track progress panggilan dalam analytics.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setShowInfoModal(false)}
+                  className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl font-semibold transition-smooth"
+                >
+                  Tutup
+                </button>
+              </div>
             </div>
           </div>
         )}
