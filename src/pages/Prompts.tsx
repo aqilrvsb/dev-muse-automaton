@@ -535,22 +535,22 @@ export default function Prompts() {
 
               <div className="space-y-6 text-sm">
                 {/* Section 1: Cara Panggil Value dari Contact */}
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <h4 className="font-bold text-gray-900 mb-3">1. Cara Panggil Value dari Contact:</h4>
-                  <p className="text-gray-700 mb-3">Gunakan syntax berikut untuk auto-replace dengan data contact:</p>
-                  <ul className="list-disc list-inside space-y-2 text-gray-700 ml-2">
-                    <li><code className="bg-gray-200 px-2 py-1 rounded text-xs">{'{{name}}'}</code> - Nama contact</li>
-                    <li><code className="bg-gray-200 px-2 py-1 rounded text-xs">{'{{phone}}'}</code> - Nombor telefon</li>
-                    <li><code className="bg-gray-200 px-2 py-1 rounded text-xs">{'{{product}}'}</code> - Nama produk</li>
-                    <li><code className="bg-gray-200 px-2 py-1 rounded text-xs">{'{{info}}'}</code> - Info tambahan</li>
+                <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-5 rounded-lg border-l-4 border-blue-500 shadow-sm">
+                  <h4 className="font-bold text-blue-900 mb-3 text-base">1. Cara Panggil Value dari Contact:</h4>
+                  <p className="text-blue-800 mb-3">Gunakan syntax berikut untuk auto-replace dengan data contact:</p>
+                  <ul className="list-disc list-inside space-y-2 text-blue-900 ml-2">
+                    <li><code className="bg-blue-200 px-2 py-1 rounded text-xs font-semibold text-blue-900">{'{{name}}'}</code> - Nama contact</li>
+                    <li><code className="bg-blue-200 px-2 py-1 rounded text-xs font-semibold text-blue-900">{'{{phone}}'}</code> - Nombor telefon</li>
+                    <li><code className="bg-blue-200 px-2 py-1 rounded text-xs font-semibold text-blue-900">{'{{product}}'}</code> - Nama produk</li>
+                    <li><code className="bg-blue-200 px-2 py-1 rounded text-xs font-semibold text-blue-900">{'{{info}}'}</code> - Info tambahan</li>
                   </ul>
                 </div>
 
                 {/* Section 2: Cara Save Stage (Dynamic) */}
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <h4 className="font-bold text-gray-900 mb-3">2. Cara Save Stage (Dynamic):</h4>
-                  <p className="text-gray-700 mb-3">Gunakan format <code className="bg-gray-200 px-2 py-1 rounded text-xs">!!Stage [Nama Stage]!!</code></p>
-                  <div className="bg-white p-3 rounded border border-gray-300 font-mono text-xs text-gray-700 whitespace-pre-wrap">
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-5 rounded-lg border-l-4 border-green-500 shadow-sm">
+                  <h4 className="font-bold text-green-900 mb-3 text-base">2. Cara Save Stage (Dynamic):</h4>
+                  <p className="text-green-800 mb-3">Gunakan format <code className="bg-green-200 px-2 py-1 rounded text-xs font-semibold text-green-900">!!Stage [Nama Stage]!!</code></p>
+                  <div className="bg-white p-4 rounded-lg border border-green-300 font-mono text-xs text-gray-800 whitespace-pre-wrap shadow-inner">
 {`!!Stage Welcome Message!!
 Punpose: Greet customer
 Tanya: "Assalamualaikum {{name}}, saya dari..."
@@ -562,11 +562,21 @@ Tanya: "Saya ingin tawarkan {{product}}..."`}
                 </div>
 
                 {/* Section 3: Cara Save Details Penting */}
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <h4 className="font-bold text-gray-900 mb-3">3. Cara Save Details Penting:</h4>
-                  <p className="text-gray-700 mb-3">Gunakan format <code className="bg-gray-200 px-2 py-1 rounded text-xs">%%[label]%%</code> untuk simpan info:</p>
-                  <div className="bg-white p-3 rounded border border-gray-300 font-mono text-xs text-gray-700">
+                <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-5 rounded-lg border-l-4 border-purple-500 shadow-sm">
+                  <h4 className="font-bold text-purple-900 mb-3 text-base">3. Cara Save Details Penting:</h4>
+                  <p className="text-purple-800 mb-3">Gunakan format <code className="bg-purple-200 px-2 py-1 rounded text-xs font-semibold text-purple-900">%%[label]%%</code> untuk simpan info:</p>
+                  <div className="bg-white p-4 rounded-lg border border-purple-300 font-mono text-xs text-gray-800 shadow-inner">
                     Contoh: "Baik, %%customer_interest%% saya catat."
+                  </div>
+                </div>
+
+                {/* Yellow Info Box */}
+                <div className="bg-gradient-to-r from-yellow-100 to-amber-100 border-l-4 border-yellow-500 p-4 rounded-lg shadow-md">
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">💡</span>
+                    <p className="text-yellow-900 font-medium">
+                      Sistem akan automatically detect stage, save details, dan track progress AI dalam analytics.
+                    </p>
                   </div>
                 </div>
               </div>
