@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Supabase Connection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #4CAF50;
+            border-radius: 4px;
+        }
+        .test-section.error {
+            border-left-color: #f44336;
+        }
+        .test-section h3 {
+            margin: 0 0 10px 0;
+            color: #555;
+        }
+        .result {
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success {
+            color: #4CAF50;
+        }
+        .error {
+            color: #f44336;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Supabase Connection Test</h1>
+
+        <div class="info">
+            <strong>Testing connection to:</strong><br>
+            URL: https://bjnjucwpwdzgsnqmpmff.supabase.co
+        </div>
+
+        <button onclick="runAllTests()">Run All Tests</button>
+
+        <div id="test1" class="test-section">
+            <h3>Test 1: Connection Test</h3>
+            <button onclick="testConnection()">Test Connection</button>
+            <div id="result1" class="result">Click button to test...</div>
+        </div>
+
+        <div id="test2" class="test-section">
+            <h3>Test 2: Check User Table Schema</h3>
+            <button onclick="checkUserTable()">Check Schema</button>
+            <div id="result2" class="result">Click button to test...</div>
+        </div>
+
+        <div id="test3" class="test-section">
+            <h3>Test 3: Check Auth Migration Status</h3>
+            <button onclick="checkAuthMigration()">Check Migration</button>
+            <div id="result3" class="result">Click button to test...</div>
+        </div>
+
+        <div id="test4" class="test-section">
+            <h3>Test 4: List Existing Users</h3>
+            <button onclick="listUsers()">List Users</button>
+            <div id="result4" class="result">Click button to test...</div>
+        </div>
+
+        <div id="test5" class="test-section">
+            <h3>Test 5: Test Registration</h3>
+            <button onclick="testRegistration()">Test Register</button>
+            <div id="result5" class="result">Click button to test...</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+        const SUPABASE_URL = 'https://bjnjucwpwdzgsnqmpmff.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqbmp1Y3dwd2R6Z3NucW1wbWZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0OTk1MzksImV4cCI6MjA3NjA3NTUzOX0.vw1rOUqYWFkPNDwTdEgIfsCO9pyvTsFKaXHq3RcRTNU';
+
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Make functions globally available
+        window.supabase = supabase;
+
+        window.testConnection = async function() {
+            const result = document.getElementById('result1');
+            result.innerHTML = 'Testing...';
+
+            try {
+                const { data, error } = await supabase.from('user').select('count', { count: 'exact', head: true });
+
+                if (error) {
+                    result.innerHTML = `<span class="error">❌ Connection failed:\n${JSON.stringify(error, null, 2)}</span>`;
+                } else {
+                    result.innerHTML = `<span class="success">✅ Connection successful!\nUser table accessible.</span>`;
+                }
+            } catch (err) {
+                result.innerHTML = `<span class="error">❌ Error:\n${err.message}</span>`;
+            }
+        };
+
+        window.checkUserTable = async function() {
+            const result = document.getElementById('result2');
+            result.innerHTML = 'Checking schema...';
+
+            try {
+                // Try to get one user to see the structure
+                const { data, error } = await supabase
+                    .from('user')
+                    .select('*')
+                    .limit(1);
+
+                if (error) {
+                    result.innerHTML = `<span class="error">❌ Error checking schema:\n${JSON.stringify(error, null, 2)}</span>`;
+                } else {
+                    const columns = data && data.length > 0 ? Object.keys(data[0]) : 'No users found';
+                    result.innerHTML = `<span class="success">✅ User table columns:\n${JSON.stringify(columns, null, 2)}</span>`;
+                }
+            } catch (err) {
+                result.innerHTML = `<span class="error">❌ Error:\n${err.message}</span>`;
+            }
+        };
+
+        window.checkAuthMigration = async function() {
+            const result = document.getElementById('result3');
+            result.innerHTML = 'Checking migration status...';
+
+            try {
+                // Check if auth_user_id column exists by trying to select it
+                const { data, error } = await supabase
+                    .from('user')
+                    .select('id, email, auth_user_id, is_active')
+                    .limit(1);
+
+                if (error) {
+                    if (error.message.includes('auth_user_id')) {
+                        result.innerHTML = `<span class="error">❌ Migration NOT applied!\nauth_user_id column missing.\n\nYou need to run: supabase/auth_migration.sql</span>`;
+                    } else {
+                        result.innerHTML = `<span class="error">❌ Error:\n${JSON.stringify(error, null, 2)}</span>`;
+                    }
+                } else {
+                    const hasAuthUserId = data && data.length > 0 && 'auth_user_id' in data[0];
+                    if (hasAuthUserId) {
+                        result.innerHTML = `<span class="success">✅ Migration appears to be applied!\nauth_user_id column exists.\n\nData sample:\n${JSON.stringify(data, null, 2)}</span>`;
+                    } else {
+                        result.innerHTML = `<span class="error">⚠️ Cannot determine migration status.\nNo users found to check schema.</span>`;
+                    }
+                }
+            } catch (err) {
+                result.innerHTML = `<span class="error">❌ Error:\n${err.message}</span>`;
+            }
+        };
+
+        window.listUsers = async function() {
+            const result = document.getElementById('result4');
+            result.innerHTML = 'Fetching users...';
+
+            try {
+                const { data, error } = await supabase
+                    .from('user')
+                    .select('id, email, full_name, is_active, created_at')
+                    .limit(5);
+
+                if (error) {
+                    result.innerHTML = `<span class="error">❌ Error:\n${JSON.stringify(error, null, 2)}</span>`;
+                } else {
+                    result.innerHTML = `<span class="success">✅ Found ${data.length} user(s):\n${JSON.stringify(data, null, 2)}</span>`;
+                }
+            } catch (err) {
+                result.innerHTML = `<span class="error">❌ Error:\n${err.message}</span>`;
+            }
+        };
+
+        window.testRegistration = async function() {
+            const result = document.getElementById('result5');
+            result.innerHTML = 'Testing registration...';
+
+            const testEmail = `test${Date.now()}@example.com`;
+            const testPassword = 'TestPassword123!';
+
+            try {
+                const { data, error } = await supabase.auth.signUp({
+                    email: testEmail,
+                    password: testPassword,
+                    options: {
+                        data: {
+                            full_name: 'Test User',
+                        },
+                    },
+                });
+
+                if (error) {
+                    result.innerHTML = `<span class="error">❌ Registration failed:\n${JSON.stringify(error, null, 2)}</span>`;
+                } else {
+                    result.innerHTML = `<span class="success">✅ Registration successful!\n\nTest email: ${testEmail}\nTest password: ${testPassword}\n\nUser data:\n${JSON.stringify(data, null, 2)}\n\nNote: Check if email confirmation is required.</span>`;
+                }
+            } catch (err) {
+                result.innerHTML = `<span class="error">❌ Error:\n${err.message}</span>`;
+            }
+        };
+
+        window.runAllTests = async function() {
+            await testConnection();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await checkUserTable();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await checkAuthMigration();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await listUsers();
+        };
+
+        // Auto-run connection test on load
+        window.addEventListener('DOMContentLoaded', () => {
+            testConnection();
+        });
+    </script>
+</body>
+</html>

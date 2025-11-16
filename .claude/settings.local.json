@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(while read file)",
+      "Bash(do echo \"=== $file ===\")",
+      "Bash(del dashboard.js)",
+      "Read(//c/Users/User/Downloads/ai plus biasa/**)",
+      "Bash(for file in dashboard.html device-settings.html profile.html set-stage.html chatbot-ai.html whatsapp-bot.html flow-builder.html flow-manager.html)",
+      "Bash(do if [ -f \"$file\" ])",
+      "Bash(then sed -i 's|<a href=\"\"#\"\" class=\"\"nav-item\"\" onclick=\"\"showComingSoon(event)\"\">|<a href=\"\"/billings.html\"\" class=\"\"nav-item\"\">|g' \"$file\")",
+      "Bash(fi)",
+      "Bash(git reset:*)",
+      "Bash(del \"c:\\Users\\User\\Documents\\VS Code\\dev-muse-automaton\\frontend\\assets\\js\\billings.js\")",
+      "Bash(go build:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(dir:*)",
+      "Bash(./bin/server.exe:*)",
+      "Bash(del:*)",
+      "Bash(for file in dashboard.html device-settings.html profile.html billings.html set-stage.html chatbot-ai.html whatsapp-bot.html flow-builder.html flow-manager.html)",
+      "Bash(then sed -i 's|<a href=\"\"/billings.html\"\" class=\"\"nav-item\"\">|<a href=\"\"/billings.html\"\" class=\"\"nav-item\"\">\\n                <span class=\"\"nav-icon\"\">💳</span>\\n                <span class=\"\"nav-text\"\">Billings</span>\\n            </a>\\n            <a href=\"\"/packages.html\"\" class=\"\"nav-item\"\" id=\"\"packagesTab\"\" style=\"\"display: none;\"\">|g' \"$file\")",
+      "Bash(done)",
+      "Bash(for file in device-settings.html profile.html set-stage.html flow-builder.html flow-manager.html chatbot-ai.html whatsapp-bot.html)",
+      "Bash(then sed -i 's|<a href=\"\"/packages.html\"\" class=\"\"nav-item\"\" id=\"\"packagesTab\"\" style=\"\"display: none;\"\">\\s*<span class=\"\"nav-icon\"\">💳</span>\\s*<span class=\"\"nav-text\"\">Billings</span>|<a href=\"\"/packages.html\"\" class=\"\"nav-item\"\" id=\"\"packagesTab\"\" style=\"\"display: none;\"\">\\n                <span class=\"\"nav-icon\"\">📦</span>\\n                <span class=\"\"nav-text\"\">Packages</span>|g' \"$file\")",
+      "Bash(tree:*)",
+      "Bash(nul)",
+      "Bash(mkdir:*)",
+      "Bash(git init:*)",
+      "Bash(git config:*)",
+      "Bash(git remote add:*)",
+      "Bash(git branch:*)",
+      "Bash(deployctl deploy:*)",
+      "Bash(git fetch:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm install:*)",
+      "Bash(git pull:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

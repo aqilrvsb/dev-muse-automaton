@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(while read file)",
+      "Bash(do echo \"=== $file ===\")",
+      "Bash(del dashboard.js)",
+      "Read(//c/Users/User/Downloads/ai plus biasa/**)",
+      "Bash(for file in dashboard.html device-settings.html profile.html set-stage.html chatbot-ai.html whatsapp-bot.html flow-builder.html flow-manager.html)",
+      "Bash(do if [ -f \"$file\" ])",
+      "Bash(then sed -i 's|<a href=\"\"#\"\" class=\"\"nav-item\"\" onclick=\"\"showComingSoon(event)\"\">|<a href=\"\"/billings.html\"\" class=\"\"nav-item\"\">|g' \"$file\")",
+      "Bash(fi)",
+      "Bash(git reset:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

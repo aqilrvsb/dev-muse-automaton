@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Settings - DevMuse Automaton</title>
+    <link rel="stylesheet" href="/assets/css/dashboard.css">
+    <link rel="stylesheet" href="/assets/css/device-settings.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+    <div class="background-gradient"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <span class="logo-icon">🤖</span>
+                <span class="logo-text">
+                    <span class="logo-dev">Dev</span><span class="logo-muse">Muse</span>
+                </span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="/dashboard.html" class="nav-item">
+                <span class="nav-icon">📊</span>
+                <span class="nav-text">Dashboard</span>
+            </a>
+            <a href="/device-settings.html" class="nav-item active">
+                <span class="nav-icon">📱</span>
+                <span class="nav-text">Device Settings</span>
+            </a>
+            <a href="/profile.html" class="nav-item">
+                <span class="nav-icon">👤</span>
+                <span class="nav-text">Profile</span>
+            </a>
+            <a href="/billings.html" class="nav-item">
+                <span class="nav-icon">💳</span>
+                <span class="nav-text">Billings</span>
+            </a>
+            <a href="/set-stage.html" class="nav-item">
+                <span class="nav-icon">🎯</span>
+                <span class="nav-text">Set Stage</span>
+            </a>
+            <a href="/flow-builder.html" class="nav-item">
+                <span class="nav-icon">🔀</span>
+                <span class="nav-text">Flow Builder</span>
+            </a>
+            <a href="/flow-manager.html" class="nav-item">
+                <span class="nav-icon">📋</span>
+                <span class="nav-text">Flow Manager</span>
+            </a>
+            <a href="/dashboard.html" class="nav-item">
+                <span class="nav-icon">🤖</span>
+                <span class="nav-text">Chatbot AI</span>
+            </a>
+            <a href="/whatsapp-bot.html" class="nav-item">
+                <span class="nav-icon">💬</span>
+                <span class="nav-text">WhatsApp Bot</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">👤</div>
+                <div class="user-details">
+                    <div class="user-email" id="userEmail">Loading...</div>
+                    <button class="btn-logout" onclick="logout()">Logout</button>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="content-wrapper">
+            <!-- Page Header -->
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Device Settings</h1>
+                    <p class="page-subtitle">Manage your WhatsApp devices and connections</p>
+                </div>
+                <button class="btn-new-device" onclick="openDeviceModal()">
+                    <span class="btn-icon">+</span>
+                    <span>New Device</span>
+                </button>
+            </div>
+
+            <!-- Devices List -->
+            <div id="devicesList" class="devices-grid">
+                <div class="empty-state">
+                    <div class="empty-state-icon">📱</div>
+                    <h2 class="empty-state-title">No Devices Yet</h2>
+                    <p class="empty-state-text">Click "New Device" to add your first WhatsApp device</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Device Modal -->
+    <div id="deviceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Add New Device</h2>
+                <button class="modal-close" onclick="closeDeviceModal()">&times;</button>
+            </div>
+
+            <form id="deviceForm" onsubmit="saveDevice(event)">
+                <div class="form-section">
+                    <div class="form-group">
+                        <label for="deviceId">Device ID (VIEW ONLY)</label>
+                        <input type="text" id="deviceId" readonly placeholder="Device ID will appear here">
+                        <button type="button" class="btn-generate" onclick="generateDeviceId()">GENERATE DEVICE</button>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="webhookId">Webhook ID</label>
+                        <input type="text" id="webhookId" readonly placeholder="Webhook URL will be generated automatically">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="phoneNumber">Phone Number</label>
+                        <input type="text" id="phoneNumber" placeholder="Enter phone number (numbers only)">
+                    </div>
+
+                    <div class="form-group">
+                        <label>API Key Option</label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="apiKeyOption" value="openai/gpt-5-chat" checked>
+                                <span>GPT-5 Chat</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="apiKeyOption" value="openai/gpt-5-mini">
+                                <span>GPT-5 Mini</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="apiKeyOption" value="openai/chatgpt-4o-latest">
+                                <span>ChatGPT-4o Latest</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="apiKeyOption" value="openai/gpt-4.1">
+                                <span>GPT-4.1</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="apiKeyOption" value="google/gemini-2.5-pro">
+                                <span>Gemini 2.5 Pro</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="apiKeyOption" value="google/gemini-pro-1.5">
+                                <span>Gemini Pro 1.5</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Provider</label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="provider" value="whacenter">
+                                <span>Whacenter</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="provider" value="waha" checked>
+                                <span>Waha</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="apiKey">API Key (https://openrouter.ai)</label>
+                        <textarea id="apiKey" rows="3" placeholder="Enter your API key"></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="idDevice">ID Device</label>
+                            <input type="text" id="idDevice" required placeholder="Enter device ID">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="idErp">ID ERP</label>
+                            <input type="text" id="idErp" placeholder="Enter ERP ID">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="idAdmin">ID Admin</label>
+                            <input type="text" id="idAdmin" placeholder="Enter admin ID">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="closeDeviceModal()">Close</button>
+                    <button type="submit" class="btn-save">Save Settings</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/assets/js/device-settings.js"></script>
+</body>
+</html>

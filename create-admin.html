@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Create Admin User</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body style="font-family: Arial; padding: 50px; background: #f5f5f5;">
+  <div style="max-width: 400px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <h2 style="color: #8b5cf6; margin-bottom: 20px;">Create Admin User</h2>
+    <button onclick="createAdmin()" style="width: 100%; background: #8b5cf6; color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: 600;">
+      Create Admin (admin@gmail.com)
+    </button>
+    <div id="result" style="margin-top: 20px; padding: 15px; border-radius: 6px; display: none;"></div>
+  </div>
+
+  <script>
+    const supabase = window.supabase.createClient(
+      'https://bjnjucwpwdzgsnqmpmff.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqbmp1Y3dwd2R6Z3NucW1wbWZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0OTk1MzksImV4cCI6MjA3NjA3NTUzOX0.vw1rOUqYWFkPNDwTdEgIfsCO9pyvTsFKaXHq3RcRTNU'
+    )
+
+    async function createAdmin() {
+      const resultDiv = document.getElementById('result')
+      resultDiv.style.display = 'block'
+      resultDiv.style.background = '#fef3c7'
+      resultDiv.style.color = '#92400e'
+      resultDiv.innerHTML = 'Creating admin user...'
+
+      try {
+        // Sign up admin user
+        const { data, error } = await supabase.auth.signUp({
+          email: 'admin@gmail.com',
+          password: 'admin@gmail.com',
+          options: {
+            data: {
+              full_name: 'Admin User',
+            }
+          }
+        })
+
+        if (error) throw error
+
+        if (data.user) {
+          // Update role in database
+          const { error: updateError } = await supabase
+            .from('user')
+            .update({ role: 'admin' })
+            .eq('id', data.user.id)
+
+          if (updateError) {
+            console.error('Role update error:', updateError)
+          }
+
+          resultDiv.style.background = '#d1fae5'
+          resultDiv.style.color = '#065f46'
+          resultDiv.innerHTML = `
+            <strong>✅ Admin user created!</strong><br>
+            Email: admin@gmail.com<br>
+            Password: admin@gmail.com<br>
+            <br>
+            <small>Note: Role will be set to 'admin' after you run the SQL update.</small>
+          `
+        }
+      } catch (err) {
+        resultDiv.style.background = '#fee2e2'
+        resultDiv.style.color = '#991b1b'
+        resultDiv.innerHTML = `<strong>❌ Error:</strong><br>${err.message}`
+      }
+    }
+  </script>
+</body>
+</html>

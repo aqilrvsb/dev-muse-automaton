@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Set Stage - DevMuse Automaton</title>
+    <link rel="stylesheet" href="/assets/css/dashboard.css">
+    <link rel="stylesheet" href="/assets/css/set-stage.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+    <div class="background-gradient"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <span class="logo-icon">🤖</span>
+                <span class="logo-text">
+                    <span class="logo-dev">Dev</span><span class="logo-muse">Muse</span>
+                </span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="/dashboard.html" class="nav-item">
+                <span class="nav-icon">📊</span>
+                <span class="nav-text">Dashboard</span>
+            </a>
+            <a href="/device-settings.html" class="nav-item">
+                <span class="nav-icon">📱</span>
+                <span class="nav-text">Device Settings</span>
+            </a>
+            <a href="/profile.html" class="nav-item">
+                <span class="nav-icon">👤</span>
+                <span class="nav-text">Profile</span>
+            </a>
+            <a href="/billings.html" class="nav-item">
+                <span class="nav-icon">💳</span>
+                <span class="nav-text">Billings</span>
+            </a>
+            <a href="/set-stage.html" class="nav-item active">
+                <span class="nav-icon">🎯</span>
+                <span class="nav-text">Set Stage</span>
+            </a>
+            <a href="/flow-builder.html" class="nav-item">
+                <span class="nav-icon">🔀</span>
+                <span class="nav-text">Flow Builder</span>
+            </a>
+            <a href="/flow-manager.html" class="nav-item">
+                <span class="nav-icon">📋</span>
+                <span class="nav-text">Flow Manager</span>
+            </a>
+            <a href="/chatbot-ai.html" class="nav-item">
+                <span class="nav-icon">🤖</span>
+                <span class="nav-text">Chatbot AI</span>
+            </a>
+            <a href="/whatsapp-bot.html" class="nav-item">
+                <span class="nav-icon">💬</span>
+                <span class="nav-text">WhatsApp Bot</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">👤</div>
+                <div class="user-details">
+                    <div class="user-email" id="userEmail">Loading...</div>
+                    <button class="btn-logout" onclick="logout()">Logout</button>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="content-wrapper">
+            <!-- Page Header -->
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Set Stage Management</h1>
+                    <p class="page-subtitle">Configure stage values for your devices</p>
+                </div>
+                <button class="btn-add-stage" onclick="openStageModal()">
+                    <span class="btn-icon">+</span>
+                    <span>Add Set Stage</span>
+                </button>
+            </div>
+
+            <!-- Stage Values Table -->
+            <div class="stage-section">
+                <div class="section-header">
+                    <h2 class="section-title">Stage Values</h2>
+                    <p class="section-subtitle">All configured stage values for your devices</p>
+                </div>
+                <div id="stageValuesList" class="table-container">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⚙️</div>
+                        <h2 class="empty-state-title">No Stage Values Yet</h2>
+                        <p class="empty-state-text">Click "Add Set Stage" to create your first stage value</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Add/Edit Stage Modal -->
+    <div id="stageModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Add Stage Value</h2>
+                <button class="modal-close" onclick="closeStageModal()">&times;</button>
+            </div>
+
+            <form id="stageForm" onsubmit="saveStageValue(event)">
+                <div class="form-section">
+                    <div class="form-group">
+                        <label for="deviceSelect">Device *</label>
+                        <select id="deviceSelect" required>
+                            <option value="">Select a device...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="stageInput">Stage *</label>
+                        <input type="text" id="stageInput" required placeholder="Enter stage name (e.g., COD)">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="typeSelect">Type *</label>
+                        <select id="typeSelect" required onchange="toggleInputHardCode()">
+                            <option value="">Select type...</option>
+                            <option value="Set">Set</option>
+                            <option value="Input">Input</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group hidden" id="inputHardCodeGroup">
+                        <label for="inputHardCode">Input Hard Code *</label>
+                        <input type="text" id="inputHardCode" placeholder="Enter hard code value (e.g., COD)">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="columnSelect">Column *</label>
+                        <select id="columnSelect" required>
+                            <option value="">Select column...</option>
+                            <option value="Nama">Nama</option>
+                            <option value="Alamat">Alamat</option>
+                            <option value="Pakej">Pakej</option>
+                            <option value="No Fon">No Fon</option>
+                            <option value="Tarikh Gaji">Tarikh Gaji</option>
+                            <option value="Cara Bayaran">Cara Bayaran</option>
+                            <option value="Peringkat Sekolah">Peringkat Sekolah</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="closeStageModal()">Close</button>
+                    <button type="submit" class="btn-save">Save Stage Value</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/assets/js/set-stage.js"></script>
+</body>
+</html>
