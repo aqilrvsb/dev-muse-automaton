@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
-import { supabase } from '../lib/supabase'
-import { useAuth } from '../contexts/AuthContext'
+// import { supabase } from '../lib/supabase' // TODO: Will be needed for database integration
+// import { useAuth } from '../contexts/AuthContext' // TODO: Will be needed for user_id
 import Swal from 'sweetalert2'
 import { Plus, Eye, Edit, Trash2, PlayCircle } from 'lucide-react'
 
@@ -31,12 +31,12 @@ type SequenceFlow = {
 }
 
 export default function Sequences() {
-  const { user } = useAuth()
+  // const { user } = useAuth() // TODO: Will be needed for user_id when saving to database
   const [sequences, setSequences] = useState<Sequence[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showFlowModal, setShowFlowModal] = useState(false)
-  const [selectedSequence, setSelectedSequence] = useState<Sequence | null>(null)
+  // const [selectedSequence, setSelectedSequence] = useState<Sequence | null>(null) // TODO: Will be needed for view/edit functionality
   const [currentFlowNumber, setCurrentFlowNumber] = useState(1)
 
   // Form states for creating sequence
