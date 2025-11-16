@@ -65,9 +65,10 @@ export default function ChatbotAI() {
     const year = today.getFullYear()
     const month = String(today.getMonth() + 1).padStart(2, '0')
     const day = String(today.getDate()).padStart(2, '0')
+    const todayStr = `${year}-${month}-${day}`
 
-    setStartDate(`${year}-${month}-01`)
-    setEndDate(`${year}-${month}-${day}`)
+    setStartDate(todayStr)
+    setEndDate(todayStr)
   }
 
   const loadConversations = async () => {
