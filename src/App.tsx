@@ -12,6 +12,7 @@ import ChatbotAI from './pages/ChatbotAI'
 import WhatsAppBot from './pages/WhatsAppBot'
 import FlowBuilder from './pages/FlowBuilder'
 import FlowManager from './pages/FlowManager'
+import Sequences from './pages/Sequences'
 import Packages from './pages/Packages'
 import Transactions from './pages/Transactions'
 import UserRegister from './pages/UserRegister'
@@ -37,6 +38,7 @@ function App() {
           <Route path="/whatsapp-bot" element={<ProtectedRoute><WhatsAppBot /></ProtectedRoute>} />
           <Route path="/flow-builder" element={<ProtectedRoute><FlowBuilder /></ProtectedRoute>} />
           <Route path="/flow-manager" element={<ProtectedRoute><FlowManager /></ProtectedRoute>} />
+          <Route path="/sequences" element={<ProtectedRoute><Sequences /></ProtectedRoute>} />
           <Route path="/packages" element={<ProtectedRoute><Packages /></ProtectedRoute>} />
           <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
           <Route path="/user-register" element={<ProtectedRoute><UserRegister /></ProtectedRoute>} />
