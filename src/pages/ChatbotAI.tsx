@@ -36,6 +36,7 @@ export default function ChatbotAI() {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
 
   // Analytics states
   const [totalConversations, setTotalConversations] = useState(0)
@@ -45,7 +46,6 @@ export default function ChatbotAI() {
 
   // Unique values for filters
   const [devices, setDevices] = useState<string[]>([])
-  const [stages, setStages] = useState<string[]>([])
 
   useEffect(() => {
     loadConversations()
@@ -97,11 +97,9 @@ export default function ChatbotAI() {
       const convData = data || []
       setConversations(convData)
 
-      // Extract unique devices and stages for filters
+      // Extract unique devices for filters
       const uniqueDevices = [...new Set(convData.map(c => c.device_id).filter(Boolean))]
-      const uniqueStages = [...new Set(convData.map(c => c.stage || 'Welcome Message'))]
       setDevices(uniqueDevices)
-      setStages(uniqueStages)
 
     } catch (error) {
       console.error('Error loading conversations:', error)
@@ -118,9 +116,13 @@ export default function ChatbotAI() {
       filtered = filtered.filter(c => c.device_id === deviceFilter)
     }
 
-    // Stage filter
+    // Stage filter (text search)
     if (stageFilter) {
-      filtered = filtered.filter(c => (c.stage || 'Welcome Message') === stageFilter)
+      const stageQuery = stageFilter.toLowerCase()
+      filtered = filtered.filter(c => {
+        const stage = (c.stage || 'Welcome Message').toLowerCase()
+        return stage.includes(stageQuery)
+      })
     }
 
     // Date range filter
@@ -375,84 +377,6 @@ ${conv.conv_last || 'No conversation history'}
           <div className="text-3xl font-bold text-purple-600">{totalMinutes} min</div>
         </div>
 
-        {/* Filters */}
-        <div className="bg-white rounded-xl p-6 shadow-sm mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Device</label>
-              <select
-                value={deviceFilter}
-                onChange={(e) => setDeviceFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="">All Devices</option>
-                {devices.map(d => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Stage</label>
-              <select
-                value={stageFilter}
-                onChange={(e) => setStageFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="">All Stages</option>
-                {stages.map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Name, phone, niche..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-              />
-            </div>
-          </div>
-
-          <div className="flex gap-3">
-            <button
-              onClick={resetFilters}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
-            >
-              🔄 Reset Filters
-            </button>
-            <button
-              onClick={exportToCSV}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-            >
-              📥 Export CSV
-            </button>
-          </div>
-        </div>
 
         {/* Dynamic Stage Analytics */}
         <div className="bg-white rounded-xl p-6 shadow-sm mb-6">
@@ -497,18 +421,105 @@ ${conv.conv_last || 'No conversation history'}
         </div>
 
         {/* Search and Filter Bar */}
-        <div className="bg-white rounded-lg p-4 shadow-sm mb-6 flex items-center gap-4">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by name, caller, or prompt..."
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-          />
-          <button className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition flex items-center gap-2">
-            <span>🔍</span>
-            <span>Filters</span>
-          </button>
+        <div className="bg-white rounded-lg shadow-sm mb-6">
+          <div className="p-4 flex items-center gap-4">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by name, caller, or prompt..."
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            />
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition flex items-center gap-2"
+            >
+              <span>🔍</span>
+              <span>Filters</span>
+            </button>
+          </div>
+
+          {/* Collapsible Filter Section */}
+          {showFilters && (
+            <div className="border-t border-gray-200 p-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* From Date */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    📅 From Date
+                  </label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    placeholder="dd/mm/yyyy"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+
+                {/* To Date */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    📅 To Date
+                  </label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    placeholder="dd/mm/yyyy"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+
+                {/* Call Status (Device Filter) */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    📞 Call Status
+                  </label>
+                  <select
+                    value={deviceFilter}
+                    onChange={(e) => setDeviceFilter(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="">Semua Panggilan</option>
+                    {devices.map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Stage */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    🔍 Stage
+                  </label>
+                  <input
+                    type="text"
+                    value={stageFilter}
+                    onChange={(e) => setStageFilter(e.target.value)}
+                    placeholder="e.g. confirmation"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={resetFilters}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+                >
+                  🔄 Reset Filters
+                </button>
+                <button
+                  onClick={exportToCSV}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                >
+                  📥 Export CSV
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Total Count */}
