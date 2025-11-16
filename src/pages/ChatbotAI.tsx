@@ -3,7 +3,7 @@ import Layout from '../components/Layout'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import Swal from 'sweetalert2'
-import { Phone, CheckCircle, XCircle, Volume2, Timer } from 'lucide-react'
+import { MessageSquare, UserCheck, XCircle, DollarSign, TrendingUp } from 'lucide-react'
 
 type AIConversation = {
   id_prospect: number
@@ -39,13 +39,17 @@ export default function ChatbotAI() {
   const [showFilters, setShowFilters] = useState(false)
 
   // Analytics states
-  const [totalConversations, setTotalConversations] = useState(0)
-  const [aiConversations, setAiConversations] = useState(0)
-  const [activeDevices, setActiveDevices] = useState(0)
+  const [totalLead, setTotalLead] = useState(0)
+  const [totalStuckIntro, setTotalStuckIntro] = useState(0)
+  const [totalResponse, setTotalResponse] = useState(0)
+  const [totalClose, setTotalClose] = useState(0)
+  const [totalSales, setTotalSales] = useState(0)
+  const [closingRate, setClosingRate] = useState(0)
   const [stageAnalytics, setStageAnalytics] = useState<StageAnalytics[]>([])
 
   // Unique values for filters
   const [devices, setDevices] = useState<string[]>([])
+  const [stages, setStages] = useState<string[]>([])
 
   useEffect(() => {
     loadConversations()
@@ -97,9 +101,11 @@ export default function ChatbotAI() {
       const convData = data || []
       setConversations(convData)
 
-      // Extract unique devices for filters
+      // Extract unique devices and stages for filters
       const uniqueDevices = [...new Set(convData.map(c => c.device_id).filter(Boolean))]
+      const uniqueStages = [...new Set(convData.map(c => c.stage || 'Welcome Message'))]
       setDevices(uniqueDevices)
+      setStages(uniqueStages)
 
     } catch (error) {
       console.error('Error loading conversations:', error)
@@ -116,13 +122,13 @@ export default function ChatbotAI() {
       filtered = filtered.filter(c => c.device_id === deviceFilter)
     }
 
-    // Stage filter (text search)
+    // Stage filter (dropdown)
     if (stageFilter) {
-      const stageQuery = stageFilter.toLowerCase()
-      filtered = filtered.filter(c => {
-        const stage = (c.stage || 'Welcome Message').toLowerCase()
-        return stage.includes(stageQuery)
-      })
+      if (stageFilter === 'Welcome Message') {
+        filtered = filtered.filter(c => !c.stage || c.stage === null)
+      } else {
+        filtered = filtered.filter(c => c.stage === stageFilter)
+      }
     }
 
     // Date range filter
@@ -153,13 +159,34 @@ export default function ChatbotAI() {
   }
 
   const calculateAnalytics = (data: AIConversation[]) => {
-    const total = data.length
-    const aiCount = data.filter(c => !c.human || c.human === 0).length
-    const deviceCount = [...new Set(data.map(c => c.device_id))].length
+    // Total Lead - all conversations
+    const lead = data.length
 
-    setTotalConversations(total)
-    setAiConversations(aiCount)
-    setActiveDevices(deviceCount)
+    // Total Stuck Intro - stage is null
+    const stuckIntro = data.filter(c => !c.stage || c.stage === null).length
+
+    // Total Response - stage is not null
+    const response = data.filter(c => c.stage !== null && c.stage !== undefined && c.stage !== '').length
+
+    // Total Close - detail is not null
+    const close = data.filter(c => c.detail !== null && c.detail !== undefined && c.detail !== '').length
+
+    // Total Sales - detail is not null and has Value RM**
+    const sales = data.filter(c => {
+      if (!c.detail) return false
+      const detail = c.detail.toLowerCase()
+      return detail.includes('rm') && /rm\s*\d+/.test(detail)
+    }).length
+
+    // Closing Rate - Total Close / Total Lead * 100
+    const rate = lead > 0 ? parseFloat(((close / lead) * 100).toFixed(2)) : 0
+
+    setTotalLead(lead)
+    setTotalStuckIntro(stuckIntro)
+    setTotalResponse(response)
+    setTotalClose(close)
+    setTotalSales(sales)
+    setClosingRate(rate)
 
     // Calculate stage analytics for AI conversations
     const aiOnlyConversations = data.filter(c => !c.human || c.human === 0)
@@ -296,9 +323,6 @@ ${conv.conv_last || 'No conversation history'}
     }
   }
 
-  // Calculate total minutes (estimate: 1 conversation = ~2 minutes average)
-  const totalMinutes = (aiConversations * 2).toFixed(1)
-
   return (
     <Layout>
       <div className="p-6 max-w-7xl mx-auto animate-fade-in-up">
@@ -306,77 +330,68 @@ ${conv.conv_last || 'No conversation history'}
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl card-soft">
-              <Phone className="w-6 h-6 text-white" />
+              <MessageSquare className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Call Logs</h1>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">WhatsApp Log</h1>
           </div>
-          <p className="text-gray-600 font-medium">Lihat semua rekod panggilan dari voice agent</p>
+          <p className="text-gray-600 font-medium">List All Conversation WhatsApp AI</p>
         </div>
 
         {/* Top Stats Cards - 6 cards in a row */}
         <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
-          {/* Total Contacts */}
+          {/* Total Lead */}
           <div className="bg-white rounded-xl p-4 card-soft card-hover transition-smooth border border-gray-100">
             <div className="flex items-center gap-2 mb-2">
-              <Phone className="w-5 h-5 text-purple-600" />
-              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Total Contacts</span>
+              <MessageSquare className="w-5 h-5 text-purple-600" />
+              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Total Lead</span>
             </div>
-            <div className="text-2xl font-bold text-gray-900">{activeDevices}</div>
+            <div className="text-2xl font-bold text-gray-900">{totalLead}</div>
           </div>
 
-          {/* Total Calls */}
-          <div className="bg-white rounded-xl p-4 card-soft card-hover transition-smooth border border-gray-100">
-            <div className="flex items-center gap-2 mb-2">
-              <Phone className="w-5 h-5 text-blue-600" />
-              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Total Calls</span>
-            </div>
-            <div className="text-2xl font-bold text-gray-900">{totalConversations}</div>
-          </div>
-
-          {/* Answered */}
-          <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-4 card-soft card-hover transition-smooth border border-green-100">
-            <div className="flex items-center gap-2 mb-2">
-              <CheckCircle className="w-5 h-5 text-green-600" />
-              <span className="text-xs font-semibold text-green-700 uppercase tracking-wide">Answered</span>
-            </div>
-            <div className="text-2xl font-bold text-green-600">{aiConversations}</div>
-          </div>
-
-          {/* Unanswered */}
-          <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl p-4 card-soft card-hover transition-smooth border border-orange-100">
-            <div className="flex items-center gap-2 mb-2">
-              <XCircle className="w-5 h-5 text-orange-600" />
-              <span className="text-xs font-semibold text-orange-700 uppercase tracking-wide">Unanswered</span>
-            </div>
-            <div className="text-2xl font-bold text-orange-600">0</div>
-          </div>
-
-          {/* Failed */}
+          {/* Total Stuck Intro */}
           <div className="bg-gradient-to-br from-red-50 to-pink-50 rounded-xl p-4 card-soft card-hover transition-smooth border border-red-100">
             <div className="flex items-center gap-2 mb-2">
               <XCircle className="w-5 h-5 text-red-600" />
-              <span className="text-xs font-semibold text-red-700 uppercase tracking-wide">Failed</span>
+              <span className="text-xs font-semibold text-red-700 uppercase tracking-wide">Stuck Intro</span>
             </div>
-            <div className="text-2xl font-bold text-red-600">0</div>
+            <div className="text-2xl font-bold text-red-600">{totalStuckIntro}</div>
           </div>
 
-          {/* Voicemail */}
-          <div className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-xl p-4 card-soft card-hover transition-smooth border border-purple-100">
+          {/* Total Response */}
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 card-soft card-hover transition-smooth border border-blue-100">
             <div className="flex items-center gap-2 mb-2">
-              <Volume2 className="w-5 h-5 text-purple-600" />
-              <span className="text-xs font-semibold text-purple-700 uppercase tracking-wide">Voicemail</span>
+              <UserCheck className="w-5 h-5 text-blue-600" />
+              <span className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Response</span>
             </div>
-            <div className="text-2xl font-bold text-purple-600">0</div>
+            <div className="text-2xl font-bold text-blue-600">{totalResponse}</div>
           </div>
-        </div>
 
-        {/* Total Minutes Card - Separate */}
-        <div className="bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl p-6 card-medium card-hover transition-smooth mb-6">
-          <div className="flex items-center gap-3 mb-2">
-            <Timer className="w-6 h-6 text-white" />
-            <span className="text-sm font-semibold text-purple-100 uppercase tracking-wide">Total Minutes</span>
+          {/* Total Close */}
+          <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-4 card-soft card-hover transition-smooth border border-green-100">
+            <div className="flex items-center gap-2 mb-2">
+              <UserCheck className="w-5 h-5 text-green-600" />
+              <span className="text-xs font-semibold text-green-700 uppercase tracking-wide">Close</span>
+            </div>
+            <div className="text-2xl font-bold text-green-600">{totalClose}</div>
           </div>
-          <div className="text-4xl font-bold text-white">{totalMinutes} <span className="text-2xl text-purple-100">min</span></div>
+
+          {/* Total Sales */}
+          <div className="bg-gradient-to-br from-amber-50 to-yellow-50 rounded-xl p-4 card-soft card-hover transition-smooth border border-amber-100">
+            <div className="flex items-center gap-2 mb-2">
+              <DollarSign className="w-5 h-5 text-amber-600" />
+              <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Sales</span>
+            </div>
+            <div className="text-2xl font-bold text-amber-600">{totalSales}</div>
+          </div>
+
+          {/* Closing Rate */}
+          <div className="bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl p-4 card-medium card-hover transition-smooth">
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp className="w-5 h-5 text-white" />
+              <span className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Closing Rate</span>
+            </div>
+            <div className="text-2xl font-bold text-white">{closingRate}%</div>
+          </div>
         </div>
 
 
@@ -473,17 +488,17 @@ ${conv.conv_last || 'No conversation history'}
                   />
                 </div>
 
-                {/* Call Status (Device Filter) */}
+                {/* Device Filter */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    📞 Call Status
+                    📱 Device Filter
                   </label>
                   <select
                     value={deviceFilter}
                     onChange={(e) => setDeviceFilter(e.target.value)}
                     className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth font-medium"
                   >
-                    <option value="">Semua Panggilan</option>
+                    <option value="">All Devices</option>
                     {devices.map(d => (
                       <option key={d} value={d}>{d}</option>
                     ))}
@@ -495,13 +510,16 @@ ${conv.conv_last || 'No conversation history'}
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     🔍 Stage
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={stageFilter}
                     onChange={(e) => setStageFilter(e.target.value)}
-                    placeholder="e.g. confirmation"
                     className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth font-medium"
-                  />
+                  >
+                    <option value="">All Stages</option>
+                    {stages.map(stage => (
+                      <option key={stage} value={stage}>{stage}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
