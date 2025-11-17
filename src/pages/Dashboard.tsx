@@ -189,12 +189,20 @@ export default function Dashboard() {
     // Total Close - detail is not null
     const close = data.filter(c => c.detail !== null && c.detail !== undefined && c.detail !== '').length
 
-    // Total Sales - detail is not null and has Value RM**
-    const sales = data.filter(c => {
-      if (!c.detail) return false
-      const detail = c.detail.toLowerCase()
-      return detail.includes('rm') && /rm\s*\d+/.test(detail)
-    }).length
+    // Total Sales - sum of all RM values from HARGA field in details
+    const totalSales = data.reduce((sum, c) => {
+      if (!c.detail) return sum
+
+      // Look for HARGA: RM{number} pattern (case insensitive)
+      const hargaMatch = c.detail.match(/HARGA:\s*RM\s*(\d+)/i)
+
+      if (hargaMatch && hargaMatch[1]) {
+        const price = parseInt(hargaMatch[1], 10)
+        return sum + price
+      }
+
+      return sum
+    }, 0)
 
     // Closing Rate - Total Close / Total Lead * 100
     const rate = lead > 0 ? parseFloat(((close / lead) * 100).toFixed(2)) : 0
@@ -203,7 +211,7 @@ export default function Dashboard() {
     setTotalStuckIntro(stuckIntro)
     setTotalResponse(response)
     setTotalClose(close)
-    setTotalSales(sales)
+    setTotalSales(totalSales)
     setClosingRate(rate)
   }
 
@@ -403,7 +411,7 @@ export default function Dashboard() {
               <DollarSign className="w-5 h-5 text-amber-600" />
               <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Sales</span>
             </div>
-            <div className="text-2xl font-bold text-amber-600">{totalSales}</div>
+            <div className="text-2xl font-bold text-amber-600">RM {totalSales.toLocaleString()}</div>
           </div>
 
           {/* Closing Rate */}

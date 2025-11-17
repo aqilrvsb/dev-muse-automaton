@@ -159,12 +159,20 @@ export default function ChatbotAI() {
     // Close - conversations with non-null detail field (captured customer details)
     const closed = data.filter(c => c.detail !== null && c.detail !== undefined && c.detail !== '').length
 
-    // Sales - conversations with RM pricing in details
-    const salesCount = data.filter(c => {
-      if (!c.detail) return false
-      const detail = c.detail.toLowerCase()
-      return detail.includes('rm') && /rm\s*\d+/.test(detail)
-    }).length
+    // Sales - sum of all RM values from HARGA field in details
+    const totalSales = data.reduce((sum, c) => {
+      if (!c.detail) return sum
+
+      // Look for HARGA: RM{number} pattern (case insensitive)
+      const hargaMatch = c.detail.match(/HARGA:\s*RM\s*(\d+)/i)
+
+      if (hargaMatch && hargaMatch[1]) {
+        const price = parseInt(hargaMatch[1], 10)
+        return sum + price
+      }
+
+      return sum
+    }, 0)
 
     // Closing Rate - (Close / Lead) * 100
     const rate = lead > 0 ? parseFloat(((closed / lead) * 100).toFixed(2)) : 0
@@ -173,7 +181,7 @@ export default function ChatbotAI() {
     setStuckIntro(stuck)
     setResponse(resp)
     setClose(closed)
-    setSales(salesCount)
+    setSales(totalSales)
     setClosingRate(rate)
   }
 
@@ -432,7 +440,7 @@ ${conv.conv_last || 'No conversation history'}
               <DollarSign className="w-5 h-5 text-amber-600" />
               <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Sales</span>
             </div>
-            <div className="text-2xl font-bold text-amber-600">{sales}</div>
+            <div className="text-2xl font-bold text-amber-600">RM {sales.toLocaleString()}</div>
           </div>
 
           {/* Closing Rate */}
