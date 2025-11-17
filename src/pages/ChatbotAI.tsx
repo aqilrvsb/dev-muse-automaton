@@ -173,8 +173,8 @@ export default function ChatbotAI() {
       return
     }
 
-    // CSV header with conversation history column
-    let csv = 'No,ID Device,Date,Name,Phone Number,Niche,Stage,Reply Status,Conversation History\n'
+    // CSV header with conversation history and details column
+    let csv = 'No,ID Device,Date,Name,Phone Number,Niche,Stage,Details,Reply Status,Conversation History\n'
 
     filteredConversations.forEach((conv, index) => {
       const dateFormatted = conv.date_insert ? new Date(conv.date_insert).toLocaleDateString() : '-'
@@ -184,7 +184,11 @@ export default function ChatbotAI() {
       const convHistory = (conv.conv_last || 'No conversation history')
         .replace(/"/g, '""') // Escape double quotes
 
-      csv += `${index + 1},"${conv.device_id || '-'}","${dateFormatted}","${conv.prospect_name || '-'}","${conv.prospect_num || '-'}","${conv.niche || '-'}","${conv.stage || 'Welcome Message'}","${replyStatus}","${convHistory}"\n`
+      // Escape details for CSV
+      const details = (conv.detail || '-')
+        .replace(/"/g, '""') // Escape double quotes
+
+      csv += `${index + 1},"${conv.device_id || '-'}","${dateFormatted}","${conv.prospect_name || '-'}","${conv.prospect_num || '-'}","${conv.niche || '-'}","${conv.stage || 'Welcome Message'}","${details}","${replyStatus}","${convHistory}"\n`
     })
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
@@ -207,7 +211,7 @@ export default function ChatbotAI() {
 
   const viewConversation = (conv: AIConversation) => {
     Swal.fire({
-      title: 'Conversation History',
+      title: 'Conversation Details',
       html: `
         <div style="text-align: left; font-family: monospace; font-size: 14px;">
           <p><strong>Phone:</strong> ${conv.prospect_num || '-'}</p>
@@ -216,13 +220,20 @@ export default function ChatbotAI() {
           <p><strong>Niche:</strong> ${conv.niche || '-'}</p>
           <p><strong>Stage:</strong> ${conv.stage || 'Welcome Message'}</p>
           <hr style="margin: 15px 0;">
+          ${conv.detail ? `
+          <p><strong>Customer Details:</strong></p>
+          <div style="background: #e8f4fd; padding: 10px; border-radius: 5px; margin-bottom: 15px; white-space: pre-wrap; text-align: left; border-left: 3px solid #667eea;">
+${conv.detail}
+          </div>
+          <hr style="margin: 15px 0;">
+          ` : ''}
           <p><strong>Conversation History:</strong></p>
           <div style="background: #f5f5f5; padding: 10px; border-radius: 5px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; text-align: left;">
 ${conv.conv_last || 'No conversation history'}
           </div>
         </div>
       `,
-      width: '600px',
+      width: '700px',
       confirmButtonText: 'OK',
       confirmButtonColor: '#667eea',
     })
@@ -405,6 +416,7 @@ ${conv.conv_last || 'No conversation history'}
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Phone</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Niche</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Stage</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Detail</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">History</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Action</th>
@@ -432,6 +444,15 @@ ${conv.conv_last || 'No conversation history'}
                           <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-700">
                             {conv.stage || 'Welcome Message'}
                           </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600 max-w-xs">
+                          {conv.detail ? (
+                            <div className="truncate" title={conv.detail}>
+                              {conv.detail}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
                         </td>
                         <td className="px-6 py-4">
                           <button

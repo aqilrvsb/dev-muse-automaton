@@ -284,76 +284,48 @@ async function executePromptBasedFlow(params: {
 
   // Wrap everything in try/finally to ensure lock is released
   try {
-    // Step 5: Generate AI response
+    // Step 5: Build conversation history from ai_whatsapp table
+    const { data: history } = await supabaseAdmin
+      .from("ai_whatsapp")
+      .select("prospect_num, conv_last, stage, date_insert")
+      .eq("device_id", device.device_id)
+      .eq("prospect_num", phone)
+      .order("date_insert", { ascending: false })
+      .limit(10);
+
+    let conversationHistoryText = "";
+    let currentStage: string | null = null;
+
+    if (history && history.length > 0) {
+      // Get current stage from most recent conversation
+      currentStage = history[0].stage || null;
+
+      // Build conversation history text
+      conversationHistoryText = history
+        .reverse()
+        .map(h => `[${h.date_insert}] Customer: ${h.conv_last}`)
+        .join("\n");
+    }
+
+    // Step 6: Generate AI response with UNIFIED prompt system
     console.log(`🤖 Generating AI response with prompt: ${prompt.prompts_name}`);
+    console.log(`📊 Current Stage: ${currentStage || 'First Stage'}`);
 
-    // Build system content with instructions
-    const systemContent = (prompt.prompts_data || "You are a helpful assistant.") + `
+    // Use unified prompt builder (JSON format + dynamic stages + details)
+    const promptData = prompt.prompts_data || "You are a helpful assistant.";
 
-### Instructions:
-1. If the current stage is null or undefined, default to the first stage.
-2. Always analyze the user's input to determine the appropriate stage. If the input context is unclear, guide the user within the default stage context.
-3. Follow all rules and steps strictly. Do not skip or ignore any rules or instructions.
+    const systemContent = buildDynamicSystemPrompt(
+      promptData,
+      conversationHistoryText,
+      currentStage,
+      false // useOneMessage - can be made configurable
+    );
 
-4. **Do not repeat the same sentences or phrases that have been used in the recent conversation history.**
-5. If the input contains the phrase "I want this section in add response format [onemessage]":
-   - Add the \`Jenis\` field with the value \`onemessage\` at the item level for each text response.
-   - The \`Jenis\` field is only added to \`text\` types within the \`Response\` array.
-   - If the directive is not present, omit the \`Jenis\` field entirely.
-
-### Response Format:
-{
-  "Stage": "[Stage]",  // Specify the current stage explicitly.
-  "Response": [
-    {"type": "text", "Jenis": "onemessage", "content": "Provide the first response message here."},
-    {"type": "image", "content": "https://example.com/image1.jpg"},
-    {"type": "text", "Jenis": "onemessage", "content": "Provide the second response message here."}
-  ]
-}
-
-### Example Response:
-// If the directive is present
-{
-  "Stage": "Problem Identification",
-  "Response": [
-    {"type": "text", "Jenis": "onemessage", "content": "Maaf kak, Layla kena reconfirm balik dulu masalah utama anak akak ni."},
-    {"type": "text", "Jenis": "onemessage", "content": "Kurang selera makan, sembelit, atau kerap demam?"}
-  ]
-}
-
-// If the directive is NOT present
-{
-  "Stage": "Problem Identification",
-  "Response": [
-    {"type": "text", "content": "Maaf kak, Layla kena reconfirm balik dulu masalah utama anak akak ni."},
-    {"type": "text", "content": "Kurang selera makan, sembelit, atau kerap demam?"}
-  ]
-}
-
-### Important Rules:
-1. **Include the \`Stage\` field in every response**:
-   - The \`Stage\` field must explicitly specify the current stage.
-   - If the stage is unclear or missing, default to first stage.
-
-2. **Use the Correct Response Format**:
-   - Divide long responses into multiple short "text" segments for better readability.
-   - Include all relevant images provided in the input, interspersed naturally with text responses.
-   - If multiple images are provided, create separate \`image\` entries for each.
-
-3. **Dynamic Field for [onemessage]**:
-   - If the input specifies "I want this section in add response format [onemessage]":
-      - Add \`"Jenis": "onemessage"\` to each \`text\` type in the \`Response\` array.
-   - If the directive is not present, omit the \`Jenis\` field entirely.
-   - Non-text types like \`image\` never include the \`Jenis\` field.
-`;
-
-    const lastText = conversation.conv_last || "";
     const currentText = message;
 
     // Use OpenRouter API key and model from device settings
     const aiResponseRaw = await generateAIResponse(
       systemContent,
-      lastText,
       currentText,
       device.api_key,
       device.api_key_option || "openai/gpt-4o-mini"
@@ -361,15 +333,27 @@ async function executePromptBasedFlow(params: {
 
     console.log(`✅ AI Response Raw:`, aiResponseRaw);
 
-    // Parse AI response JSON
+    // Parse JSON response
     let aiResponse;
+    let extractedDetails: string | null = null;
+
     try {
       aiResponse = JSON.parse(aiResponseRaw);
-      console.log(`✅ AI Response Parsed:`, JSON.stringify(aiResponse, null, 2));
+      console.log(`✅ AI Response Parsed (JSON):`, JSON.stringify(aiResponse, null, 2));
+
+      // Extract details from "Detail" field if present
+      if (aiResponse.Detail) {
+        extractedDetails = extractDetailsFromResponse(aiResponse.Detail);
+        if (extractedDetails) {
+          console.log(`📝 Extracted Details: ${extractedDetails.substring(0, 100)}...`);
+        }
+      }
     } catch (error) {
-      console.error(`❌ Failed to parse AI response:`, error);
+      console.error(`❌ Failed to parse AI response as JSON:`, error);
+      // Fallback: treat as plain text
       aiResponse = {
         Stage: "Unknown",
+        Detail: "",
         Response: [
           { type: "text", content: aiResponseRaw }
         ]
@@ -454,17 +438,29 @@ async function executePromptBasedFlow(params: {
       convLast += "\n" + botMsg;
     }
 
-    // Update conversation with conv_last, stage, and clear conv_current
+    // Prepare update data with stage and details
+    const updateData: any = {
+      conv_last: convLast,
+      stage: aiResponse.Stage || null,  // ✅ Update stage from AI response
+      conv_current: null,  // ✅ Clear conv_current after processing
+    };
+
+    // Save extracted details if present
+    if (extractedDetails) {
+      updateData.detail = extractedDetails;
+      console.log(`📝 Saving customer details: ${extractedDetails.substring(0, 100)}...`);
+    }
+
+    // Update conversation with conv_last, stage, details, and clear conv_current
     await supabaseAdmin
       .from("ai_whatsapp")
-      .update({
-        conv_last: convLast,
-        stage: aiResponse.Stage || null,  // ✅ FIXED: Update stage from AI response
-        conv_current: null,  // ✅ Clear conv_current after processing
-      })
+      .update(updateData)
       .eq("id_prospect", conversation.id_prospect);
 
-    console.log(`✅ Updated conv_last, stage (${aiResponse.Stage}), and cleared conv_current for conversation`);
+    console.log(`✅ Updated conversation:`);
+    console.log(`   - Stage: ${aiResponse.Stage}`);
+    console.log(`   - Has Details: ${extractedDetails ? 'Yes' : 'No'}`);
+    console.log(`   - Cleared conv_current`);
 
     console.log(`✅ === PROMPT-BASED FLOW EXECUTION COMPLETE ===\n`);
   } catch (error) {
@@ -486,12 +482,241 @@ async function executePromptBasedFlow(params: {
 }
 
 // ============================================================================
+// DYNAMIC PROMPT SYSTEM - STAGE & DETAIL EXTRACTION
+// ============================================================================
+//
+// This system allows users to define custom chatbot behaviors with:
+// - Dynamic stage tracking using !!Stage [name]!! markers
+// - Customer detail capture using %% markers
+// - Automatic variable replacement ({{name}}, {{phone}}, etc.)
+// - Works with ANY user-defined stage names and field structures
+//
+// Key Features:
+// 1. Auto-extracts all stages from user's prompt
+// 2. Captures ANY fields wrapped in %% markers
+// 3. Tracks conversation stage in database
+// 4. Supports backward compatibility with JSON format
+//
+// See DYNAMIC_PROMPT_SYSTEM.md for detailed documentation
+// ============================================================================
+
+/**
+ * Extract stage names from prompt
+ * Finds all !!Stage [name]!! markers
+ */
+function extractStagesFromPrompt(promptData: string): string[] {
+  const stageRegex = /!!Stage\s+([^!]+)!!/g;
+  const stages: string[] = [];
+  let match;
+
+  while ((match = stageRegex.exec(promptData)) !== null) {
+    const stageName = match[1].trim();
+    if (!stages.includes(stageName)) {
+      stages.push(stageName);
+    }
+  }
+
+  // If no stages found, return default
+  if (stages.length === 0) {
+    return ['Welcome Message', 'Conversation', 'Closing'];
+  }
+
+  return stages;
+}
+
+/**
+ * Extract details from response using %% markers
+ */
+function extractDetailsFromResponse(response: string): string | null {
+  const detailRegex = /%%([\s\S]*?)%%/;
+  const match = response.match(detailRegex);
+  return match ? match[1].trim() : null;
+}
+
+/**
+ * Extract stage from response using !!Stage!! markers
+ */
+function extractStageFromResponse(response: string): string | null {
+  const stageRegex = /!!Stage\s+([^!]+)!!/;
+  const match = response.match(stageRegex);
+  return match ? match[1].trim() : null;
+}
+
+/**
+ * Build UNIFIED system prompt with JSON format + dynamic stage tracking + detail capture
+ * This replaces both the old JSON-only and dynamic text-only prompts
+ */
+function buildDynamicSystemPrompt(
+  promptData: string,
+  conversationHistory: string,
+  currentStage: string | null,
+  useOneMessage: boolean = false
+): string {
+  const stages = extractStagesFromPrompt(promptData);
+
+  return `${promptData}
+
+---
+
+⚠️⚠️⚠️ CRITICAL SYSTEM INSTRUCTIONS - YOU MUST FOLLOW EXACTLY ⚠️⚠️⚠️
+
+### CURRENT CONTEXT:
+- Current Stage: ${currentStage || stages[0] || 'First Stage'}
+- Available Stages: ${stages.map((s, i) => `${i + 1}. ${s}`).join(', ')}
+- Previous Conversation:
+${conversationHistory || 'No previous conversation - this is the FIRST message'}
+
+${!currentStage ? `
+🚨🚨🚨 CRITICAL: THIS IS THE FIRST MESSAGE FROM CUSTOMER 🚨🚨🚨
+
+MANDATORY RULES FOR FIRST MESSAGE:
+1. You MUST ALWAYS use "Stage": "${stages[0] || 'Welcome Message'}" for first contact
+2. NEVER skip to other stages like "Create Urgency", "Promotions", or "Collect Details"
+3. Even if customer says "hai", "hello", "nak tanye" - still use first stage ONLY
+4. ONLY skip first stage if customer EXPLICITLY asks about pricing/packages in their FIRST message (e.g., "Berapa harga?", "Ada pakej apa?")
+5. General greetings like "Hai", "Nak tanye blh?", "Hello" = USE FIRST STAGE "${stages[0] || 'Welcome Message'}"
+
+⛔ FORBIDDEN for first message:
+- "Create Urgency with Promotions" ❌
+- "Dapat Detail" ❌
+- "Collect Details" ❌
+- Any stage OTHER than "${stages[0] || 'Welcome Message'}" ❌
+` : `
+📍 Continue from stage: "${currentStage}"
+- Progress to next stage only if customer's response indicates they're ready
+- Follow the stage flow sequentially
+- Don't skip stages unless customer explicitly requests specific information
+`}
+
+### RESPONSE FORMAT (MANDATORY JSON):
+You MUST respond ONLY with valid JSON in this exact format:
+
+{
+  "Stage": "[exact stage name from available stages]",
+  "Detail": "%%[FIELD]: [value]\\n[FIELD2]: [value2]%%" (optional, only when collecting customer info),
+  "Response": [
+    {"type": "text", "content": "Your message here"},
+    {"type": "image", "content": "https://example.com/image.jpg"},
+    {"type": "text", "content": "Next message"}
+  ]
+}
+
+### RULES:
+
+1. **JSON FORMAT ONLY**:
+   - Response MUST be valid JSON
+   - NO plain text outside JSON
+   - NO markdown formatting outside JSON
+
+2. **STAGE FIELD** (MANDATORY):
+   - "Stage" field MUST match EXACTLY one of: ${stages.map(s => `"${s}"`).join(', ')}
+   - ⚠️ FIRST MESSAGE RULE: If this is customer's FIRST message (no previous conversation), you MUST use "${stages[0] || 'Welcome Message'}" unless they explicitly ask about pricing/packages
+   - General greetings ("Hai", "Hello", "Nak tanye") on FIRST contact = ALWAYS use first stage
+   - For ongoing conversations: Progress to next stage based on customer's response
+   - Follow sequential stage flow
+
+3. **DETAIL FIELD** (OPTIONAL):
+   - Include "Detail" field ONLY when you collect customer information
+   - Format: "%%NAMA: John\\nALAMAT: 123 Street\\nNO FONE: 0123%%"
+   - Capture ANY relevant fields (name, address, phone, package, price, etc.)
+   - Leave empty if no details collected
+   - ⚠️ IMPORTANT: When confirming details with customer, you MUST display the captured details in the Response array (not just in Detail field)
+   - Show details clearly formatted for customer to verify
+
+4. **RESPONSE ARRAY**:
+   - Divide long messages into multiple short "text" entries
+   - Images: {"type": "image", "content": "URL"}
+   - Text: {"type": "text", "content": "message"}
+   - Video: {"type": "video", "content": "URL"}
+   - Add "Jenis": "onemessage" to text items if needed for formatting
+
+5. **VARIABLE REPLACEMENT**:
+   - Replace {{name}}, {{phone}}, {{target}}, etc. from conversation context
+   - Extract from previous messages
+
+6. **DO NOT REPEAT**:
+   - Don't repeat same sentences from conversation history
+   - Keep responses fresh and contextual
+
+### EXAMPLE RESPONSE:
+
+{
+  "Stage": "Create Urgency with Promotions",
+  "Detail": "",
+  "Response": [
+    {"type": "text", "content": "Hai kak! PROMO JIMAT BERGANDA hari ni untuk 50 orang terawal."},
+    {"type": "image", "content": "https://automation.erprolevision.com/public/images/promo1.jpg"},
+    {"type": "image", "content": "https://automation.erprolevision.com/public/images/promo2.jpg"},
+    {"type": "text", "content": "Kalau booking hari ni, dapat FREE postage & masuk cabutan bertuah!"}
+  ]
+}
+
+### EXAMPLE WITH DETAILS (CAPTURING):
+
+{
+  "Stage": "Collect Details",
+  "Detail": "%%NAMA: Ali bin Abu\\nALAMAT: 123 Jalan Sultan\\nNO FONE: 0123456789\\nPAKEJ: 3 Botol%%",
+  "Response": [
+    {"type": "text", "content": "Terima kasih! Kami akan proses pesanan untuk 3 botol."}
+  ]
+}
+
+### EXAMPLE WITH DETAILS (CONFIRMING):
+
+{
+  "Stage": "Confirm Details",
+  "Detail": "%%NAMA: Ali bin Abu\\nALAMAT: 123 Jalan Sultan\\nNO FONE: 0123456789\\nPAKEJ: 3 Botol\\nHARGA: RM120%%",
+  "Response": [
+    {"type": "text", "content": "Terima kasih! Sila semak detail tempahan:"},
+    {"type": "text", "content": "NAMA: Ali bin Abu\\nALAMAT: 123 Jalan Sultan\\nNO FONE: 0123456789\\nPAKEJ: 3 Botol\\nHARGA: RM120"},
+    {"type": "text", "content": "Semua detail dah betul kan? Kalau ada apa-apa nak ubah, boleh beritahu sekarang."}
+  ]
+}
+
+NOW RESPOND TO THE USER'S MESSAGE IN VALID JSON FORMAT ONLY:`;
+}
+
+/**
+ * Parse AI response and extract structured data
+ */
+interface ParsedAIResponse {
+  stage: string | null;
+  details: string | null;
+  cleanContent: string;
+  hasStageMarker: boolean;
+  hasDetails: boolean;
+}
+
+function parseAIResponse(response: string): ParsedAIResponse {
+  const stage = extractStageFromResponse(response);
+  const details = extractDetailsFromResponse(response);
+
+  // Remove stage markers and detail blocks from visible content
+  let cleanContent = response;
+
+  // Remove !!Stage!! markers
+  cleanContent = cleanContent.replace(/!!Stage\s+[^!]+!!\n?/g, '');
+
+  // Remove %% detail blocks
+  cleanContent = cleanContent.replace(/%%[\s\S]*?%%\n?/g, '');
+
+  cleanContent = cleanContent.trim();
+
+  return {
+    stage,
+    details,
+    cleanContent,
+    hasStageMarker: stage !== null,
+    hasDetails: details !== null,
+  };
+}
+
+// ============================================================================
 // AI RESPONSE GENERATION
 // ============================================================================
 
 async function generateAIResponse(
   systemContent: string,
-  lastText: string,
   currentText: string,
   openrouterApiKey: string,
   aiModel: string
@@ -511,15 +736,11 @@ async function generateAIResponse(
             content: systemContent,
           },
           {
-            role: "assistant",
-            content: lastText,
-          },
-          {
             role: "user",
             content: currentText,
           },
         ],
-        temperature: 0.67,
+        temperature: 0.3,  // Lower temperature for more consistent instruction following
         top_p: 1,
         repetition_penalty: 1,
       }),

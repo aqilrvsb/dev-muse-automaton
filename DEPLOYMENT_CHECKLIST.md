@@ -1,251 +1,445 @@
-# ✅ Deployment Checklist - Ready to Deploy!
+# Deployment Checklist - WhatsApp AI Chatbot Fixes
 
-## 🎉 **100% COMPLETE Webhook with Full Flow Execution Engine**
+## ✅ Pre-Deployment Verification
 
-**Repository:** https://github.com/aqilrvsb/dev-muse-automaton
-**File to Deploy:** `deno-backend/COMPLETE_WEBHOOK.ts`
-**Features:** Flow Execution, Waiting for Reply, Stage Config, Conditions, Multi-Provider
+### Files Ready for Deployment:
+- [x] `deno-backend/complete-webhook-single-file.ts` - Updated with all fixes
+- [x] `deno-backend/services/ai.ts` - Updated for consistency (dev only)
+
+### Changes Applied:
+- [x] Fix #1: Media support (images, videos, audio)
+- [x] Fix #2: Unified prompt system (removed duplicate prompts)
+- [x] Fix #3: Stage flow logic (first message handling)
+
+### Documentation Created:
+- [x] `UNIFIED_PROMPT_SYSTEM_FIX.md`
+- [x] `STAGE_FLOW_FIX.md`
+- [x] `ALL_FIXES_SUMMARY.md`
+- [x] `DEPLOYMENT_CHECKLIST.md` (this file)
 
 ---
 
-## 📋 **Next Steps to Go Live**
+## 🚀 Deployment Steps
 
-### **Step 1: Get Required Keys** (2 minutes)
-
-#### 1.1 Get SUPABASE_SERVICE_ROLE_KEY
+### Step 1: Deploy to Deno Deploy
 ```bash
-# Go to: https://supabase.com/dashboard/project/bjnjucwpwdzgsnqmpmff/settings/api
-# Copy the "service_role" secret key (NOT the anon key!)
-# Store it safely - you'll need it in Step 2
+# Only this file needs to be deployed:
+deno-backend/complete-webhook-single-file.ts
 ```
 
-**Note:** JWT_SECRET is NOT needed for webhook-only deployment!
+**Note**: The modular files (`services/ai.ts`, `handlers/ai.ts`, etc.) are for local development only and do NOT need to be deployed.
 
----
+### Step 2: Verify Environment Variables
+Ensure these are set in Deno Deploy:
+- `SUPABASE_URL` - Your Supabase project URL
+- `SUPABASE_SERVICE_ROLE_KEY` - Service role key for database access
+- Any other required environment variables
 
-### **Step 2: Deploy Backend to Deno Deploy** (10 minutes)
-
-#### 2.1 Link GitHub Repository
-
-1. Go to: https://dash.deno.com/projects/pening-bot
-2. Click **"Settings"**
-3. Click **"Git Integration"**
-4. Connect to GitHub account if not already connected
-5. Select repository: **aqilrvsb/dev-muse-automaton**
-6. Set production branch: **main**
-7. Set entry point: **deno-backend/COMPLETE_WEBHOOK.ts**
-8. Click **"Link"**
-
-#### 2.2 Set Environment Variables
-
-In Deno Deploy project settings (https://dash.deno.com/projects/pening-bot/settings):
-
-Click **"Environment Variables"** → Add these:
-
+### Step 3: Test Webhook Endpoint
 ```bash
-SUPABASE_URL=https://bjnjucwpwdzgsnqmpmff.supabase.co
-SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqbmp1Y3dwd2R6Z3NucW1wbWZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0OTk1MzksImV4cCI6MjA3NjA3NTUzOX0.vw1rOUqYWFkPNDwTdEgIfsCO9pyvTsFKaXHq3RcRTNU
-SUPABASE_SERVICE_ROLE_KEY=<PASTE_FROM_STEP_1.1>
-DEBOUNCE_DELAY_MS=4000
-SERVER_URL=https://pening-bot.deno.dev
-WAHA_API_URL=https://waha-plus-production-705f.up.railway.app
-```
-
-#### 2.3 Deploy
-
-Click **"Deploy"** or push to GitHub main branch (already done!)
-
-#### 2.4 Test Backend
-
-```bash
-# Test health endpoint
-curl https://pening-bot.deno.dev/health
-
-# Expected response:
-# {"status":"ok","service":"dev-muse-automaton-deno"}
+# Test the webhook is responding
+curl -X POST https://your-deno-app.deno.dev/webhook \
+  -H "Content-Type: application/json" \
+  -d '{...}'
 ```
 
 ---
 
-### **Step 3: Deploy Frontend to Vercel** (10 minutes)
+## 🧪 Post-Deployment Testing
 
-#### 3.1 Create New Project
+### Test 1: First Message - Welcome Stage ✅
+**Goal**: Verify AI starts with first stage (Welcome Message)
 
-1. Go to: https://vercel.com/new
-2. Click **"Import Git Repository"**
-3. Select: **aqilrvsb/dev-muse-automaton**
-4. Click **"Import"**
+**Steps**:
+1. Clear test conversation:
+   ```sql
+   DELETE FROM ai_whatsapp WHERE prospect_num = '+60XXXXXXXXX';
+   ```
 
-#### 3.2 Configure Build Settings
+2. Send first WhatsApp message:
+   ```
+   Hai
+   ```
 
-**Framework Preset:** Vite
-**Root Directory:** `./` (leave as root)
-**Build Command:** `npm run build`
-**Output Directory:** `dist`
-**Install Command:** `npm install`
+3. **Expected Deno Logs**:
+   ```
+   📊 Current Stage: null
+   🚨 THIS IS THE FIRST MESSAGE FROM CUSTOMER 🚨
+   ✅ AI Response Parsed (JSON): {
+     "Stage": "Welcome Message",
+     ...
+   }
+   ```
 
-#### 3.3 Set Environment Variables
+4. **Expected WhatsApp Response**:
+   - Customer receives welcome message (not promo)
 
-Add these environment variables:
+5. **Expected Database**:
+   ```sql
+   SELECT stage FROM ai_whatsapp WHERE prospect_num = '+60XXXXXXXXX';
+   -- Result: "Welcome Message"
+   ```
 
-```bash
-VITE_SUPABASE_URL=https://bjnjucwpwdzgsnqmpmff.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqbmp1Y3dwd2R6Z3NucW1wbWZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0OTk1MzksImV4cCI6MjA3NjA3NTUzOX0.vw1rOUqYWFkPNDwTdEgIfsCO9pyvTsFKaXHq3RcRTNU
-VITE_API_URL=https://pening-bot.deno.dev
-```
-
-**Important:** Make sure to set for **all environments** (Production, Preview, Development)
-
-#### 3.4 Deploy
-
-Click **"Deploy"** and wait for build to complete (~2 minutes)
-
-#### 3.5 Test Frontend
-
-Visit your Vercel URL (e.g., `https://dev-muse-automaton.vercel.app`)
-Try logging in / registering
-
----
-
-### **Step 4: Update WhatsApp Webhook URLs** (5 minutes per device)
-
-#### 4.1 Update in WhatsApp Provider Dashboard
-
-**Old Railway URL:**
-```
-❌ https://chatbot-automation-production.up.railway.app/FakhriAidilTLW-001/UserChatBot_FakhriAidilTLW-001
-```
-
-**New Deno Deploy URL:**
-```
-✅ https://pening-bot.deno.dev/FakhriAidilTLW-001/UserChatBot_FakhriAidilTLW-001
-```
-
-**For Each Device:**
-1. Login to WhatsApp provider dashboard (WAHA/Wablas/WhCenter)
-2. Go to Webhook Settings
-3. Update URL to: `https://pening-bot.deno.dev/{device_id}/{webhook_id}`
-4. Save
-
-#### 4.2 Test Webhook
-
-**Test Verification (GET):**
-```bash
-curl "https://pening-bot.deno.dev/FakhriAidilTLW-001/UserChatBot_FakhriAidilTLW-001?hub.challenge=test123"
-# Should return: test123
-```
-
-**Test Message (POST):**
-Send a WhatsApp message to your device
-Wait 4 seconds (debouncing)
-Should receive AI response
+**Result**: [ ] Pass / [ ] Fail
 
 ---
 
-### **Step 5: Verify Everything Works** (5 minutes)
+### Test 2: Image Media Support ✅
+**Goal**: Verify images sent as actual media (not text URLs)
 
-#### ✅ Backend Checklist
-- [ ] Health check returns 200 OK
-- [ ] Webhook verification works (GET request)
-- [ ] Webhook receives messages (POST request)
-- [ ] Check Deno Deploy logs for errors
+**Steps**:
+1. Continue conversation to a stage with images (e.g., "Create Urgency with Promotions")
 
-#### ✅ Frontend Checklist
-- [ ] Website loads
-- [ ] Can register new user
-- [ ] Can login
-- [ ] Dashboard displays correctly
-- [ ] Device settings work
-- [ ] Flow builder loads
+2. **Expected Deno Logs**:
+   ```
+   ✅ AI Response Parsed (JSON): {
+     "Stage": "Create Urgency with Promotions",
+     "Response": [
+       {"type": "text", "content": "..."},
+       {"type": "image", "content": "https://automation.../image1.jpg"},
+       {"type": "image", "content": "https://automation.../image2.jpg"}
+     ]
+   }
+   📤 Sending message 1/3 (text)
+   📤 Sending message 2/3 (image)
+   📤 Sending message 3/3 (image)
+   ```
 
-#### ✅ Integration Checklist
-- [ ] WhatsApp message triggers webhook
-- [ ] 4-second debouncing works (send multiple messages quickly)
-- [ ] Flow executes correctly
-- [ ] AI response is generated
-- [ ] Reply is sent to WhatsApp
+3. **Expected WhatsApp Response**:
+   - Text message
+   - Image 1 (displayed inline, not as URL text)
+   - Image 2 (displayed inline, not as URL text)
 
----
-
-### **Step 6: Delete Railway** (2 minutes)
-
-⚠️ **ONLY DO THIS AFTER CONFIRMING EVERYTHING WORKS!**
-
-1. Go to: https://railway.app/dashboard
-2. Select project: `chatbot-automation-production`
-3. Click **Settings** → **Danger Zone**
-4. Click **"Delete Project"**
-5. Confirm deletion
-
-**Save ~$5-20/month!** 💰
+**Result**: [ ] Pass / [ ] Fail
 
 ---
 
-## 🎯 **Quick Reference**
+### Test 3: Video Media Support ✅
+**Goal**: Verify videos sent as actual media
 
-### **Your URLs:**
-- **Backend API:** https://pening-bot.deno.dev
-- **Frontend:** (Will get from Vercel after deployment)
-- **Database:** https://bjnjucwpwdzgsnqmpmff.supabase.co
-- **GitHub:** https://github.com/aqilrvsb/dev-muse-automaton
+**Steps**:
+1. If your prompt includes video stages, progress to that stage
 
-### **Webhook Pattern:**
+2. **Expected Deno Logs**:
+   ```
+   📤 Sending message X/Y (video)
+   ```
+
+3. **Expected WhatsApp Response**:
+   - Video sent as playable media (not URL text)
+
+**Result**: [ ] Pass / [ ] Fail / [ ] N/A (no videos in prompt)
+
+---
+
+### Test 4: Detail Capture ✅
+**Goal**: Verify customer details extracted and saved
+
+**Steps**:
+1. Progress to detail collection stage
+
+2. Send customer details:
+   ```
+   Nama saya Ali, alamat 123 Jalan Sultan, no fone 0123456789
+   ```
+
+3. **Expected Deno Logs**:
+   ```
+   📝 Extracted Details: NAMA: Ali
+   ALAMAT: 123 Jalan Sultan
+   NO FONE: 0123456789...
+   📝 Saving customer details: NAMA: Ali...
+   ✅ Updated conversation:
+      - Stage: Collect Details
+      - Has Details: Yes
+   ```
+
+4. **Expected Database**:
+   ```sql
+   SELECT detail FROM ai_whatsapp WHERE prospect_num = '+60XXXXXXXXX';
+   -- Result: "NAMA: Ali\nALAMAT: 123 Jalan Sultan\nNO FONE: 0123456789"
+   ```
+
+**Result**: [ ] Pass / [ ] Fail
+
+---
+
+### Test 5: Stage Progression ✅
+**Goal**: Verify stages progress sequentially
+
+**Steps**:
+1. Have a multi-turn conversation
+2. Check database after each message:
+   ```sql
+   SELECT stage, conv_last FROM ai_whatsapp
+   WHERE prospect_num = '+60XXXXXXXXX'
+   ORDER BY date_insert DESC LIMIT 5;
+   ```
+
+3. **Expected Result**:
+   - Stages progress in order (e.g., Welcome Message → Introduction → TARGET CLARIFICATION)
+   - Each message updates the stage appropriately
+
+**Result**: [ ] Pass / [ ] Fail
+
+---
+
+### Test 6: Detail Confirmation Display ✅
+**Goal**: Verify captured details are displayed to customer when confirming
+
+**Steps**:
+1. Progress to detail collection stage
+
+2. Provide customer details:
+   ```
+   Nama saya Aiman, alamat Lot68262672 ndjdis, no fone 60179645043, saya nak 1 Botol Vitac, COD
+   ```
+
+3. **Expected Deno Logs**:
+   ```
+   ✅ AI Response Parsed (JSON): {
+     "Stage": "Confirm Details",
+     "Detail": "%%NAMA: Aiman\nALAMAT: Lot68262672 ndjdis\nNO FONE: 60179645043\nPAKEJ: 1 Botol Vitac\nCARA BAYARAN: COD%%",
+     "Response": [
+       {"type": "text", "content": "Sila semak detail tempahan:"},
+       {"type": "text", "content": "NAMA: Aiman\nALAMAT: Lot68262672 ndjdis\nNO FONE: 60179645043\nPAKEJ: 1 Botol Vitac\nCARA BAYARAN: COD"},
+       {"type": "text", "content": "Semua detail dah betul kan?"}
+     ]
+   }
+   ```
+
+4. **Expected WhatsApp Response**:
+   - Customer sees: "Sila semak detail tempahan:"
+   - Customer sees all details formatted:
+     ```
+     NAMA: Aiman
+     ALAMAT: Lot68262672 ndjdis
+     NO FONE: 60179645043
+     PAKEJ: 1 Botol Vitac
+     CARA BAYARAN: COD
+     ```
+   - Customer sees: "Semua detail dah betul kan?"
+
+5. **Expected Database**:
+   ```sql
+   SELECT detail FROM ai_whatsapp WHERE prospect_num = '+60XXXXXXXXX';
+   -- Result should contain: "NAMA: Aiman\nALAMAT: Lot68262672..."
+   ```
+
+**Result**: [ ] Pass / [ ] Fail
+
+---
+
+### Test 7: Exception Case - Skip to Relevant Stage ✅
+**Goal**: Verify AI can skip to relevant stage if customer explicitly asks
+
+**Steps**:
+1. Clear test conversation
+2. Send first message directly asking about pricing:
+   ```
+   Berapa harga pakej?
+   ```
+
+3. **Expected Behavior**:
+   - AI may skip Welcome Message and go to pricing/promo stage
+   - This is CORRECT behavior based on customer intent
+
+**Result**: [ ] Pass / [ ] Fail
+
+---
+
+## 🐞 Troubleshooting Guide
+
+### Issue: Images still sent as text URLs
+
+**Symptoms**:
 ```
-https://pening-bot.deno.dev/{device_id}/{webhook_id}
+Gambar: [https://automation.../image.jpg]
 ```
 
-### **API Endpoints:**
+**Diagnosis**:
+1. Check Deno logs - is AI returning JSON?
+   ```
+   Look for: "✅ AI Response Parsed (JSON)"
+   ```
+
+2. If not JSON, check AI model:
+   ```sql
+   SELECT api_key_option FROM device_setting WHERE device_id = 'XXX';
+   ```
+
+**Solutions**:
+- AI model may be ignoring JSON instructions → Try GPT-4 instead of GPT-3.5
+- Check OpenRouter API key is valid
+- Verify prompt includes proper JSON examples
+
+---
+
+### Issue: AI skips Welcome Message on first contact
+
+**Symptoms**:
 ```
-GET  /health                              - Health check
-GET  /:deviceId/:webhookId               - Webhook verification
-POST /:deviceId/:webhookId               - Webhook messages
-POST /api/auth/login                     - Login
-POST /api/auth/register                  - Register
-GET  /api/devices                        - List devices
-POST /api/devices                        - Create device
-GET  /api/flows                          - List flows
-POST /api/ai/chat                        - AI chat
-GET  /api/analytics                      - Analytics
-GET  /api/dashboard/stats                - Dashboard
+Customer: Hai
+AI Stage: "Create Urgency with Promotions"  ❌
 ```
 
----
+**Diagnosis**:
+1. Check Deno logs - is `currentStage` null?
+   ```
+   Look for: "📊 Current Stage: null"
+   ```
 
-## 📚 **Documentation Files:**
+2. Check if warning appears:
+   ```
+   Look for: "🚨 THIS IS THE FIRST MESSAGE FROM CUSTOMER 🚨"
+   ```
 
-1. **[QUICK_START.md](QUICK_START.md)** - Fast deployment (this is best!)
-2. **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Detailed guide
-3. **[MIGRATION_SUMMARY.md](MIGRATION_SUMMARY.md)** - Complete overview
-4. **[deno-backend/README.md](deno-backend/README.md)** - Backend docs
-
----
-
-## 🆘 **Troubleshooting:**
-
-### Issue: "401 Unauthorized"
-**Fix:** Check `SUPABASE_SERVICE_ROLE_KEY` is set in Deno Deploy
-
-### Issue: "Webhook not receiving messages"
-**Fix:** Verify webhook URL format and device exists in database
-
-### Issue: "Frontend shows 'Failed to fetch'"
-**Fix:** Check `VITE_API_URL` in Vercel environment variables
-
-### Issue: "AI not responding"
-**Fix:** Check device has `api_key` configured in database
+**Solutions**:
+- If warning doesn't appear → System prompt not building correctly
+- If warning appears but AI ignores → Try different AI model
+- Check stages extracted correctly from prompt
 
 ---
 
-## 🎉 **You're Ready to Deploy!**
+### Issue: Details not saved to database
 
-**Estimated Total Time:** 35 minutes
+**Symptoms**:
+- `ai_whatsapp.detail` remains null after providing info
 
-Follow the 6 steps above and you'll be live on Vercel + Deno Deploy with **$0/month cost**!
+**Diagnosis**:
+1. Check Deno logs:
+   ```
+   Look for: "📝 Extracted Details: ..."
+   ```
 
-**Questions?** Check the documentation files or review Deno Deploy logs.
+2. Check AI response format:
+   ```
+   "Detail": "%%NAMA: Ali\nALAMAT: ...%%"
+   ```
+
+**Solutions**:
+- Verify Detail field uses `%%` markers
+- Check database column exists: `ai_whatsapp.detail`
+- Verify Supabase permissions allow updates
 
 ---
 
-**Last Updated:** After successful GitHub push
-**Commit:** 6974423
-**Status:** ✅ Ready for production deployment
+### Issue: Details not displayed when confirming
+
+**Symptoms**:
+```
+AI asks: "Semua detail dah betul kan?"
+But customer doesn't see the actual details
+```
+
+**Diagnosis**:
+1. Check Deno logs - does Response array contain details?
+   ```
+   Look for: "Response": [
+     {"type": "text", "content": "NAMA: ...\nALAMAT: ..."}
+   ]
+   ```
+
+2. If Response only has confirmation text, AI is ignoring instruction
+
+**Solutions**:
+- Ensure prompt has a "Confirm Details" stage that explicitly mentions showing details
+- Try GPT-4 for better instruction following
+- Add explicit example in your prompt showing detail display format
+
+---
+
+### Issue: Stages not progressing
+
+**Symptoms**:
+- AI stuck on same stage despite conversation progress
+
+**Diagnosis**:
+1. Check prompt - are stages clearly defined?
+2. Check AI is reading conversation history
+3. Check currentStage being passed correctly
+
+**Solutions**:
+- Make stage progression criteria clearer in prompt
+- Verify conversation history is being built correctly
+- Check database updates are working
+
+---
+
+## 📊 Success Criteria
+
+All tests must pass:
+- [ ] Test 1: First Message - Welcome Stage
+- [ ] Test 2: Image Media Support
+- [ ] Test 3: Video Media Support (if applicable)
+- [ ] Test 4: Detail Capture
+- [ ] Test 5: Stage Progression
+- [ ] Test 6: Detail Confirmation Display
+- [ ] Test 7: Exception Case
+
+**Deployment Status**: [ ] Success / [ ] Needs Fixes
+
+---
+
+## 🔄 Rollback Plan (If Needed)
+
+If deployment fails and you need to rollback:
+
+1. **Revert to previous version** of `complete-webhook-single-file.ts`
+2. **Symptoms requiring rollback**:
+   - Webhook returns errors
+   - No messages sent to customers
+   - Database updates failing
+   - Critical functionality broken
+
+3. **Files to revert**:
+   - `deno-backend/complete-webhook-single-file.ts`
+
+4. **Safe to keep** (documentation only):
+   - All `.md` documentation files
+
+---
+
+## 📝 Post-Deployment Notes
+
+### After Testing:
+- [ ] Document any issues found
+- [ ] Update user's prompt if needed
+- [ ] Monitor Deno logs for errors
+- [ ] Check database for proper updates
+
+### Performance Monitoring:
+- [ ] Response times acceptable (<10s typical)
+- [ ] No API rate limit errors
+- [ ] OpenRouter API costs within budget
+- [ ] Database queries efficient
+
+### User Feedback:
+- [ ] Customers receiving correct welcome message
+- [ ] Images displaying properly
+- [ ] Conversation flow natural
+- [ ] Details being captured correctly
+
+---
+
+## ✅ Deployment Sign-Off
+
+**Deployed By**: _______________
+**Deployment Date**: _______________
+**Deployment Time**: _______________
+**All Tests Passed**: [ ] Yes / [ ] No
+**Issues Found**: _______________
+**Status**: [ ] Production Ready / [ ] Needs Fixes
+
+---
+
+## 📚 Additional Resources
+
+- [ALL_FIXES_SUMMARY.md](./ALL_FIXES_SUMMARY.md) - Complete overview of all fixes
+- [UNIFIED_PROMPT_SYSTEM_FIX.md](./UNIFIED_PROMPT_SYSTEM_FIX.md) - Media support details
+- [STAGE_FLOW_FIX.md](./STAGE_FLOW_FIX.md) - Stage flow logic details
+- [BEFORE_AFTER_COMPARISON.md](./BEFORE_AFTER_COMPARISON.md) - System comparison
+
+**Support**: Check Deno Deploy logs for detailed error messages
+**Database**: Check Supabase logs for query issues
+**API**: Check OpenRouter dashboard for API usage and errors

@@ -151,7 +151,8 @@ export function extractStageFromResponse(response: string): string | null {
 }
 
 /**
- * Build dynamic system prompt with stage tracking and detail capture
+ * Build UNIFIED system prompt with JSON format + dynamic stage tracking + detail capture
+ * This supports images, videos, audio, and text responses
  */
 export function buildDynamicSystemPrompt(
   promptData: string,
@@ -161,88 +162,134 @@ export function buildDynamicSystemPrompt(
 ): string {
   const stages = extractStagesFromPrompt(promptData);
 
-  return `⚠️⚠️⚠️ CRITICAL SYSTEM INSTRUCTIONS - FAILURE TO FOLLOW WILL BREAK THE SYSTEM ⚠️⚠️⚠️
-
-YOU MUST FOLLOW THESE RULES IN EVERY SINGLE RESPONSE WITHOUT EXCEPTION:
-
-1. 🚨 MANDATORY STAGE MARKER 🚨
-   - EVERY response MUST start with: !!Stage [stage name]!!
-   - NO EXCEPTIONS - include this in EVERY response
-   - The stage name must match EXACTLY one of the stages defined by the user
-   - The marker is invisible to the customer - it's for backend tracking
-   - If you forget the marker, the system will break
-
-   Available stages (use EXACTLY these names):
-${stages.map(s => `   - !!Stage ${s}!!`).join('\n')}
-
-2. 📝 DETAILS CAPTURE:
-   - When collecting customer information, wrap ALL details in %% markers
-   - IMPORTANT: Use opening %% and closing %% to wrap all details
-   - Format (dynamically adapt fields based on what's being collected):
-     %%[FIELD1]: [value1]
-     [FIELD2]: [value2]
-     [FIELD3]: [value3]%%
-
-   - Common fields to capture (adapt as needed):
-     * NAMA / NAME
-     * ALAMAT / ADDRESS
-     * NO FONE / PHONE / NO TEL
-     * PAKEJ / PACKAGE / PRODUCT
-     * HARGA / PRICE
-     * CARA BAYARAN / PAYMENT METHOD
-     * Any other fields defined in the prompt
-
-   - The details between %% will be saved to the database automatically
-   - Extract and save ANY field that appears between %% markers
-
-3. 🎯 STAGE PROGRESSION:
-   - Current stage: ${currentStage || stages[0]}
-   - Always detect current stage from context
-   - Advance to the appropriate next stage based on user response
-   - Use !!Stage [name]!! to mark ALL responses
-   - Follow the stage flow defined in the user's prompt
-
-4. 🔄 DYNAMIC STAGE DETECTION:
-   - Analyze the user's prompt to understand the stage flow
-   - Identify keywords or patterns that indicate stage transitions
-   - Match user input to the appropriate stage in the flow
-   - Default to the FIRST stage if current stage is null/undefined
-
-5. 📊 VARIABLE REPLACEMENT:
-   - Replace placeholders dynamically:
-     * {{name}} - Customer name
-     * {{target}} - Target (anak/diri sendiri/etc)
-     * {{phone}} or {{wa_no}} - Phone number
-     * {{product}} - Product name
-     * {{info}} - Additional info
-     * Any other {{variable}} defined in the prompt
-   - Extract values from conversation context
-
-❗ REMINDER:
-- Start EVERY response with !!Stage [name]!!
-- Wrap ALL collected customer details in %% markers
-- Use EXACT stage names as defined by the user
+  return `${promptData}
 
 ---
 
-Previous Conversation:
-${conversationHistory}
+⚠️⚠️⚠️ CRITICAL SYSTEM INSTRUCTIONS - YOU MUST FOLLOW EXACTLY ⚠️⚠️⚠️
 
----
+### CURRENT CONTEXT:
+- Current Stage: ${currentStage || stages[0] || 'First Stage'}
+- Available Stages: ${stages.map((s, i) => `${i + 1}. ${s}`).join(', ')}
+- Previous Conversation:
+${conversationHistory || 'No previous conversation - this is the FIRST message'}
 
-NOW FOLLOW THE USER'S CUSTOM PROMPT BELOW:
+${!currentStage ? `
+🚨🚨🚨 CRITICAL: THIS IS THE FIRST MESSAGE FROM CUSTOMER 🚨🚨🚨
 
-${promptData}
+MANDATORY RULES FOR FIRST MESSAGE:
+1. You MUST ALWAYS use "Stage": "${stages[0] || 'Welcome Message'}" for first contact
+2. NEVER skip to other stages like "Create Urgency", "Promotions", or "Collect Details"
+3. Even if customer says "hai", "hello", "nak tanye" - still use first stage ONLY
+4. ONLY skip first stage if customer EXPLICITLY asks about pricing/packages in their FIRST message (e.g., "Berapa harga?", "Ada pakej apa?")
+5. General greetings like "Hai", "Nak tanye blh?", "Hello" = USE FIRST STAGE "${stages[0] || 'Welcome Message'}"
 
----
+⛔ FORBIDDEN for first message:
+- "Create Urgency with Promotions" ❌
+- "Dapat Detail" ❌
+- "Collect Details" ❌
+- Any stage OTHER than "${stages[0] || 'Welcome Message'}" ❌
+` : `
+📍 Continue from stage: "${currentStage}"
+- Progress to next stage only if customer's response indicates they're ready
+- Follow the stage flow sequentially
+- Don't skip stages unless customer explicitly requests specific information
+`}
 
-${useOneMessage ? 'IMPORTANT: This response should be formatted as a single message (onemessage format).\n' : ''}
+### RESPONSE FORMAT (MANDATORY JSON):
+You MUST respond ONLY with valid JSON in this exact format:
 
-RESPOND TO THE USER'S MESSAGE FOLLOWING ALL RULES ABOVE.`;
+{
+  "Stage": "[exact stage name from available stages]",
+  "Detail": "%%[FIELD]: [value]\\n[FIELD2]: [value2]%%" (optional, only when collecting customer info),
+  "Response": [
+    {"type": "text", "content": "Your message here"},
+    {"type": "image", "content": "https://example.com/image.jpg"},
+    {"type": "video", "content": "https://example.com/video.mp4"},
+    {"type": "audio", "content": "https://example.com/audio.mp3"},
+    {"type": "text", "content": "Next message"}
+  ]
+}
+
+### RULES:
+
+1. **JSON FORMAT ONLY**:
+   - Response MUST be valid JSON
+   - NO plain text outside JSON
+   - NO markdown formatting outside JSON
+
+2. **STAGE FIELD** (MANDATORY):
+   - "Stage" field MUST match EXACTLY one of: ${stages.map(s => `"${s}"`).join(', ')}
+   - ⚠️ FIRST MESSAGE RULE: If this is customer's FIRST message (no previous conversation), you MUST use "${stages[0] || 'Welcome Message'}" unless they explicitly ask about pricing/packages
+   - General greetings ("Hai", "Hello", "Nak tanye") on FIRST contact = ALWAYS use first stage
+   - For ongoing conversations: Progress to next stage based on customer's response
+   - Follow sequential stage flow
+
+3. **DETAIL FIELD** (OPTIONAL):
+   - Include "Detail" field ONLY when you collect customer information
+   - Format: "%%NAMA: John\\nALAMAT: 123 Street\\nNO FONE: 0123%%"
+   - Capture ANY relevant fields (name, address, phone, package, price, etc.)
+   - Leave empty if no details collected
+   - ⚠️ IMPORTANT: When confirming details with customer, you MUST display the captured details in the Response array (not just in Detail field)
+   - Show details clearly formatted for customer to verify
+
+4. **RESPONSE ARRAY** (SUPPORTS ALL MEDIA):
+   - Divide long messages into multiple short "text" entries
+   - Images: {"type": "image", "content": "URL"}
+   - Videos: {"type": "video", "content": "URL"}
+   - Audio: {"type": "audio", "content": "URL"}
+   - Text: {"type": "text", "content": "message"}
+   - Add "Jenis": "onemessage" to text items if needed for formatting
+
+5. **VARIABLE REPLACEMENT**:
+   - Replace {{name}}, {{phone}}, {{target}}, etc. from conversation context
+   - Extract from previous messages
+
+6. **DO NOT REPEAT**:
+   - Don't repeat same sentences from conversation history
+   - Keep responses fresh and contextual
+
+### EXAMPLE RESPONSE:
+
+{
+  "Stage": "Create Urgency with Promotions",
+  "Detail": "",
+  "Response": [
+    {"type": "text", "content": "Hai kak! PROMO JIMAT BERGANDA hari ni untuk 50 orang terawal."},
+    {"type": "image", "content": "https://automation.erprolevision.com/public/images/promo1.jpg"},
+    {"type": "video", "content": "https://automation.erprolevision.com/public/videos/demo.mp4"},
+    {"type": "text", "content": "Kalau booking hari ni, dapat FREE postage & masuk cabutan bertuah!"}
+  ]
+}
+
+### EXAMPLE WITH DETAILS (CAPTURING):
+
+{
+  "Stage": "Collect Details",
+  "Detail": "%%NAMA: Ali bin Abu\\nALAMAT: 123 Jalan Sultan\\nNO FONE: 0123456789\\nPAKEJ: 3 Botol%%",
+  "Response": [
+    {"type": "text", "content": "Terima kasih! Kami akan proses pesanan untuk 3 botol."}
+  ]
+}
+
+### EXAMPLE WITH DETAILS (CONFIRMING):
+
+{
+  "Stage": "Confirm Details",
+  "Detail": "%%NAMA: Ali bin Abu\\nALAMAT: 123 Jalan Sultan\\nNO FONE: 0123456789\\nPAKEJ: 3 Botol\\nHARGA: RM120%%",
+  "Response": [
+    {"type": "text", "content": "Terima kasih! Sila semak detail tempahan:"},
+    {"type": "text", "content": "NAMA: Ali bin Abu\\nALAMAT: 123 Jalan Sultan\\nNO FONE: 0123456789\\nPAKEJ: 3 Botol\\nHARGA: RM120"},
+    {"type": "text", "content": "Semua detail dah betul kan? Kalau ada apa-apa nak ubah, boleh beritahu sekarang."}
+  ]
+}
+
+NOW RESPOND TO THE USER'S MESSAGE IN VALID JSON FORMAT ONLY:`;
 }
 
 /**
  * Parse AI response and extract structured data
+ * NOW SUPPORTS JSON FORMAT (images, videos, audio)
  */
 export interface ParsedAIResponse {
   stage: string | null;
@@ -250,30 +297,61 @@ export interface ParsedAIResponse {
   cleanContent: string;
   hasStageMarker: boolean;
   hasDetails: boolean;
+  jsonResponse?: any; // NEW: Store full JSON response for media support
 }
 
 export function parseAIResponse(response: string): ParsedAIResponse {
-  const stage = extractStageFromResponse(response);
-  const details = extractDetailsFromResponse(response);
+  // Try to parse as JSON first (NEW FORMAT - supports images/videos/audio)
+  try {
+    const jsonResponse = JSON.parse(response);
 
-  // Remove stage markers and detail blocks from visible content
-  let cleanContent = response;
+    // Extract details from "Detail" field if present
+    const details = jsonResponse.Detail ? extractDetailsFromResponse(jsonResponse.Detail) : null;
 
-  // Remove !!Stage!! markers
-  cleanContent = cleanContent.replace(/!!Stage\s+[^!]+!!\n?/g, '');
+    // Extract stage
+    const stage = jsonResponse.Stage || null;
 
-  // Remove %% detail blocks
-  cleanContent = cleanContent.replace(/%%[\s\S]*?%%\n?/g, '');
+    // Build clean content from Response array (for text-only responses)
+    let cleanContent = "";
+    if (jsonResponse.Response && Array.isArray(jsonResponse.Response)) {
+      cleanContent = jsonResponse.Response
+        .filter((item: any) => item.type === "text")
+        .map((item: any) => item.content)
+        .join("\n");
+    }
 
-  cleanContent = cleanContent.trim();
+    return {
+      stage,
+      details,
+      cleanContent: cleanContent.trim() || response,
+      hasStageMarker: stage !== null,
+      hasDetails: details !== null,
+      jsonResponse, // Return full JSON for media handling
+    };
+  } catch (error) {
+    // FALLBACK: Old text format with !!Stage!! markers
+    const stage = extractStageFromResponse(response);
+    const details = extractDetailsFromResponse(response);
 
-  return {
-    stage,
-    details,
-    cleanContent,
-    hasStageMarker: stage !== null,
-    hasDetails: details !== null,
-  };
+    // Remove stage markers and detail blocks from visible content
+    let cleanContent = response;
+
+    // Remove !!Stage!! markers
+    cleanContent = cleanContent.replace(/!!Stage\s+[^!]+!!\n?/g, '');
+
+    // Remove %% detail blocks
+    cleanContent = cleanContent.replace(/%%[\s\S]*?%%\n?/g, '');
+
+    cleanContent = cleanContent.trim();
+
+    return {
+      stage,
+      details,
+      cleanContent,
+      hasStageMarker: stage !== null,
+      hasDetails: details !== null,
+    };
+  }
 }
 
 /**
