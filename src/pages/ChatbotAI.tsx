@@ -3,7 +3,7 @@ import Layout from '../components/Layout'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import Swal from 'sweetalert2'
-import { Phone, CheckCircle, XCircle, Volume2, Timer } from 'lucide-react'
+import { Phone, CheckCircle, XCircle } from 'lucide-react'
 
 type AIConversation = {
   id_prospect: number
@@ -31,15 +31,11 @@ export default function ChatbotAI() {
   const [endDate, setEndDate] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
 
-  // Analytics states
-  const [totalConversations, setTotalConversations] = useState(0)
-  const [aiConversations, setAiConversations] = useState(0)
-  const [humanConversations, setHumanConversations] = useState(0)
-  const [activeDevices, setActiveDevices] = useState(0)
-  const [totalMinutes, setTotalMinutes] = useState(0)
-
-  // Stage analytics state
-  const [stageAnalytics, setStageAnalytics] = useState<Array<{ stage: string; count: number; percentage: number }>>([])
+  // Analytics states - 4 boxes only
+  const [totalLead, setTotalLead] = useState(0)
+  const [stuckIntro, setStuckIntro] = useState(0)
+  const [response, setResponse] = useState(0)
+  const [close, setClose] = useState(0)
 
   // Unique values for filters
   const [devices, setDevices] = useState<string[]>([])
@@ -149,37 +145,22 @@ export default function ChatbotAI() {
   }
 
   const calculateAnalytics = (data: AIConversation[]) => {
-    const total = data.length
-    const aiCount = data.filter(c => !c.human || c.human === 0).length
-    const humanCount = data.filter(c => c.human === 1).length
-    const deviceCount = [...new Set(data.map(c => c.device_id))].length
+    // Total Lead - all conversations
+    const lead = data.length
 
-    setTotalConversations(total)
-    setAiConversations(aiCount)
-    setHumanConversations(humanCount)
-    setActiveDevices(deviceCount)
+    // Stuck Intro - conversations with null/empty stage
+    const stuck = data.filter(c => !c.stage || c.stage === null || c.stage === '').length
 
-    // Calculate total minutes (mock data - can be updated with real data)
-    setTotalMinutes(Math.floor(total * 2.5)) // Assuming avg 2.5 min per conversation
+    // Response - conversations with non-null stage
+    const resp = data.filter(c => c.stage !== null && c.stage !== undefined && c.stage !== '').length
 
-    // Calculate stage distribution
-    const stageCounts: Record<string, number> = {}
-    data.forEach(conv => {
-      const stage = conv.stage || 'Welcome Message'
-      stageCounts[stage] = (stageCounts[stage] || 0) + 1
-    })
+    // Close - conversations with non-null detail field (captured customer details)
+    const closed = data.filter(c => c.detail !== null && c.detail !== undefined && c.detail !== '').length
 
-    const sortedStages = Object.entries(stageCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 6) // Top 6 stages
-
-    const analytics = sortedStages.map(([stage, count]) => ({
-      stage,
-      count,
-      percentage: parseFloat(((count / total) * 100).toFixed(1))
-    }))
-
-    setStageAnalytics(analytics)
+    setTotalLead(lead)
+    setStuckIntro(stuck)
+    setResponse(resp)
+    setClose(closed)
   }
 
   const resetFilters = () => {
@@ -306,8 +287,6 @@ ${conv.conv_last || 'No conversation history'}
     }
   }
 
-  const aiPercent = totalConversations > 0 ? ((aiConversations / totalConversations) * 100).toFixed(1) : '0'
-  const humanPercent = totalConversations > 0 ? ((humanConversations / totalConversations) * 100).toFixed(1) : '0'
 
   return (
     <Layout>
@@ -323,100 +302,59 @@ ${conv.conv_last || 'No conversation history'}
           <p className="text-gray-600 font-medium">Monitor and manage your AI-powered chatbot interactions</p>
         </div>
 
-        {/* Top Stats Cards - 4 cards */}
+        {/* Analytics - 4 Boxes */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          {/* Total Conversations */}
-          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 card-medium card-hover transition-smooth text-white">
-            <div className="flex items-center gap-2 mb-2">
-              <Phone className="w-5 h-5 text-white" />
-              <span className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Total</span>
+          {/* Total Lead */}
+          <div className="bg-white rounded-xl p-6 card-soft card-hover transition-smooth border border-gray-200">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2.5 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl card-soft">
+                <Phone className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Total Lead</span>
             </div>
-            <div className="text-3xl font-bold mb-1">{totalConversations}</div>
-            <div className="text-sm text-purple-100 font-medium">Total Conversations</div>
-          </div>
-
-          {/* AI Conversations */}
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 card-medium card-hover transition-smooth text-white">
-            <div className="flex items-center gap-2 mb-2">
-              <CheckCircle className="w-5 h-5 text-white" />
-              <span className="text-xs font-semibold text-blue-100 uppercase tracking-wide">AI</span>
-            </div>
-            <div className="text-3xl font-bold mb-1">{aiConversations}</div>
-            <div className="text-sm text-blue-100 font-medium">AI Conversations</div>
-            <div className="text-xs text-blue-200 mt-1">{aiPercent}% of total</div>
-          </div>
-
-          {/* Human Takeovers */}
-          <div className="bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl p-6 card-medium card-hover transition-smooth text-white">
-            <div className="flex items-center gap-2 mb-2">
-              <XCircle className="w-5 h-5 text-white" />
-              <span className="text-xs font-semibold text-pink-100 uppercase tracking-wide">Human</span>
-            </div>
-            <div className="text-3xl font-bold mb-1">{humanConversations}</div>
-            <div className="text-sm text-pink-100 font-medium">Human Takeovers</div>
-            <div className="text-xs text-pink-200 mt-1">{humanPercent}% of total</div>
-          </div>
-
-          {/* Active Devices */}
-          <div className="bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-xl p-6 card-medium card-hover transition-smooth text-white">
-            <div className="flex items-center gap-2 mb-2">
-              <Volume2 className="w-5 h-5 text-white" />
-              <span className="text-xs font-semibold text-cyan-100 uppercase tracking-wide">Devices</span>
-            </div>
-            <div className="text-3xl font-bold mb-1">{activeDevices}</div>
-            <div className="text-sm text-cyan-100 font-medium">Active Devices</div>
-          </div>
-        </div>
-
-        {/* Total Minutes Card - Separate */}
-        <div className="bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl p-6 card-medium card-hover transition-smooth mb-6">
-          <div className="flex items-center gap-3 mb-2">
-            <Timer className="w-6 h-6 text-white" />
-            <span className="text-sm font-semibold text-purple-100 uppercase tracking-wide">Total Minutes</span>
-          </div>
-          <div className="text-4xl font-bold text-white">{totalMinutes} <span className="text-2xl text-purple-100">min</span></div>
-        </div>
-
-        {/* Dynamic Stage Analytics */}
-        <div className="bg-white rounded-xl p-6 card-soft mb-6 transition-smooth">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2.5 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl card-soft">
-              <span className="text-white text-xl">📊</span>
-            </div>
-            <div>
-              <h3 className="text-lg font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Dynamic Stage Analytics</h3>
-              <p className="text-sm text-gray-600 font-medium">Distribution of conversations by stage</p>
+            <div className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+              {totalLead}
             </div>
           </div>
 
-          {stageAnalytics.length === 0 ? (
-            <div className="text-center py-12 text-gray-500 bg-gradient-subtle rounded-lg">
-              No stage analytics available
+          {/* Stuck Intro */}
+          <div className="bg-white rounded-xl p-6 card-soft card-hover transition-smooth border border-gray-200">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2.5 bg-gradient-to-br from-red-500 to-red-600 rounded-xl card-soft">
+                <XCircle className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Stuck Intro</span>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-              {stageAnalytics.map((stage, index) => (
-                <div key={index} className="gradient-card rounded-xl p-4 card-soft card-hover transition-smooth border border-purple-100">
-                  <div className="mb-3">
-                    <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">Stage</span>
-                    <div className="text-lg font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mt-1">
-                      {stage.percentage}%
-                    </div>
-                  </div>
-                  <div className="mb-3">
-                    <h4 className="font-bold text-gray-900 text-sm mb-1">{stage.stage}</h4>
-                    <p className="text-xs text-gray-600 font-medium">{stage.count} conversations</p>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                    <div
-                      className="bg-gradient-to-r from-purple-600 to-blue-600 h-2 rounded-full transition-all duration-500 ease-out"
-                      style={{ width: `${stage.percentage}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+            <div className="text-4xl font-bold bg-gradient-to-r from-red-600 to-pink-600 bg-clip-text text-transparent">
+              {stuckIntro}
             </div>
-          )}
+          </div>
+
+          {/* Response */}
+          <div className="bg-white rounded-xl p-6 card-soft card-hover transition-smooth border border-gray-200">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2.5 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl card-soft">
+                <CheckCircle className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Response</span>
+            </div>
+            <div className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+              {response}
+            </div>
+          </div>
+
+          {/* Close */}
+          <div className="bg-white rounded-xl p-6 card-soft card-hover transition-smooth border border-gray-200">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2.5 bg-gradient-to-br from-green-500 to-green-600 rounded-xl card-soft">
+                <CheckCircle className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Close</span>
+            </div>
+            <div className="text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+              {close}
+            </div>
+          </div>
         </div>
 
         {/* Filters */}
