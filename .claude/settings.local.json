@@ -35,7 +35,8 @@
       "Bash(npm run build:*)",
       "Bash(npm install:*)",
       "Bash(git pull:*)",
-      "Bash(\"C:\\Users\\User\\Pictures\\dev-muse-automaton-main\\DEPLOYMENT_CHECKLIST.md\")"
+      "Bash(\"C:\\Users\\User\\Pictures\\dev-muse-automaton-main\\DEPLOYMENT_CHECKLIST.md\")",
+      "Bash(git show:*)"
     ],
     "deny": [],
     "ask": []

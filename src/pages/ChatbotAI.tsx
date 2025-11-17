@@ -3,6 +3,7 @@ import Layout from '../components/Layout'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import Swal from 'sweetalert2'
+import { Phone, CheckCircle, XCircle, Volume2, Timer } from 'lucide-react'
 
 type AIConversation = {
   id_prospect: number
@@ -284,46 +285,72 @@ ${conv.conv_last || 'No conversation history'}
 
   return (
     <Layout>
-      <div className="p-8">
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900">Chatbot AI Conversations</h2>
-          <p className="text-gray-600">Monitor and manage your AI-powered chatbot interactions</p>
+      <div className="p-6 max-w-7xl mx-auto animate-fade-in-up">
+        {/* Page Header */}
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl card-soft">
+              <Phone className="w-6 h-6 text-white" />
+            </div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Chatbot AI Conversations</h1>
+          </div>
+          <p className="text-gray-600 font-medium">Monitor and manage your AI-powered chatbot interactions</p>
         </div>
 
-        {/* Analytics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-gradient-to-br from-purple-500 to-purple-700 rounded-xl p-6 text-white">
-            <div className="text-3xl font-bold mb-2">{totalConversations}</div>
-            <div className="text-purple-100">Total Conversations</div>
+        {/* Top Stats Cards - 4 cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          {/* Total Conversations */}
+          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 card-medium card-hover transition-smooth text-white">
+            <div className="flex items-center gap-2 mb-2">
+              <Phone className="w-5 h-5 text-white" />
+              <span className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Total</span>
+            </div>
+            <div className="text-3xl font-bold mb-1">{totalConversations}</div>
+            <div className="text-sm text-purple-100 font-medium">Total Conversations</div>
           </div>
 
-          <div className="bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl p-6 text-white">
-            <div className="text-3xl font-bold mb-2">{aiConversations}</div>
-            <div className="text-blue-100">AI Conversations</div>
-            <div className="text-sm text-blue-200 mt-1">{aiPercent}% of total</div>
+          {/* AI Conversations */}
+          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 card-medium card-hover transition-smooth text-white">
+            <div className="flex items-center gap-2 mb-2">
+              <CheckCircle className="w-5 h-5 text-white" />
+              <span className="text-xs font-semibold text-blue-100 uppercase tracking-wide">AI</span>
+            </div>
+            <div className="text-3xl font-bold mb-1">{aiConversations}</div>
+            <div className="text-sm text-blue-100 font-medium">AI Conversations</div>
+            <div className="text-xs text-blue-200 mt-1">{aiPercent}% of total</div>
           </div>
 
-          <div className="bg-gradient-to-br from-pink-500 to-pink-700 rounded-xl p-6 text-white">
-            <div className="text-3xl font-bold mb-2">{humanConversations}</div>
-            <div className="text-pink-100">Human Takeovers</div>
-            <div className="text-sm text-pink-200 mt-1">{humanPercent}% of total</div>
+          {/* Human Takeovers */}
+          <div className="bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl p-6 card-medium card-hover transition-smooth text-white">
+            <div className="flex items-center gap-2 mb-2">
+              <XCircle className="w-5 h-5 text-white" />
+              <span className="text-xs font-semibold text-pink-100 uppercase tracking-wide">Human</span>
+            </div>
+            <div className="text-3xl font-bold mb-1">{humanConversations}</div>
+            <div className="text-sm text-pink-100 font-medium">Human Takeovers</div>
+            <div className="text-xs text-pink-200 mt-1">{humanPercent}% of total</div>
           </div>
 
-          <div className="bg-gradient-to-br from-cyan-500 to-cyan-700 rounded-xl p-6 text-white">
-            <div className="text-3xl font-bold mb-2">{activeDevices}</div>
-            <div className="text-cyan-100">Active Devices</div>
+          {/* Active Devices */}
+          <div className="bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-xl p-6 card-medium card-hover transition-smooth text-white">
+            <div className="flex items-center gap-2 mb-2">
+              <Volume2 className="w-5 h-5 text-white" />
+              <span className="text-xs font-semibold text-cyan-100 uppercase tracking-wide">Devices</span>
+            </div>
+            <div className="text-3xl font-bold mb-1">{activeDevices}</div>
+            <div className="text-sm text-cyan-100 font-medium">Active Devices</div>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-xl p-6 shadow-sm mb-6">
+        <div className="bg-white rounded-xl p-6 card-soft mb-6 transition-smooth">
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Device</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Device</label>
               <select
                 value={deviceFilter}
                 onChange={(e) => setDeviceFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth font-medium"
               >
                 <option value="">All Devices</option>
                 {devices.map(d => (
@@ -333,11 +360,11 @@ ${conv.conv_last || 'No conversation history'}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Stage</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Stage</label>
               <select
                 value={stageFilter}
                 onChange={(e) => setStageFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth font-medium"
               >
                 <option value="">All Stages</option>
                 {stages.map(s => (
@@ -347,47 +374,47 @@ ${conv.conv_last || 'No conversation history'}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Start Date</label>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth font-medium"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">End Date</label>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth font-medium"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Search</label>
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Name, phone, niche..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-smooth font-medium"
               />
             </div>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 mt-4">
             <button
               onClick={resetFilters}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+              className="px-5 py-2.5 bg-white text-gray-700 rounded-xl hover:bg-gray-50 transition-smooth flex items-center gap-2 font-medium card-soft border border-gray-200"
             >
               🔄 Reset Filters
             </button>
             <button
               onClick={exportToCSV}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+              className="px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-smooth flex items-center gap-2 font-medium card-soft"
             >
               📥 Export CSV
             </button>
@@ -396,30 +423,32 @@ ${conv.conv_last || 'No conversation history'}
 
         {/* Table */}
         {loading ? (
-          <div className="text-center py-12">
-            <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-purple-500 border-r-transparent"></div>
+          <div className="text-center py-16 bg-white rounded-xl card-soft">
+            <div className="inline-block h-14 w-14 animate-spin rounded-full border-4 border-solid border-purple-500 border-r-transparent"></div>
+            <p className="mt-4 text-gray-600 font-medium">Loading conversations...</p>
           </div>
         ) : filteredConversations.length === 0 ? (
-          <div className="bg-white border border-gray-200 rounded-xl p-12 text-center shadow-sm">
-            <p className="text-gray-600">No conversations found matching your filters</p>
+          <div className="bg-white rounded-xl p-16 text-center card-soft">
+            <div className="text-6xl mb-4">📭</div>
+            <p className="text-gray-600 font-medium text-lg">No conversations found matching your filters</p>
           </div>
         ) : (
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+          <div className="bg-white rounded-xl overflow-hidden card-soft transition-smooth">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50">
+                <thead className="bg-gradient-subtle">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">No</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Device</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Phone</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Niche</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Stage</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Detail</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">History</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Action</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">No</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Device</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Date</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Name</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Phone</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Niche</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Stage</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Detail</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">History</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Status</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -429,19 +458,19 @@ ${conv.conv_last || 'No conversation history'}
                       : '-'
 
                     return (
-                      <tr key={conv.id_prospect} className="hover:bg-gray-50">
+                      <tr key={conv.id_prospect} className="hover:bg-gradient-subtle transition-smooth">
                         <td className="px-6 py-4 text-sm font-bold text-gray-900">{index + 1}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600">{conv.device_id || '-'}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600">{dateFormatted}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{conv.prospect_name || '-'}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600 font-medium">{conv.device_id || '-'}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600 font-medium">{dateFormatted}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900 font-semibold">{conv.prospect_name || '-'}</td>
                         <td className="px-6 py-4 text-sm font-bold text-gray-900">{conv.prospect_num}</td>
                         <td className="px-6 py-4">
-                          <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700">
+                          <span className="px-3 py-1.5 text-xs font-semibold rounded-full bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 border border-blue-200">
                             {conv.niche || '-'}
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-700">
+                          <span className="px-3 py-1.5 text-xs font-semibold rounded-full bg-gradient-to-r from-purple-50 to-purple-100 text-purple-700 border border-purple-200">
                             {conv.stage || 'Welcome Message'}
                           </span>
                         </td>
@@ -457,17 +486,17 @@ ${conv.conv_last || 'No conversation history'}
                         <td className="px-6 py-4">
                           <button
                             onClick={() => viewConversation(conv)}
-                            className="text-blue-600 hover:text-blue-800"
+                            className="text-blue-600 hover:text-blue-800 transition-smooth text-lg"
                             title="View Conversation"
                           >
                             👁️
                           </button>
                         </td>
                         <td className="px-6 py-4">
-                          <span className={`px-2 py-1 text-xs rounded-full ${
+                          <span className={`px-3 py-1.5 text-xs font-semibold rounded-full border ${
                             conv.human === 1
-                              ? 'bg-yellow-100 text-yellow-700'
-                              : 'bg-green-100 text-green-700'
+                              ? 'bg-gradient-to-r from-yellow-50 to-yellow-100 text-yellow-700 border-yellow-200'
+                              : 'bg-gradient-to-r from-green-50 to-green-100 text-green-700 border-green-200'
                           }`}>
                             {conv.human === 1 ? 'Human' : 'AI'}
                           </span>
@@ -475,7 +504,7 @@ ${conv.conv_last || 'No conversation history'}
                         <td className="px-6 py-4">
                           <button
                             onClick={() => deleteConversation(conv.prospect_num)}
-                            className="text-red-600 hover:text-red-800"
+                            className="text-red-600 hover:text-red-800 transition-smooth text-lg"
                             title="Delete"
                           >
                             🗑️

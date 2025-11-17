@@ -3,21 +3,22 @@ import Layout from '../components/Layout'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { Chart, registerables } from 'chart.js'
+import { MessageSquare, UserCheck, XCircle, DollarSign, TrendingUp } from 'lucide-react'
 
 Chart.register(...registerables)
 
 type Stats = {
-  totalConversations: number
-  chatbotAI: number
+  totalDevices: number
   activeDevices: number
+  offlineDevices: number
 }
 
 export default function Dashboard() {
   const { user } = useAuth()
   const [stats, setStats] = useState<Stats>({
-    totalConversations: 0,
-    chatbotAI: 0,
+    totalDevices: 0,
     activeDevices: 0,
+    offlineDevices: 0,
   })
   const [loading, setLoading] = useState(true)
 
@@ -28,6 +29,14 @@ export default function Dashboard() {
   const [endDate, setEndDate] = useState('')
   const [devices, setDevices] = useState<string[]>([])
   const [stages, setStages] = useState<string[]>([])
+
+  // Analytics states
+  const [totalLead, setTotalLead] = useState(0)
+  const [totalStuckIntro, setTotalStuckIntro] = useState(0)
+  const [totalResponse, setTotalResponse] = useState(0)
+  const [totalClose, setTotalClose] = useState(0)
+  const [totalSales, setTotalSales] = useState(0)
+  const [closingRate, setClosingRate] = useState(0)
 
   // Chart refs and state
   const dailyTrendsChartRef = useRef<HTMLCanvasElement>(null)
@@ -123,10 +132,10 @@ export default function Dashboard() {
         setStages(uniqueStages)
       }
 
-      // Fetch active devices (admin sees all, users see only their own)
+      // Fetch devices (admin sees all, users see only their own)
       let devicesQuery = supabase
         .from('device_setting')
-        .select('id', { count: 'exact' })
+        .select('*')
 
       if (user && user.role !== 'admin') {
         devicesQuery = devicesQuery.eq('user_id', user.id)
@@ -134,13 +143,19 @@ export default function Dashboard() {
 
       const { data: devicesData } = await devicesQuery
 
-      const aiCount = aiConversations?.length || 0
+      // Calculate device statistics
+      const totalDevices = devicesData?.length || 0
+      const activeDevices = devicesData?.filter(d => d.status === 'active' || d.status === 'connected').length || 0
+      const offlineDevices = totalDevices - activeDevices
 
       setStats({
-        totalConversations: aiCount,
-        chatbotAI: aiCount,
-        activeDevices: devicesData?.length || 0,
+        totalDevices,
+        activeDevices,
+        offlineDevices,
       })
+
+      // Calculate analytics
+      calculateAnalytics(aiConversations || [])
 
       // Render charts with filtered data
       if (aiConversations && aiConversations.length > 0) {
@@ -159,6 +174,37 @@ export default function Dashboard() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const calculateAnalytics = (data: any[]) => {
+    // Total Lead - all conversations
+    const lead = data.length
+
+    // Total Stuck Intro - stage is null
+    const stuckIntro = data.filter(c => !c.stage || c.stage === null).length
+
+    // Total Response - stage is not null
+    const response = data.filter(c => c.stage !== null && c.stage !== undefined && c.stage !== '').length
+
+    // Total Close - detail is not null
+    const close = data.filter(c => c.detail !== null && c.detail !== undefined && c.detail !== '').length
+
+    // Total Sales - detail is not null and has Value RM**
+    const sales = data.filter(c => {
+      if (!c.detail) return false
+      const detail = c.detail.toLowerCase()
+      return detail.includes('rm') && /rm\s*\d+/.test(detail)
+    }).length
+
+    // Closing Rate - Total Close / Total Lead * 100
+    const rate = lead > 0 ? parseFloat(((close / lead) * 100).toFixed(2)) : 0
+
+    setTotalLead(lead)
+    setTotalStuckIntro(stuckIntro)
+    setTotalResponse(response)
+    setTotalClose(close)
+    setTotalSales(sales)
+    setClosingRate(rate)
   }
 
   const resetFilters = () => {
@@ -291,31 +337,88 @@ export default function Dashboard() {
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <StatCard
-            title="Total Conversations"
-            value={stats.totalConversations}
-            icon="💬"
+            title="Total Devices"
+            value={stats.totalDevices}
+            icon="📱"
             color="bg-blue-100"
-            subtitle="All conversations"
-          />
-          <StatCard
-            title="Chatbot AI"
-            value={stats.chatbotAI}
-            icon="🤖"
-            color="bg-purple-100"
-            subtitle="AI conversations"
+            subtitle="All registered devices"
           />
           <StatCard
             title="Active Devices"
             value={stats.activeDevices}
-            icon="📟"
-            color="bg-orange-100"
-            subtitle="Connected devices"
+            icon="✅"
+            color="bg-green-100"
+            subtitle="Currently active"
+          />
+          <StatCard
+            title="Offline Devices"
+            value={stats.offlineDevices}
+            icon="❌"
+            color="bg-red-100"
+            subtitle="Currently offline"
           />
         </div>
 
+        {/* Analytics Cards - 6 cards in a row */}
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-8">
+          {/* Total Lead */}
+          <div className="bg-white rounded-xl p-4 card-soft card-hover transition-smooth border border-gray-100">
+            <div className="flex items-center gap-2 mb-2">
+              <MessageSquare className="w-5 h-5 text-purple-600" />
+              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Total Lead</span>
+            </div>
+            <div className="text-2xl font-bold text-gray-900">{totalLead}</div>
+          </div>
+
+          {/* Total Stuck Intro */}
+          <div className="bg-gradient-to-br from-red-50 to-pink-50 rounded-xl p-4 card-soft card-hover transition-smooth border border-red-100">
+            <div className="flex items-center gap-2 mb-2">
+              <XCircle className="w-5 h-5 text-red-600" />
+              <span className="text-xs font-semibold text-red-700 uppercase tracking-wide">Stuck Intro</span>
+            </div>
+            <div className="text-2xl font-bold text-red-600">{totalStuckIntro}</div>
+          </div>
+
+          {/* Total Response */}
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 card-soft card-hover transition-smooth border border-blue-100">
+            <div className="flex items-center gap-2 mb-2">
+              <UserCheck className="w-5 h-5 text-blue-600" />
+              <span className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Response</span>
+            </div>
+            <div className="text-2xl font-bold text-blue-600">{totalResponse}</div>
+          </div>
+
+          {/* Total Close */}
+          <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-4 card-soft card-hover transition-smooth border border-green-100">
+            <div className="flex items-center gap-2 mb-2">
+              <UserCheck className="w-5 h-5 text-green-600" />
+              <span className="text-xs font-semibold text-green-700 uppercase tracking-wide">Close</span>
+            </div>
+            <div className="text-2xl font-bold text-green-600">{totalClose}</div>
+          </div>
+
+          {/* Total Sales */}
+          <div className="bg-gradient-to-br from-amber-50 to-yellow-50 rounded-xl p-4 card-soft card-hover transition-smooth border border-amber-100">
+            <div className="flex items-center gap-2 mb-2">
+              <DollarSign className="w-5 h-5 text-amber-600" />
+              <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Sales</span>
+            </div>
+            <div className="text-2xl font-bold text-amber-600">{totalSales}</div>
+          </div>
+
+          {/* Closing Rate */}
+          <div className="bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl p-4 card-medium card-hover transition-smooth">
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp className="w-5 h-5 text-white" />
+              <span className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Closing Rate</span>
+            </div>
+            <div className="text-2xl font-bold text-white">{closingRate}%</div>
+          </div>
+        </div>
+
         {/* Filters */}
-        <div className="bg-white border border-gray-200 rounded-xl p-6 mb-8 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Filter by Date Range</h3>
+        <div className="bg-white rounded-xl p-6 mb-8 card-soft transition-smooth">
+          <h3 className="text-lg font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-4">Filter by Date Range</h3>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Device</label>
@@ -380,28 +483,40 @@ export default function Dashboard() {
               <canvas ref={dailyTrendsChartRef}></canvas>
             </div>
           </div>
-          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Stage Distribution</h3>
+          <div className="bg-white rounded-xl p-6 card-soft transition-smooth">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2.5 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl card-soft">
+                <span className="text-white text-xl">📊</span>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Stage Distribution</h3>
+                <p className="text-sm text-gray-600 font-medium">Conversation stages breakdown</p>
+              </div>
+            </div>
             <div className="h-64 overflow-y-auto">
               {stageDistribution.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-gray-400">
-                  <p>No data available</p>
+                <div className="h-full flex items-center justify-center text-gray-500 bg-gradient-subtle rounded-lg">
+                  <p className="font-medium">No data available</p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {stageDistribution.map((item, index) => (
-                    <div key={index} className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium text-gray-700">{item.stage}</span>
-                        <span className="text-sm text-gray-500">{item.count} conversations</span>
-                      </div>
-                      <div className="relative w-full h-8 bg-gray-100 rounded-lg overflow-hidden">
-                        <div
-                          className="absolute top-0 left-0 h-full bg-gradient-to-r from-primary-500 to-primary-600 flex items-center justify-end pr-3"
-                          style={{ width: `${item.percentage}%` }}
-                        >
-                          <span className="text-xs font-semibold text-white">{item.percentage}%</span>
+                    <div key={index} className="gradient-card rounded-xl p-4 card-soft card-hover transition-smooth border border-purple-100">
+                      <div className="mb-3">
+                        <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">Stage</span>
+                        <div className="text-lg font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mt-1">
+                          {item.percentage}%
                         </div>
+                      </div>
+                      <div className="mb-3">
+                        <h4 className="font-bold text-gray-900 text-sm mb-1">{item.stage}</h4>
+                        <p className="text-xs text-gray-600 font-medium">{item.count} conversations</p>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                        <div
+                          className="bg-gradient-to-r from-purple-600 to-blue-600 h-2 rounded-full transition-all duration-500 ease-out"
+                          style={{ width: `${item.percentage}%` }}
+                        />
                       </div>
                     </div>
                   ))}
