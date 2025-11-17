@@ -286,6 +286,53 @@ ${conv.conv_last || 'No conversation history'}
     })
   }
 
+  const changeStatus = async (conv: AIConversation) => {
+    const result = await Swal.fire({
+      title: 'Change Status',
+      html: `
+        <p style="margin-bottom: 15px;">Current status: <strong>${conv.human === 1 ? 'Human' : 'AI'}</strong></p>
+        <p>Select new status for this conversation:</p>
+      `,
+      showDenyButton: true,
+      showCancelButton: true,
+      confirmButtonText: 'AI',
+      denyButtonText: 'Human',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#10B981',
+      denyButtonColor: '#F59E0B',
+    })
+
+    if (result.isConfirmed || result.isDenied) {
+      const newHumanValue = result.isDenied ? 1 : 0
+      const newStatus = result.isDenied ? 'Human' : 'AI'
+
+      try {
+        const { error } = await supabase
+          .from('ai_whatsapp')
+          .update({ human: newHumanValue })
+          .eq('prospect_num', conv.prospect_num)
+
+        if (error) throw error
+
+        Swal.fire({
+          title: 'Updated!',
+          text: `Status changed to ${newStatus}`,
+          icon: 'success',
+          confirmButtonColor: '#667eea',
+        })
+        loadConversations()
+      } catch (error) {
+        console.error('Error updating status:', error)
+        Swal.fire({
+          title: 'Error!',
+          text: 'Failed to update status',
+          icon: 'error',
+          confirmButtonColor: '#d33',
+        })
+      }
+    }
+  }
+
   const deleteConversation = async (prospectNum: string) => {
     const result = await Swal.fire({
       title: 'Are you sure?',
@@ -525,10 +572,10 @@ ${conv.conv_last || 'No conversation history'}
                             {conv.niche || '-'}
                           </span>
                         </td>
-                        <td className="px-6 py-4">
-                          <span className="px-3 py-1.5 text-xs font-semibold rounded-full bg-gradient-to-r from-purple-50 to-purple-100 text-purple-700 border border-purple-200">
+                        <td className="px-6 py-4 text-sm text-gray-900 font-medium max-w-xs">
+                          <div className="whitespace-normal break-words">
                             {conv.stage || 'Welcome Message'}
-                          </span>
+                          </div>
                         </td>
                         <td className="px-6 py-4">
                           {conv.detail ? (
@@ -553,13 +600,17 @@ ${conv.conv_last || 'No conversation history'}
                           </button>
                         </td>
                         <td className="px-6 py-4">
-                          <span className={`px-3 py-1.5 text-xs font-semibold rounded-full border ${
-                            conv.human === 1
-                              ? 'bg-gradient-to-r from-yellow-50 to-yellow-100 text-yellow-700 border-yellow-200'
-                              : 'bg-gradient-to-r from-green-50 to-green-100 text-green-700 border-green-200'
-                          }`}>
+                          <button
+                            onClick={() => changeStatus(conv)}
+                            className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-smooth hover:opacity-80 cursor-pointer ${
+                              conv.human === 1
+                                ? 'bg-gradient-to-r from-yellow-50 to-yellow-100 text-yellow-700 border-yellow-200'
+                                : 'bg-gradient-to-r from-green-50 to-green-100 text-green-700 border-green-200'
+                            }`}
+                            title="Click to change status"
+                          >
                             {conv.human === 1 ? 'Human' : 'AI'}
-                          </span>
+                          </button>
                         </td>
                         <td className="px-6 py-4">
                           <button
