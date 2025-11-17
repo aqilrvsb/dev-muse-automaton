@@ -36,6 +36,10 @@ export default function ChatbotAI() {
   const [aiConversations, setAiConversations] = useState(0)
   const [humanConversations, setHumanConversations] = useState(0)
   const [activeDevices, setActiveDevices] = useState(0)
+  const [totalMinutes, setTotalMinutes] = useState(0)
+
+  // Stage analytics state
+  const [stageAnalytics, setStageAnalytics] = useState<Array<{ stage: string; count: number; percentage: number }>>([])
 
   // Unique values for filters
   const [devices, setDevices] = useState<string[]>([])
@@ -154,6 +158,28 @@ export default function ChatbotAI() {
     setAiConversations(aiCount)
     setHumanConversations(humanCount)
     setActiveDevices(deviceCount)
+
+    // Calculate total minutes (mock data - can be updated with real data)
+    setTotalMinutes(Math.floor(total * 2.5)) // Assuming avg 2.5 min per conversation
+
+    // Calculate stage distribution
+    const stageCounts: Record<string, number> = {}
+    data.forEach(conv => {
+      const stage = conv.stage || 'Welcome Message'
+      stageCounts[stage] = (stageCounts[stage] || 0) + 1
+    })
+
+    const sortedStages = Object.entries(stageCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6) // Top 6 stages
+
+    const analytics = sortedStages.map(([stage, count]) => ({
+      stage,
+      count,
+      percentage: parseFloat(((count / total) * 100).toFixed(1))
+    }))
+
+    setStageAnalytics(analytics)
   }
 
   const resetFilters = () => {
@@ -340,6 +366,57 @@ ${conv.conv_last || 'No conversation history'}
             <div className="text-3xl font-bold mb-1">{activeDevices}</div>
             <div className="text-sm text-cyan-100 font-medium">Active Devices</div>
           </div>
+        </div>
+
+        {/* Total Minutes Card - Separate */}
+        <div className="bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl p-6 card-medium card-hover transition-smooth mb-6">
+          <div className="flex items-center gap-3 mb-2">
+            <Timer className="w-6 h-6 text-white" />
+            <span className="text-sm font-semibold text-purple-100 uppercase tracking-wide">Total Minutes</span>
+          </div>
+          <div className="text-4xl font-bold text-white">{totalMinutes} <span className="text-2xl text-purple-100">min</span></div>
+        </div>
+
+        {/* Dynamic Stage Analytics */}
+        <div className="bg-white rounded-xl p-6 card-soft mb-6 transition-smooth">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2.5 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl card-soft">
+              <span className="text-white text-xl">📊</span>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Dynamic Stage Analytics</h3>
+              <p className="text-sm text-gray-600 font-medium">Distribution of conversations by stage</p>
+            </div>
+          </div>
+
+          {stageAnalytics.length === 0 ? (
+            <div className="text-center py-12 text-gray-500 bg-gradient-subtle rounded-lg">
+              No stage analytics available
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+              {stageAnalytics.map((stage, index) => (
+                <div key={index} className="gradient-card rounded-xl p-4 card-soft card-hover transition-smooth border border-purple-100">
+                  <div className="mb-3">
+                    <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">Stage</span>
+                    <div className="text-lg font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mt-1">
+                      {stage.percentage}%
+                    </div>
+                  </div>
+                  <div className="mb-3">
+                    <h4 className="font-bold text-gray-900 text-sm mb-1">{stage.stage}</h4>
+                    <p className="text-xs text-gray-600 font-medium">{stage.count} conversations</p>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-gradient-to-r from-purple-600 to-blue-600 h-2 rounded-full transition-all duration-500 ease-out"
+                      style={{ width: `${stage.percentage}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Filters */}
