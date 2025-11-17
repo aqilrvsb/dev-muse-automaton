@@ -3,7 +3,7 @@ import Layout from '../components/Layout'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import Swal from 'sweetalert2'
-import { Phone, CheckCircle, XCircle } from 'lucide-react'
+import { Phone, CheckCircle, XCircle, DollarSign, TrendingUp } from 'lucide-react'
 
 type AIConversation = {
   id_prospect: number
@@ -31,11 +31,13 @@ export default function ChatbotAI() {
   const [endDate, setEndDate] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
 
-  // Analytics states - 4 boxes only
+  // Analytics states - 6 boxes
   const [totalLead, setTotalLead] = useState(0)
   const [stuckIntro, setStuckIntro] = useState(0)
   const [response, setResponse] = useState(0)
   const [close, setClose] = useState(0)
+  const [sales, setSales] = useState(0)
+  const [closingRate, setClosingRate] = useState(0)
 
   // Unique values for filters
   const [devices, setDevices] = useState<string[]>([])
@@ -157,10 +159,22 @@ export default function ChatbotAI() {
     // Close - conversations with non-null detail field (captured customer details)
     const closed = data.filter(c => c.detail !== null && c.detail !== undefined && c.detail !== '').length
 
+    // Sales - conversations with RM pricing in details
+    const salesCount = data.filter(c => {
+      if (!c.detail) return false
+      const detail = c.detail.toLowerCase()
+      return detail.includes('rm') && /rm\s*\d+/.test(detail)
+    }).length
+
+    // Closing Rate - (Close / Lead) * 100
+    const rate = lead > 0 ? parseFloat(((closed / lead) * 100).toFixed(2)) : 0
+
     setTotalLead(lead)
     setStuckIntro(stuck)
     setResponse(resp)
     setClose(closed)
+    setSales(salesCount)
+    setClosingRate(rate)
   }
 
   const resetFilters = () => {
@@ -213,6 +227,31 @@ export default function ChatbotAI() {
       title: 'Success!',
       text: `Exported ${filteredConversations.length} conversations to CSV`,
       icon: 'success',
+      confirmButtonColor: '#667eea',
+    })
+  }
+
+  const viewDetail = (conv: AIConversation) => {
+    Swal.fire({
+      title: 'Customer Details',
+      html: `
+        <div style="text-align: left; font-family: monospace; font-size: 14px;">
+          <p><strong>Phone:</strong> ${conv.prospect_num || '-'}</p>
+          <p><strong>Name:</strong> ${conv.prospect_name || '-'}</p>
+          <p><strong>Device:</strong> ${conv.device_id || '-'}</p>
+          <p><strong>Niche:</strong> ${conv.niche || '-'}</p>
+          <p><strong>Stage:</strong> ${conv.stage || 'Welcome Message'}</p>
+          <hr style="margin: 15px 0;">
+          ${conv.detail ? `
+          <p><strong>Customer Details:</strong></p>
+          <div style="background: #e8f4fd; padding: 10px; border-radius: 5px; white-space: pre-wrap; text-align: left; border-left: 3px solid #667eea;">
+${conv.detail}
+          </div>
+          ` : '<p style="text-align: center; color: #999;">No customer details captured</p>'}
+        </div>
+      `,
+      width: '700px',
+      confirmButtonText: 'OK',
       confirmButtonColor: '#667eea',
     })
   }
@@ -302,58 +341,60 @@ ${conv.conv_last || 'No conversation history'}
           <p className="text-gray-600 font-medium">Monitor and manage your AI-powered chatbot interactions</p>
         </div>
 
-        {/* Analytics - 4 Boxes */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        {/* Analytics - 6 Boxes */}
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
           {/* Total Lead */}
-          <div className="bg-white rounded-xl p-6 card-soft card-hover transition-smooth border border-gray-200">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2.5 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl card-soft">
-                <Phone className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Total Lead</span>
+          <div className="bg-white rounded-xl p-4 card-soft card-hover transition-smooth border border-gray-100">
+            <div className="flex items-center gap-2 mb-2">
+              <Phone className="w-5 h-5 text-purple-600" />
+              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Total Lead</span>
             </div>
-            <div className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-              {totalLead}
-            </div>
+            <div className="text-2xl font-bold text-gray-900">{totalLead}</div>
           </div>
 
           {/* Stuck Intro */}
-          <div className="bg-white rounded-xl p-6 card-soft card-hover transition-smooth border border-gray-200">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2.5 bg-gradient-to-br from-red-500 to-red-600 rounded-xl card-soft">
-                <XCircle className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Stuck Intro</span>
+          <div className="bg-gradient-to-br from-red-50 to-pink-50 rounded-xl p-4 card-soft card-hover transition-smooth border border-red-100">
+            <div className="flex items-center gap-2 mb-2">
+              <XCircle className="w-5 h-5 text-red-600" />
+              <span className="text-xs font-semibold text-red-700 uppercase tracking-wide">Stuck Intro</span>
             </div>
-            <div className="text-4xl font-bold bg-gradient-to-r from-red-600 to-pink-600 bg-clip-text text-transparent">
-              {stuckIntro}
-            </div>
+            <div className="text-2xl font-bold text-red-600">{stuckIntro}</div>
           </div>
 
           {/* Response */}
-          <div className="bg-white rounded-xl p-6 card-soft card-hover transition-smooth border border-gray-200">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2.5 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl card-soft">
-                <CheckCircle className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Response</span>
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 card-soft card-hover transition-smooth border border-blue-100">
+            <div className="flex items-center gap-2 mb-2">
+              <CheckCircle className="w-5 h-5 text-blue-600" />
+              <span className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Response</span>
             </div>
-            <div className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
-              {response}
-            </div>
+            <div className="text-2xl font-bold text-blue-600">{response}</div>
           </div>
 
           {/* Close */}
-          <div className="bg-white rounded-xl p-6 card-soft card-hover transition-smooth border border-gray-200">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2.5 bg-gradient-to-br from-green-500 to-green-600 rounded-xl card-soft">
-                <CheckCircle className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Close</span>
+          <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-4 card-soft card-hover transition-smooth border border-green-100">
+            <div className="flex items-center gap-2 mb-2">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+              <span className="text-xs font-semibold text-green-700 uppercase tracking-wide">Close</span>
             </div>
-            <div className="text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-              {close}
+            <div className="text-2xl font-bold text-green-600">{close}</div>
+          </div>
+
+          {/* Sales */}
+          <div className="bg-gradient-to-br from-amber-50 to-yellow-50 rounded-xl p-4 card-soft card-hover transition-smooth border border-amber-100">
+            <div className="flex items-center gap-2 mb-2">
+              <DollarSign className="w-5 h-5 text-amber-600" />
+              <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Sales</span>
             </div>
+            <div className="text-2xl font-bold text-amber-600">{sales}</div>
+          </div>
+
+          {/* Closing Rate */}
+          <div className="bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl p-4 card-medium card-hover transition-smooth">
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp className="w-5 h-5 text-white" />
+              <span className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Closing Rate</span>
+            </div>
+            <div className="text-2xl font-bold text-white">{closingRate}%</div>
           </div>
         </div>
 
@@ -489,11 +530,15 @@ ${conv.conv_last || 'No conversation history'}
                             {conv.stage || 'Welcome Message'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-600 max-w-xs">
+                        <td className="px-6 py-4">
                           {conv.detail ? (
-                            <div className="truncate" title={conv.detail}>
-                              {conv.detail}
-                            </div>
+                            <button
+                              onClick={() => viewDetail(conv)}
+                              className="text-blue-600 hover:text-blue-800 transition-smooth text-lg"
+                              title="View Customer Details"
+                            >
+                              📋
+                            </button>
                           ) : (
                             <span className="text-gray-400">-</span>
                           )}
