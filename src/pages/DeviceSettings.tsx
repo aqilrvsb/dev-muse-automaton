@@ -168,37 +168,105 @@ export default function DeviceSettings() {
         return
       }
 
-      const { error } = await supabase.from('device_setting').insert({
-        id: crypto.randomUUID(),
-        user_id: user.id,
-        ...formData,
-      })
+      // Show loading state
+      setIsCheckingStatus(true)
+      setLoadingMessage('Creating device...')
+
+      const deviceId = crypto.randomUUID()
+      const { error } = await supabase
+        .from('device_setting')
+        .insert({
+          id: deviceId,
+          user_id: user.id,
+          ...formData,
+        })
 
       if (error) throw error
 
-      // Reset form and close modal
-      setFormData({
-        device_id: '',
-        instance: '',
-        webhook_id: '',
-        provider: 'waha',
-        api_key_option: 'openai/gpt-4.1',
-        api_key: '',
-        phone_number: '',
-      })
-      setShowAddModal(false)
+      // Automatically generate webhook and register with WAHA
+      setLoadingMessage('Generating webhook and registering with WAHA...')
 
-      await Swal.fire({
-        icon: 'success',
-        title: 'Device Added!',
-        text: 'Your device has been added successfully.',
-        timer: 2000,
-        showConfirmButton: false,
+      const apiBase = 'https://waha-plus-production-705f.up.railway.app'
+      const apiKey = 'dckr_pat_vxeqEu_CqRi5O3CBHnD7FxhnBz0'
+      const sessionName = `UserChatBot_${formData.device_id}`
+      const webhook = `https://pening-bot.deno.dev/${formData.device_id}/${sessionName}`
+
+      // Create new session with webhook
+      const createResponse = await fetch(`${apiBase}/api/sessions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Api-Key': apiKey,
+        },
+        body: JSON.stringify({
+          name: sessionName,
+          start: false,
+          config: {
+            debug: false,
+            markSeen: false,
+            noweb: {
+              store: {
+                enabled: true,
+                fullSync: false,
+              },
+            },
+            webhooks: [
+              {
+                url: webhook,
+                events: ['message'],
+                retries: {
+                  attempts: 1,
+                  delay: 3,
+                  policy: 'constant',
+                },
+              },
+            ],
+          },
+        }),
       })
 
-      loadDevices()
+      const createData = await createResponse.json()
+
+      if (createData.name) {
+        // Update device with instance and webhook_id
+        await supabase
+          .from('device_setting')
+          .update({
+            instance: createData.name,
+            webhook_id: webhook,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', deviceId)
+
+        setIsCheckingStatus(false)
+
+        // Reset form and close modal
+        setFormData({
+          device_id: '',
+          instance: '',
+          webhook_id: '',
+          provider: 'waha',
+          api_key_option: 'openai/gpt-4.1',
+          api_key: '',
+          phone_number: '',
+        })
+        setShowAddModal(false)
+
+        await Swal.fire({
+          icon: 'success',
+          title: 'Device Created Successfully!',
+          text: 'Device added and webhook registered with WAHA.',
+          timer: 3000,
+          showConfirmButton: false,
+        })
+
+        loadDevices()
+      } else {
+        throw new Error('Failed to create WAHA session')
+      }
     } catch (error: any) {
       console.error('Error adding device:', error)
+      setIsCheckingStatus(false)
       await Swal.fire({
         icon: 'error',
         title: 'Failed to Add Device',
