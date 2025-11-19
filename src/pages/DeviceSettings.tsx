@@ -19,6 +19,8 @@ export default function DeviceSettings() {
   const [deviceIdExists, setDeviceIdExists] = useState(false)
   const [deviceIdError, setDeviceIdError] = useState('')
   const [deviceStatuses, setDeviceStatuses] = useState<Record<string, string>>({})
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false)
+  const [loadingMessage, setLoadingMessage] = useState('')
 
   // Form state
   const [formData, setFormData] = useState({
@@ -372,9 +374,13 @@ export default function DeviceSettings() {
     const apiBase = 'https://waha-plus-production-705f.up.railway.app'
     const apiKey = 'dckr_pat_vxeqEu_CqRi5O3CBHnD7FxhnBz0'
 
+    setIsCheckingStatus(true)
+    setLoadingMessage('Checking device status...')
+
     try {
       // If no instance, auto-generate webhook first
       if (!device.instance) {
+        setLoadingMessage('Generating webhook...')
         await handleGenerateWebhook(device)
         // Reload devices to get updated instance
         await loadDevices()
@@ -405,6 +411,8 @@ export default function DeviceSettings() {
       // Check if status is FAILED first, before updating state
       if (data.status === 'FAILED' || data.status === 'STOPPED') {
         // Session failed or stopped - automatically restart and show QR code
+        setLoadingMessage('Restarting session...')
+
         // Restart the session
         const startResponse = await fetch(`${apiBase}/api/sessions/${device.instance}/start`, {
           method: 'POST',
@@ -419,14 +427,25 @@ export default function DeviceSettings() {
 
         if (startResponse.ok) {
           // Wait a moment for session to initialize
+          setLoadingMessage('Waiting for session to initialize...')
           await new Promise(resolve => setTimeout(resolve, 2000))
 
           // Get QR code
+          setLoadingMessage('Generating QR code...')
           const qrResponse = await fetch(`${apiBase}/api/${device.instance}/auth/qr`, {
             headers: {
               'X-Api-Key': apiKey,
             },
           })
+
+          console.log('QR Response status:', qrResponse.status)
+          console.log('QR Response headers:', Object.fromEntries(qrResponse.headers.entries()))
+
+          if (!qrResponse.ok) {
+            const errorText = await qrResponse.text()
+            console.error('QR request failed:', errorText)
+            throw new Error(`Failed to get QR code: ${errorText}`)
+          }
 
           const contentType = qrResponse.headers.get('content-type')
 
@@ -437,18 +456,23 @@ export default function DeviceSettings() {
             setQrCode(imageUrl)
             setConnectionStatus('SCAN_QR_CODE')
             setDeviceStatuses(prev => ({ ...prev, [device.id]: 'SCAN_QR_CODE' }))
+            setIsCheckingStatus(false)
             setShowQRModal(true)
           } else {
             const qrData = await qrResponse.json()
+            console.log('QR Data received:', qrData)
             if (qrData.qr) {
               setQrCode(qrData.qr)
               setConnectionStatus('SCAN_QR_CODE')
               setDeviceStatuses(prev => ({ ...prev, [device.id]: 'SCAN_QR_CODE' }))
+              setIsCheckingStatus(false)
               setShowQRModal(true)
             }
           }
         } else {
-          throw new Error('Failed to restart session')
+          const errorText = await startResponse.text()
+          console.error('Session start failed:', errorText)
+          throw new Error(`Failed to restart session: ${errorText}`)
         }
         return
       }
@@ -458,6 +482,7 @@ export default function DeviceSettings() {
 
       if (data.status === 'SCAN_QR_CODE') {
         // Get QR code - WAHA returns PNG image directly, not JSON
+        setLoadingMessage('Generating QR code...')
         const qrResponse = await fetch(`${apiBase}/api/${device.instance}/auth/qr`, {
           headers: {
             'X-Api-Key': apiKey,
@@ -474,6 +499,7 @@ export default function DeviceSettings() {
 
           setQrCode(imageUrl)
           setConnectionStatus('SCAN_QR_CODE')
+          setIsCheckingStatus(false)
           setShowQRModal(true)
         } else {
           // Try parsing as JSON (fallback for other formats)
@@ -481,12 +507,14 @@ export default function DeviceSettings() {
           if (qrData.qr) {
             setQrCode(qrData.qr)
             setConnectionStatus('SCAN_QR_CODE')
+            setIsCheckingStatus(false)
             setShowQRModal(true)
           }
         }
       } else if (data.status === 'WORKING') {
         setConnectionStatus('WORKING')
         setQrCode('')
+        setIsCheckingStatus(false)
         await Swal.fire({
           icon: 'success',
           title: 'Connected!',
@@ -496,6 +524,7 @@ export default function DeviceSettings() {
         })
       } else {
         setConnectionStatus(data.status || 'UNKNOWN')
+        setIsCheckingStatus(false)
         await Swal.fire({
           icon: 'info',
           title: 'Status',
@@ -505,6 +534,7 @@ export default function DeviceSettings() {
     } catch (error: any) {
       console.error('Error checking status:', error)
       setDeviceStatuses(prev => ({ ...prev, [device.id]: 'FAILED' }))
+      setIsCheckingStatus(false)
       await Swal.fire({
         icon: 'error',
         title: 'Failed to Check Status',
@@ -885,6 +915,17 @@ export default function DeviceSettings() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Loading Modal */}
+        {isCheckingStatus && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl p-8 w-full max-w-sm shadow-xl text-center">
+              <div className="inline-block h-16 w-16 animate-spin rounded-full border-4 border-solid border-primary-500 border-r-transparent mb-4"></div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">{loadingMessage}</h3>
+              <p className="text-gray-600 text-sm">Please wait...</p>
             </div>
           </div>
         )}
