@@ -93,8 +93,19 @@ export default function ChatbotAI() {
       const convData = data || []
       setConversations(convData)
 
-      // Extract unique devices and stages for filters
-      const uniqueDevices = [...new Set(convData.map(c => c.device_id).filter(Boolean))]
+      // Extract unique devices from device_setting table (not from conversations)
+      let deviceSettingsQuery = supabase
+        .from('device_setting')
+        .select('device_id')
+
+      // For non-admin users, filter by their devices
+      if (user && user.role !== 'admin') {
+        deviceSettingsQuery = deviceSettingsQuery.eq('user_id', user.id)
+      }
+
+      const { data: deviceSettings } = await deviceSettingsQuery
+
+      const uniqueDevices = deviceSettings ? [...new Set(deviceSettings.map(d => d.device_id).filter(Boolean))] : []
       const uniqueStages = [...new Set(convData.map(c => c.stage || 'Welcome Message'))]
       setDevices(uniqueDevices)
       setStages(uniqueStages)

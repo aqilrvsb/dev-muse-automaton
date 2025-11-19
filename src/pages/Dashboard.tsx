@@ -113,22 +113,36 @@ export default function Dashboard() {
 
       const { data: aiConversations } = await query
 
-      // Extract unique devices and stages for filter dropdowns
-      let allConversationsQuery = supabase
-        .from('ai_whatsapp')
-        .select('device_id, stage')
+      // Extract unique devices from device_setting table and stages from ai_whatsapp
+      let deviceSettingsQuery = supabase
+        .from('device_setting')
+        .select('device_id')
 
       // For non-admin users, filter dropdown options by their devices
-      if (user && user.role !== 'admin' && userDeviceIds.length > 0) {
-        allConversationsQuery = allConversationsQuery.in('device_id', userDeviceIds)
+      if (user && user.role !== 'admin') {
+        deviceSettingsQuery = deviceSettingsQuery.eq('user_id', user.id)
       }
 
-      const { data: allConversations } = await allConversationsQuery
+      const { data: deviceSettings } = await deviceSettingsQuery
 
-      if (allConversations) {
-        const uniqueDevices = [...new Set(allConversations.map(c => c.device_id).filter(Boolean))]
-        const uniqueStages = [...new Set(allConversations.map(c => c.stage || 'Welcome Message'))]
+      // Get unique stages from conversations
+      let stagesQuery = supabase
+        .from('ai_whatsapp')
+        .select('stage')
+
+      if (user && user.role !== 'admin' && userDeviceIds.length > 0) {
+        stagesQuery = stagesQuery.in('device_id', userDeviceIds)
+      }
+
+      const { data: stagesData } = await stagesQuery
+
+      if (deviceSettings) {
+        const uniqueDevices = [...new Set(deviceSettings.map(d => d.device_id).filter(Boolean))]
         setDevices(uniqueDevices)
+      }
+
+      if (stagesData) {
+        const uniqueStages = [...new Set(stagesData.map(c => c.stage || 'Welcome Message'))]
         setStages(uniqueStages)
       }
 
@@ -143,9 +157,34 @@ export default function Dashboard() {
 
       const { data: devicesData } = await devicesQuery
 
-      // Calculate device statistics
+      // Calculate device statistics by checking real-time status from WhatsApp Center API
       const totalDevices = devicesData?.length || 0
-      const activeDevices = devicesData?.filter(d => d.status === 'active' || d.status === 'connected').length || 0
+      let activeDevices = 0
+
+      if (devicesData && devicesData.length > 0) {
+        const apiBase = '/api/whacenter'
+
+        // Check status for each device
+        const statusChecks = devicesData.map(async (device) => {
+          if (!device.instance) return false
+
+          try {
+            const response = await fetch(`${apiBase}?endpoint=statusDevice&device_id=${encodeURIComponent(device.instance)}`, {
+              method: 'GET'
+            })
+            const result = await response.json()
+
+            // WhatsApp Center returns: { status: true, data: { status: "CONNECTED" or "NOT CONNECTED" } }
+            return result.status && result.data && result.data.status === 'CONNECTED'
+          } catch (error) {
+            return false
+          }
+        })
+
+        const results = await Promise.all(statusChecks)
+        activeDevices = results.filter(isConnected => isConnected).length
+      }
+
       const offlineDevices = totalDevices - activeDevices
 
       setStats({
