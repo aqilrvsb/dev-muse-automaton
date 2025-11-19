@@ -72,9 +72,9 @@ export default function DeviceSettings() {
         }
       }, 1000)
 
-      // Start 10 second timer to refresh status
+      // Start 10 second timer to reload page
       qrRefreshTimerRef.current = setTimeout(() => {
-        handleCheckStatus(currentDevice)
+        window.location.reload()
       }, 10000)
     }
 
@@ -464,9 +464,11 @@ export default function DeviceSettings() {
 
       if (qrData.success && qrData.data && qrData.data.image) {
         // Validate QR code - check if it's a valid PNG and has sufficient length
-        // Valid QR codes from WhatsApp Center are typically much longer (>1000 chars)
-        // Simple placeholder QR codes are much shorter
-        const isValid = qrData.data.image.startsWith('iVBORw0KG') && qrData.data.image.length > 1000
+        // Valid complex QR codes from WhatsApp Center are typically >2500 chars
+        // Invalid placeholder QR codes are shorter (~1500-1800 chars)
+        const isValid = qrData.data.image.startsWith('iVBORw0KG') && qrData.data.image.length > 2000
+
+        console.log('QR Code validation - Length:', qrData.data.image.length, 'Valid:', isValid)
 
         if (isValid) {
           // Valid QR code
@@ -543,9 +545,9 @@ export default function DeviceSettings() {
 
           if (qrData.success && qrData.data && qrData.data.image) {
             // Validate QR code - check if it's a valid PNG and has sufficient length
-            // Valid QR codes from WhatsApp Center are typically much longer (>1000 chars)
-            // Simple placeholder QR codes are much shorter
-            const isValid = qrData.data.image.startsWith('iVBORw0KG') && qrData.data.image.length > 1000
+            // Valid complex QR codes from WhatsApp Center are typically >2500 chars
+            // Invalid placeholder QR codes are shorter (~1500-1800 chars)
+            const isValid = qrData.data.image.startsWith('iVBORw0KG') && qrData.data.image.length > 2000
 
             if (isValid) {
               // Valid QR code
@@ -576,11 +578,13 @@ export default function DeviceSettings() {
             throw new Error('Failed to get QR code')
           }
         } else if (whatsappStatus === 'CONNECTED') {
-          // Device is connected
+          // Device is connected - close modal and reload page
           setConnectionStatus('WORKING')
           setDeviceStatuses(prev => ({ ...prev, [device.id]: 'WORKING' }))
           setQrCode('')
           setIsCheckingStatus(false)
+          setShowQRModal(false)
+
           await Swal.fire({
             icon: 'success',
             title: 'Connected!',
@@ -588,6 +592,9 @@ export default function DeviceSettings() {
             timer: 2000,
             showConfirmButton: false,
           })
+
+          // Reload page to refresh all data
+          window.location.reload()
         } else {
           // Unknown status
           setConnectionStatus('UNKNOWN')
