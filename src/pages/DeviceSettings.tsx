@@ -62,15 +62,15 @@ export default function DeviceSettings() {
   }
 
   const fetchAllDeviceStatusesWithData = async (deviceList: Device[]) => {
-    const apiBase = 'https://api.whacenter.com'
+    // Use PHP proxy to avoid CORS issues
+    const apiBase = '/proxy/whacenter-proxy.php'
 
     const statuses: Record<string, string> = {}
 
     for (const device of deviceList) {
       if (device.instance) {
         try {
-          const response = await fetch(`${apiBase}/api/statusDevice?device_id=${encodeURIComponent(device.instance)}`, {
-            mode: 'cors',
+          const response = await fetch(`${apiBase}?endpoint=statusDevice&device_id=${encodeURIComponent(device.instance)}`, {
             headers: { 'Accept': 'application/json' }
           })
           const result = await response.json()
@@ -193,17 +193,14 @@ export default function DeviceSettings() {
       // Automatically add device and register with WhatsApp Center
       setLoadingMessage('Adding device to WhatsApp Center...')
 
-      const apiBase = 'https://api.whacenter.com'
-      const apiKey = 'abebe840-156c-441c-8252-da0342c5a07c'
+      const apiBase = '/proxy/whacenter-proxy.php'
       const deviceName = formData.device_id
       const phoneNumber = formData.phone_number || ''
 
-      // Step 1: Add device to WhatsApp Center
+      // Step 1: Add device to WhatsApp Center via PHP proxy
       const addDeviceResponse = await fetch(
-        `${apiBase}/api/addDevice?api_key=${encodeURIComponent(apiKey)}&name=${encodeURIComponent(deviceName)}&number=${encodeURIComponent(phoneNumber)}`,
+        `${apiBase}?endpoint=addDevice&name=${encodeURIComponent(deviceName)}&number=${encodeURIComponent(phoneNumber)}`,
         {
-          method: 'GET',
-          mode: 'cors',
           headers: {
             'Accept': 'application/json'
           }
@@ -220,10 +217,8 @@ export default function DeviceSettings() {
         const webhook = `https://pening-bot.deno.dev/${formData.device_id}/${whatsappCenterDeviceId}`
 
         const webhookResponse = await fetch(
-          `${apiBase}/api/setWebhook?device_id=${encodeURIComponent(whatsappCenterDeviceId)}&webhook=${encodeURIComponent(webhook)}`,
+          `${apiBase}?endpoint=setWebhook&device_id=${encodeURIComponent(whatsappCenterDeviceId)}&webhook=${encodeURIComponent(webhook)}`,
           {
-            method: 'GET',
-            mode: 'cors',
             headers: { 'Accept': 'application/json' }
           }
         )
@@ -349,17 +344,14 @@ export default function DeviceSettings() {
 
   const handleGenerateWebhook = async (device: Device) => {
     try {
-      const apiBase = 'https://api.whacenter.com'
-      const apiKey = 'abebe840-156c-441c-8252-da0342c5a07c'
+      const apiBase = '/proxy/whacenter-proxy.php'
       const deviceName = device.device_id
       const phoneNumber = device.phone_number || ''
 
-      // Add device to WhatsApp Center
+      // Add device to WhatsApp Center via PHP proxy
       const addDeviceResponse = await fetch(
-        `${apiBase}/api/addDevice?api_key=${encodeURIComponent(apiKey)}&name=${encodeURIComponent(deviceName)}&number=${encodeURIComponent(phoneNumber)}`,
+        `${apiBase}?endpoint=addDevice&name=${encodeURIComponent(deviceName)}&number=${encodeURIComponent(phoneNumber)}`,
         {
-          method: 'GET',
-          mode: 'cors',
           headers: {
             'Accept': 'application/json'
           }
@@ -374,10 +366,8 @@ export default function DeviceSettings() {
 
         // Set webhook for this device
         const webhookResponse = await fetch(
-          `${apiBase}/api/setWebhook?device_id=${encodeURIComponent(whatsappCenterDeviceId)}&webhook=${encodeURIComponent(webhook)}`,
+          `${apiBase}?endpoint=setWebhook&device_id=${encodeURIComponent(whatsappCenterDeviceId)}&webhook=${encodeURIComponent(webhook)}`,
           {
-            method: 'GET',
-            mode: 'cors',
             headers: { 'Accept': 'application/json' }
           }
         )
@@ -426,7 +416,7 @@ export default function DeviceSettings() {
   }
 
   const handleCheckStatus = async (device: Device) => {
-    const apiBase = 'https://api.whacenter.com'
+    const apiBase = '/proxy/whacenter-proxy.php'
 
     setIsCheckingStatus(true)
     setLoadingMessage('Checking device status...')
@@ -452,10 +442,10 @@ export default function DeviceSettings() {
         }
       }
 
-      // Check device status with WhatsApp Center
-      const response = await fetch(`${apiBase}/api/statusDevice?device_id=${encodeURIComponent(device.instance)}`, {
+      // Check device status with WhatsApp Center via PHP proxy
+      const response = await fetch(`${apiBase}?endpoint=statusDevice&device_id=${encodeURIComponent(device.instance)}`, {
         headers: {
-          'accept': 'application/json',
+          'Accept': 'application/json',
         },
       })
 
@@ -471,9 +461,8 @@ export default function DeviceSettings() {
         if (whatsappStatus === 'NOT CONNECTED') {
           setLoadingMessage('Generating QR code...')
 
-          // Get QR code from WhatsApp Center
-          const qrResponse = await fetch(`${apiBase}/api/qr?device_id=${encodeURIComponent(device.instance)}`, {
-            mode: 'cors',
+          // Get QR code from WhatsApp Center via PHP proxy
+          const qrResponse = await fetch(`${apiBase}?endpoint=qr&device_id=${encodeURIComponent(device.instance)}`, {
             headers: {
               'Accept': 'application/json',
             },
