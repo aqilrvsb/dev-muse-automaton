@@ -207,8 +207,8 @@ export default function DeviceSettings() {
 
       console.log('Add device response:', addDeviceData)
 
-      if (addDeviceData.success && addDeviceData.data && addDeviceData.data.device_id) {
-        const whatsappCenterDeviceId = addDeviceData.data.device_id
+      if (addDeviceData.success && addDeviceData.data && addDeviceData.data.device && addDeviceData.data.device.device_id) {
+        const whatsappCenterDeviceId = addDeviceData.data.device.device_id
 
         // Step 2: Set webhook for this device
         setLoadingMessage('Registering webhook...')
@@ -356,8 +356,10 @@ export default function DeviceSettings() {
 
       const addDeviceData = await addDeviceResponse.json()
 
-      if (addDeviceData.success && addDeviceData.data && addDeviceData.data.device_id) {
-        const whatsappCenterDeviceId = addDeviceData.data.device_id
+      console.log('Add device response (generateWebhook):', addDeviceData)
+
+      if (addDeviceData.success && addDeviceData.data && addDeviceData.data.device && addDeviceData.data.device.device_id) {
+        const whatsappCenterDeviceId = addDeviceData.data.device.device_id
         const webhook = `https://pening-bot.deno.dev/${device.device_id}/${whatsappCenterDeviceId}`
 
         // Set webhook for this device
