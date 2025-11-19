@@ -99,6 +99,10 @@ export default function DeviceSettings() {
       return
     }
 
+    if (!user?.id) {
+      return
+    }
+
     setIsCheckingDeviceId(true)
     setDeviceIdError('')
 
@@ -107,6 +111,7 @@ export default function DeviceSettings() {
         .from('device_setting')
         .select('device_id')
         .eq('device_id', deviceId.trim())
+        .eq('user_id', user.id)
         .maybeSingle()
 
       if (error) {
@@ -494,7 +499,7 @@ export default function DeviceSettings() {
               if (webhookData.success) {
                 // Update device in database with new instance
                 await supabase
-                  .from('device_settings')
+                  .from('device_setting')
                   .update({
                     instance: newWhatsappCenterDeviceId,
                     webhook_id: webhook
