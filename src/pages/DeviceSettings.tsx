@@ -426,87 +426,27 @@ export default function DeviceSettings() {
         })
 
         if (startResponse.ok) {
-          // Wait and check if session status changes to SCAN_QR_CODE
-          setLoadingMessage('Waiting for session to initialize...')
+          // Session restarted - give it a moment to initialize, then refresh page data
+          setLoadingMessage('Session restarted. Refreshing...')
 
-          let sessionReady = false
-          let attempts = 0
-          const maxAttempts = 10 // Try for 10 seconds max
+          // Wait 2 seconds to allow session to initialize
+          await new Promise(resolve => setTimeout(resolve, 2000))
 
-          while (!sessionReady && attempts < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, 1000))
-            attempts++
+          // Reload device data to check updated status
+          await loadDevices()
+          await fetchAllDeviceStatuses()
 
-            // Check session status
-            const statusCheck = await fetch(`${apiBase}/api/sessions/${device.instance}`, {
-              headers: { 'X-Api-Key': apiKey }
-            })
-            const statusData = await statusCheck.json()
+          setIsCheckingStatus(false)
 
-            console.log(`Attempt ${attempts}: Session status =`, statusData.status)
-
-            if (statusData.status === 'SCAN_QR_CODE') {
-              sessionReady = true
-              break
-            }
-
-            if (statusData.status === 'WORKING') {
-              // Already connected!
-              setIsCheckingStatus(false)
-              await Swal.fire({
-                icon: 'success',
-                title: 'Already Connected!',
-                text: 'Your WhatsApp device is already connected.',
-                timer: 2000,
-                showConfirmButton: false,
-              })
-              return
-            }
-          }
-
-          if (!sessionReady) {
-            throw new Error('Session did not transition to SCAN_QR_CODE state after restart')
-          }
-
-          // Get QR code
-          setLoadingMessage('Generating QR code...')
-          const qrResponse = await fetch(`${apiBase}/api/${device.instance}/auth/qr`, {
-            headers: {
-              'X-Api-Key': apiKey,
-            },
+          // Show success message
+          await Swal.fire({
+            icon: 'info',
+            title: 'Session Restarted',
+            text: 'Please click "Check Status" again to view QR code.',
+            timer: 3000,
+            showConfirmButton: false,
           })
-
-          console.log('QR Response status:', qrResponse.status)
-          console.log('QR Response headers:', Object.fromEntries(qrResponse.headers.entries()))
-
-          if (!qrResponse.ok) {
-            const errorText = await qrResponse.text()
-            console.error('QR request failed:', errorText)
-            throw new Error(`Failed to get QR code: ${errorText}`)
-          }
-
-          const contentType = qrResponse.headers.get('content-type')
-
-          if (contentType && contentType.includes('image')) {
-            const blob = await qrResponse.blob()
-            const imageUrl = URL.createObjectURL(blob)
-
-            setQrCode(imageUrl)
-            setConnectionStatus('SCAN_QR_CODE')
-            setDeviceStatuses(prev => ({ ...prev, [device.id]: 'SCAN_QR_CODE' }))
-            setIsCheckingStatus(false)
-            setShowQRModal(true)
-          } else {
-            const qrData = await qrResponse.json()
-            console.log('QR Data received:', qrData)
-            if (qrData.qr) {
-              setQrCode(qrData.qr)
-              setConnectionStatus('SCAN_QR_CODE')
-              setDeviceStatuses(prev => ({ ...prev, [device.id]: 'SCAN_QR_CODE' }))
-              setIsCheckingStatus(false)
-              setShowQRModal(true)
-            }
-          }
+          return
         } else {
           const errorText = await startResponse.text()
           console.error('Session start failed:', errorText)
