@@ -23,6 +23,7 @@ export default function DeviceSettings() {
   const [loadingMessage, setLoadingMessage] = useState('')
   const [countdown, setCountdown] = useState<number>(10)
   const [isValidQR, setIsValidQR] = useState<boolean>(false)
+  const [qrRefreshTrigger, setQrRefreshTrigger] = useState<number>(0)
   const qrRefreshTimerRef = useRef<NodeJS.Timeout | null>(null)
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -88,7 +89,7 @@ export default function DeviceSettings() {
         countdownIntervalRef.current = null
       }
     }
-  }, [showQRModal, currentDevice, isValidQR])
+  }, [qrRefreshTrigger])
 
   const loadDevices = async () => {
     try {
@@ -462,8 +463,10 @@ export default function DeviceSettings() {
       const qrData = await qrResponse.json()
 
       if (qrData.success && qrData.data && qrData.data.image) {
-        // Validate QR code - check if it's a valid PNG (starts with 'iVBORw0KG')
-        const isValid = qrData.data.image.startsWith('iVBORw0KG')
+        // Validate QR code - check if it's a valid PNG and has sufficient length
+        // Valid QR codes from WhatsApp Center are typically much longer (>1000 chars)
+        // Simple placeholder QR codes are much shorter
+        const isValid = qrData.data.image.startsWith('iVBORw0KG') && qrData.data.image.length > 1000
 
         if (isValid) {
           // Valid QR code
@@ -475,12 +478,20 @@ export default function DeviceSettings() {
           setIsCheckingStatus(false)
           setCurrentDevice(device)
           setIsValidQR(true)
+          setQrRefreshTrigger(prev => prev + 1) // Trigger countdown restart
           setShowQRModal(true)
           // Countdown will start automatically via useEffect when modal opens
         } else {
-          // Invalid QR code
-          setIsValidQR(false)
-          throw new Error('Invalid QR code received')
+          // Invalid or placeholder QR code - show it but don't start countdown
+          const qrImageUrl = `data:image/png;base64,${qrData.data.image}`
+
+          setQrCode(qrImageUrl)
+          setConnectionStatus('SCAN_QR_CODE')
+          setDeviceStatuses(prev => ({ ...prev, [device.id]: 'SCAN_QR_CODE' }))
+          setIsCheckingStatus(false)
+          setCurrentDevice(device)
+          setIsValidQR(false) // Don't start countdown for invalid QR
+          setShowQRModal(true)
         }
       } else {
         throw new Error('Failed to get QR code')
@@ -531,8 +542,10 @@ export default function DeviceSettings() {
           const qrData = await qrResponse.json()
 
           if (qrData.success && qrData.data && qrData.data.image) {
-            // Validate QR code - check if it's a valid PNG (starts with 'iVBORw0KG')
-            const isValid = qrData.data.image.startsWith('iVBORw0KG')
+            // Validate QR code - check if it's a valid PNG and has sufficient length
+            // Valid QR codes from WhatsApp Center are typically much longer (>1000 chars)
+            // Simple placeholder QR codes are much shorter
+            const isValid = qrData.data.image.startsWith('iVBORw0KG') && qrData.data.image.length > 1000
 
             if (isValid) {
               // Valid QR code
@@ -544,12 +557,20 @@ export default function DeviceSettings() {
               setIsCheckingStatus(false)
               setCurrentDevice(device)
               setIsValidQR(true)
+              setQrRefreshTrigger(prev => prev + 1) // Trigger countdown restart
               setShowQRModal(true)
               // Countdown will start automatically via useEffect when modal opens
             } else {
-              // Invalid QR code
-              setIsValidQR(false)
-              throw new Error('Invalid QR code received')
+              // Invalid or placeholder QR code - show it but don't start countdown
+              const qrImageUrl = `data:image/png;base64,${qrData.data.image}`
+
+              setQrCode(qrImageUrl)
+              setConnectionStatus('SCAN_QR_CODE')
+              setDeviceStatuses(prev => ({ ...prev, [device.id]: 'SCAN_QR_CODE' }))
+              setIsCheckingStatus(false)
+              setCurrentDevice(device)
+              setIsValidQR(false) // Don't start countdown for invalid QR
+              setShowQRModal(true)
             }
           } else {
             throw new Error('Failed to get QR code')
