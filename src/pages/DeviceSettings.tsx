@@ -70,7 +70,8 @@ export default function DeviceSettings() {
       if (device.instance) {
         try {
           const response = await fetch(`${apiBase}/api/statusDevice?device_id=${encodeURIComponent(device.instance)}`, {
-            headers: { 'accept': 'application/json' }
+            mode: 'cors',
+            headers: { 'Accept': 'application/json' }
           })
           const result = await response.json()
 
@@ -202,9 +203,9 @@ export default function DeviceSettings() {
         `${apiBase}/api/addDevice?api_key=${encodeURIComponent(apiKey)}&name=${encodeURIComponent(deviceName)}&number=${encodeURIComponent(phoneNumber)}`,
         {
           method: 'GET',
+          mode: 'cors',
           headers: {
-            'accept': 'application/json',
-            'Content-Type': 'application/json'
+            'Accept': 'application/json'
           }
         }
       )
@@ -222,7 +223,8 @@ export default function DeviceSettings() {
           `${apiBase}/api/setWebhook?device_id=${encodeURIComponent(whatsappCenterDeviceId)}&webhook=${encodeURIComponent(webhook)}`,
           {
             method: 'GET',
-            headers: { 'accept': 'application/json' }
+            mode: 'cors',
+            headers: { 'Accept': 'application/json' }
           }
         )
 
@@ -357,9 +359,9 @@ export default function DeviceSettings() {
         `${apiBase}/api/addDevice?api_key=${encodeURIComponent(apiKey)}&name=${encodeURIComponent(deviceName)}&number=${encodeURIComponent(phoneNumber)}`,
         {
           method: 'GET',
+          mode: 'cors',
           headers: {
-            'accept': 'application/json',
-            'Content-Type': 'application/json'
+            'Accept': 'application/json'
           }
         }
       )
@@ -375,7 +377,8 @@ export default function DeviceSettings() {
           `${apiBase}/api/setWebhook?device_id=${encodeURIComponent(whatsappCenterDeviceId)}&webhook=${encodeURIComponent(webhook)}`,
           {
             method: 'GET',
-            headers: { 'accept': 'application/json' }
+            mode: 'cors',
+            headers: { 'Accept': 'application/json' }
           }
         )
 
@@ -470,8 +473,9 @@ export default function DeviceSettings() {
 
           // Get QR code from WhatsApp Center
           const qrResponse = await fetch(`${apiBase}/api/qr?device_id=${encodeURIComponent(device.instance)}`, {
+            mode: 'cors',
             headers: {
-              'accept': 'application/json',
+              'Accept': 'application/json',
             },
           })
 
