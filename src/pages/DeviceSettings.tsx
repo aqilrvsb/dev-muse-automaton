@@ -73,8 +73,8 @@ export default function DeviceSettings() {
           })
           const result = await response.json()
 
-          // WhatsApp Center returns: { success: true, data: { status: "CONNECTED" or "NOT CONNECTED" } }
-          if (result.success && result.data) {
+          // WhatsApp Center returns: { status: true, data: { status: "CONNECTED" or "NOT CONNECTED" } }
+          if (result.status && result.data) {
             const status = result.data.status === 'CONNECTED' ? 'WORKING' :
                           result.data.status === 'NOT CONNECTED' ? 'SCAN_QR_CODE' : 'UNKNOWN'
             statuses[device.id] = status
@@ -449,8 +449,8 @@ export default function DeviceSettings() {
 
       setCurrentDevice(device)
 
-      // WhatsApp Center returns: { success: true, data: { status: "CONNECTED" or "NOT CONNECTED" } }
-      if (result.success && result.data) {
+      // WhatsApp Center returns: { status: true, data: { status: "CONNECTED" or "NOT CONNECTED" } }
+      if (result.status && result.data) {
         const whatsappStatus = result.data.status
 
         // If NOT CONNECTED, get QR code
