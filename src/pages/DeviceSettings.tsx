@@ -443,6 +443,65 @@ export default function DeviceSettings() {
           timer: 2000,
           showConfirmButton: false,
         })
+      } else if (data.status === 'FAILED' || data.status === 'STOPPED') {
+        // Session failed or stopped - restart it and show QR code
+        const result = await Swal.fire({
+          icon: 'warning',
+          title: 'Session Failed',
+          text: 'The session has failed. Do you want to restart and get a new QR code?',
+          showCancelButton: true,
+          confirmButtonText: 'Yes, Restart',
+          cancelButtonText: 'Cancel',
+          confirmButtonColor: '#3b82f6',
+        })
+
+        if (result.isConfirmed) {
+          // Restart the session
+          const startResponse = await fetch(`${apiBase}/api/sessions/${device.instance}/start`, {
+            method: 'POST',
+            headers: {
+              'X-Api-Key': apiKey,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              name: device.instance,
+            }),
+          })
+
+          if (startResponse.ok) {
+            // Wait a moment for session to initialize
+            await new Promise(resolve => setTimeout(resolve, 1000))
+
+            // Get QR code
+            const qrResponse = await fetch(`${apiBase}/api/${device.instance}/auth/qr`, {
+              headers: {
+                'X-Api-Key': apiKey,
+              },
+            })
+
+            const contentType = qrResponse.headers.get('content-type')
+
+            if (contentType && contentType.includes('image')) {
+              const blob = await qrResponse.blob()
+              const imageUrl = URL.createObjectURL(blob)
+
+              setQrCode(imageUrl)
+              setConnectionStatus('SCAN_QR_CODE')
+              setDeviceStatuses(prev => ({ ...prev, [device.id]: 'SCAN_QR_CODE' }))
+              setShowQRModal(true)
+            } else {
+              const qrData = await qrResponse.json()
+              if (qrData.qr) {
+                setQrCode(qrData.qr)
+                setConnectionStatus('SCAN_QR_CODE')
+                setDeviceStatuses(prev => ({ ...prev, [device.id]: 'SCAN_QR_CODE' }))
+                setShowQRModal(true)
+              }
+            }
+          } else {
+            throw new Error('Failed to restart session')
+          }
+        }
       } else {
         setConnectionStatus(data.status || 'UNKNOWN')
         await Swal.fire({
