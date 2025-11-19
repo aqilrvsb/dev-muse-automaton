@@ -426,9 +426,47 @@ export default function DeviceSettings() {
         })
 
         if (startResponse.ok) {
-          // Wait a moment for session to initialize
+          // Wait and check if session status changes to SCAN_QR_CODE
           setLoadingMessage('Waiting for session to initialize...')
-          await new Promise(resolve => setTimeout(resolve, 2000))
+
+          let sessionReady = false
+          let attempts = 0
+          const maxAttempts = 10 // Try for 10 seconds max
+
+          while (!sessionReady && attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 1000))
+            attempts++
+
+            // Check session status
+            const statusCheck = await fetch(`${apiBase}/api/sessions/${device.instance}`, {
+              headers: { 'X-Api-Key': apiKey }
+            })
+            const statusData = await statusCheck.json()
+
+            console.log(`Attempt ${attempts}: Session status =`, statusData.status)
+
+            if (statusData.status === 'SCAN_QR_CODE') {
+              sessionReady = true
+              break
+            }
+
+            if (statusData.status === 'WORKING') {
+              // Already connected!
+              setIsCheckingStatus(false)
+              await Swal.fire({
+                icon: 'success',
+                title: 'Already Connected!',
+                text: 'Your WhatsApp device is already connected.',
+                timer: 2000,
+                showConfirmButton: false,
+              })
+              return
+            }
+          }
+
+          if (!sessionReady) {
+            throw new Error('Session did not transition to SCAN_QR_CODE state after restart')
+          }
 
           // Get QR code
           setLoadingMessage('Generating QR code...')
