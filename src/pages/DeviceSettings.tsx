@@ -533,6 +533,40 @@ export default function DeviceSettings() {
             setDeviceStatuses(prev => ({ ...prev, [device.id]: 'SCAN_QR_CODE' }))
             setIsCheckingStatus(false)
             setShowQRModal(true)
+
+            // Start 6 second countdown and auto-refresh
+            let countdown = 6
+            const countdownInterval = setInterval(() => {
+              countdown--
+              if (countdown <= 0) {
+                clearInterval(countdownInterval)
+                // Auto refresh status after 6 seconds
+                handleCheckStatus(device)
+              }
+            }, 1000)
+
+            // Show countdown alert
+            Swal.fire({
+              icon: 'info',
+              title: 'Scan QR Code',
+              html: 'Please scan the QR code with your WhatsApp.<br>Auto-refreshing in <strong id="countdown">6</strong> seconds...',
+              timer: 6000,
+              timerProgressBar: true,
+              showConfirmButton: false,
+              didOpen: () => {
+                const countdownElement = Swal.getHtmlContainer()?.querySelector('#countdown')
+                const updateCountdown = setInterval(() => {
+                  if (countdownElement) {
+                    countdown--
+                    if (countdown > 0) {
+                      countdownElement.textContent = countdown.toString()
+                    } else {
+                      clearInterval(updateCountdown)
+                    }
+                  }
+                }, 1000)
+              }
+            })
           } else {
             throw new Error('Failed to get QR code')
           }
