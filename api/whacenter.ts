@@ -17,6 +17,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { endpoint, device_id, name, number, webhook } = req.query
 
   try {
+    // Handle QR endpoint separately (returns raw PNG)
+    if (endpoint === 'qr') {
+      const url = `${API_BASE}/api/qr?device_id=${encodeURIComponent(device_id as string)}`
+
+      console.log('Fetching QR URL:', url)
+
+      const qrResponse = await fetch(url, {
+        method: 'GET',
+        redirect: 'follow'
+      })
+
+      console.log('QR Response status:', qrResponse.status)
+
+      const qrBuffer = await qrResponse.arrayBuffer()
+      const qrBase64 = Buffer.from(qrBuffer).toString('base64')
+
+      // Check if it's a valid PNG (base64 of PNG starts with 'iVBOR')
+      if (qrBase64.startsWith('iVBOR')) {
+        return res.status(200).json({
+          success: true,
+          data: {
+            image: qrBase64
+          }
+        })
+      } else {
+        return res.status(200).json({
+          success: false,
+          error: 'Failed to generate QR code',
+          raw: qrBase64.substring(0, 100)
+        })
+      }
+    }
+
+    // Handle all other endpoints (return JSON)
     let url = ''
 
     switch (endpoint) {
@@ -30,10 +64,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       case 'statusDevice':
         url = `${API_BASE}/api/statusDevice?device_id=${encodeURIComponent(device_id as string)}`
-        break
-
-      case 'qr':
-        url = `${API_BASE}/api/qr?device_id=${encodeURIComponent(device_id as string)}`
         break
 
       case 'deleteDevice':
