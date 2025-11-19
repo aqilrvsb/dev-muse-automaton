@@ -673,8 +673,28 @@ export default function DeviceSettings() {
             )}
           </div>
           <button
-            onClick={() => setShowAddModal(true)}
-            className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors shadow-sm"
+            onClick={() => {
+              const maxDevices = user?.max_devices || 1
+              const currentDeviceCount = devices.length
+
+              if (currentDeviceCount >= maxDevices) {
+                Swal.fire({
+                  icon: 'warning',
+                  title: 'Device Limit Reached!',
+                  html: `Your current plan allows <strong>${maxDevices} device(s)</strong> and you already have <strong>${currentDeviceCount} device(s)</strong>.<br><br>Please upgrade your plan to add more devices.`,
+                  confirmButtonText: 'OK',
+                })
+              } else {
+                setShowAddModal(true)
+              }
+            }}
+            disabled={devices.length >= (user?.max_devices || 1)}
+            className={`px-6 py-3 rounded-lg font-medium transition-colors shadow-sm ${
+              devices.length >= (user?.max_devices || 1)
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-primary-600 hover:bg-primary-700 text-white'
+            }`}
+            title={devices.length >= (user?.max_devices || 1) ? 'Device limit reached. Please upgrade your plan.' : 'Add a new WhatsApp device'}
           >
             + Add New Device
           </button>
