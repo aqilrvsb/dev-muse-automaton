@@ -62,7 +62,7 @@ export default function DeviceSettings() {
   }
 
   const fetchAllDeviceStatusesWithData = async (deviceList: Device[]) => {
-    const apiBase = 'https://waha-plus-production-705f.up.railway.app'
+    const apiBase = 'https://waha-plus-copy-production.up.railway.app'
     const apiKey = 'dckr_pat_vxeqEu_CqRi5O3CBHnD7FxhnBz0'
 
     const statuses: Record<string, string> = {}
@@ -186,7 +186,7 @@ export default function DeviceSettings() {
       // Automatically generate webhook and register with WAHA
       setLoadingMessage('Generating webhook and registering with WAHA...')
 
-      const apiBase = 'https://waha-plus-production-705f.up.railway.app'
+      const apiBase = 'https://waha-plus-copy-production.up.railway.app'
       const apiKey = 'dckr_pat_vxeqEu_CqRi5O3CBHnD7FxhnBz0'
       const sessionName = `UserChatBot_${formData.device_id}`
       const webhook = `https://pening-bot.deno.dev/${formData.device_id}/${sessionName}`
@@ -343,7 +343,7 @@ export default function DeviceSettings() {
 
   const handleGenerateWebhook = async (device: Device) => {
     try {
-      const apiBase = 'https://waha-plus-production-705f.up.railway.app'
+      const apiBase = 'https://waha-plus-copy-production.up.railway.app'
       const apiKey = 'dckr_pat_vxeqEu_CqRi5O3CBHnD7FxhnBz0'
       const sessionName = `UserChatBot_${device.device_id}`
       const webhook = `https://pening-bot.deno.dev/${device.device_id}/${sessionName}`
@@ -442,7 +442,7 @@ export default function DeviceSettings() {
   }
 
   const handleCheckStatus = async (device: Device) => {
-    const apiBase = 'https://waha-plus-production-705f.up.railway.app'
+    const apiBase = 'https://waha-plus-copy-production.up.railway.app'
     const apiKey = 'dckr_pat_vxeqEu_CqRi5O3CBHnD7FxhnBz0'
 
     setIsCheckingStatus(true)
