@@ -174,7 +174,7 @@ export default function Profile() {
 
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-2">Max Devices</label>
-              <p className="text-gray-900">{user?.max_devices || 1}</p>
+              <p className="text-gray-900">{user?.max_devices || 0}</p>
             </div>
 
             <div>

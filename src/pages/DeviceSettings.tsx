@@ -216,7 +216,7 @@ export default function DeviceSettings() {
       if (countError) throw countError
 
       const currentDeviceCount = existingDevices?.length || 0
-      const maxDevices = user?.max_devices || 1
+      const maxDevices = user?.max_devices || 0
 
       if (currentDeviceCount >= maxDevices) {
         await Swal.fire({
@@ -668,13 +668,13 @@ export default function DeviceSettings() {
             {!loading && (
               <div className="mt-2 inline-flex items-center gap-2 bg-primary-50 text-primary-700 px-3 py-1 rounded-lg text-sm font-medium">
                 <span>📱</span>
-                <span>Devices: {devices.length}/{user?.max_devices || 1}</span>
+                <span>Devices: {devices.length}/{user?.max_devices || 0}</span>
               </div>
             )}
           </div>
           <button
             onClick={() => {
-              const maxDevices = user?.max_devices || 1
+              const maxDevices = user?.max_devices || 0
               const currentDeviceCount = devices.length
 
               if (currentDeviceCount >= maxDevices) {
@@ -688,13 +688,13 @@ export default function DeviceSettings() {
                 setShowAddModal(true)
               }
             }}
-            disabled={devices.length >= (user?.max_devices || 1)}
+            disabled={devices.length >= (user?.max_devices || 0)}
             className={`px-6 py-3 rounded-lg font-medium transition-colors shadow-sm ${
-              devices.length >= (user?.max_devices || 1)
+              devices.length >= (user?.max_devices || 0)
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 : 'bg-primary-600 hover:bg-primary-700 text-white'
             }`}
-            title={devices.length >= (user?.max_devices || 1) ? 'Device limit reached. Please upgrade your plan.' : 'Add a new WhatsApp device'}
+            title={devices.length >= (user?.max_devices || 0) ? 'Device limit reached. Please upgrade your plan.' : 'Add a new WhatsApp device'}
           >
             + Add New Device
           </button>

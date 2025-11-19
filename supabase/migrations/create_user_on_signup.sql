@@ -27,7 +27,7 @@ BEGIN
     'Trial',
     true,
     'inactive',
-    1,
+    0,
     NOW(),
     NOW()
   );

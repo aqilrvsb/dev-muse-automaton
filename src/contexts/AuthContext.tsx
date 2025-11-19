@@ -45,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               is_active: true,
               status: 'Trial',
               subscription_status: 'inactive',
-              max_devices: 1,
+              max_devices: 0,
               created_at: authUser.created_at,
               updated_at: new Date().toISOString(),
             } as User

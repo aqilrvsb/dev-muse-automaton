@@ -206,7 +206,7 @@ export default function Billings() {
             </div>
             <div className="text-right">
               <p className="text-purple-100 mb-1">Device Limit</p>
-              <p className="text-4xl font-bold">{user?.max_devices || 1}</p>
+              <p className="text-4xl font-bold">{user?.max_devices || 0}</p>
               <p className="text-sm text-purple-200 mt-1">devices</p>
             </div>
           </div>
