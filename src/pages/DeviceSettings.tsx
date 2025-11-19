@@ -69,6 +69,7 @@ export default function DeviceSettings() {
       if (device.instance) {
         try {
           const response = await fetch(`${apiBase}/api/statusDevice?device_id=${encodeURIComponent(device.instance)}`, {
+            method: 'GET',
             headers: { 'Accept': 'application/json' }
           })
           const result = await response.json()
@@ -200,6 +201,7 @@ export default function DeviceSettings() {
       const addDeviceResponse = await fetch(
         `${apiBase}/api/addDevice?api_key=${encodeURIComponent(apiKey)}&name=${encodeURIComponent(deviceName)}&number=${encodeURIComponent(phoneNumber)}`,
         {
+          method: 'GET',
           headers: {
             'Accept': 'application/json'
           }
@@ -218,6 +220,7 @@ export default function DeviceSettings() {
         const webhookResponse = await fetch(
           `${apiBase}/api/setWebhook?device_id=${encodeURIComponent(whatsappCenterDeviceId)}&webhook=${encodeURIComponent(webhook)}`,
           {
+            method: 'GET',
             headers: { 'Accept': 'application/json' }
           }
         )
@@ -352,6 +355,7 @@ export default function DeviceSettings() {
       const addDeviceResponse = await fetch(
         `${apiBase}/api/addDevice?api_key=${encodeURIComponent(apiKey)}&name=${encodeURIComponent(deviceName)}&number=${encodeURIComponent(phoneNumber)}`,
         {
+          method: 'GET',
           headers: {
             'Accept': 'application/json'
           }
@@ -368,6 +372,7 @@ export default function DeviceSettings() {
         const webhookResponse = await fetch(
           `${apiBase}/api/setWebhook?device_id=${encodeURIComponent(whatsappCenterDeviceId)}&webhook=${encodeURIComponent(webhook)}`,
           {
+            method: 'GET',
             headers: { 'Accept': 'application/json' }
           }
         )
@@ -444,6 +449,7 @@ export default function DeviceSettings() {
 
       // Check device status with WhatsApp Center
       const response = await fetch(`${apiBase}/api/statusDevice?device_id=${encodeURIComponent(device.instance)}`, {
+        method: 'GET',
         headers: {
           'Accept': 'application/json',
         },
