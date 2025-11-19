@@ -107,10 +107,9 @@ export default function DeviceSettings() {
         .from('device_setting')
         .select('device_id')
         .eq('device_id', deviceId.trim())
-        .single()
+        .maybeSingle()
 
-      if (error && error.code !== 'PGRST116') {
-        // PGRST116 means no rows returned (device ID is available)
+      if (error) {
         throw error
       }
 
