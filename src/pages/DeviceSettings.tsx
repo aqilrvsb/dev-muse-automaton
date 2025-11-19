@@ -18,13 +18,14 @@ export default function DeviceSettings() {
   const [isCheckingDeviceId, setIsCheckingDeviceId] = useState(false)
   const [deviceIdExists, setDeviceIdExists] = useState(false)
   const [deviceIdError, setDeviceIdError] = useState('')
+  const [deviceStatuses, setDeviceStatuses] = useState<Record<string, string>>({})
 
   // Form state
   const [formData, setFormData] = useState({
     device_id: '',
     instance: '',
     webhook_id: '',
-    provider: 'waha' as 'waha' | 'wablas' | 'whacenter',
+    provider: 'waha' as 'waha',
     api_key_option: 'openai/gpt-4.1',
     api_key: '',
     phone_number: '',
@@ -33,6 +34,12 @@ export default function DeviceSettings() {
   useEffect(() => {
     loadDevices()
   }, [])
+
+  useEffect(() => {
+    if (devices.length > 0) {
+      fetchAllDeviceStatuses()
+    }
+  }, [devices])
 
   const loadDevices = async () => {
     try {
@@ -48,6 +55,31 @@ export default function DeviceSettings() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const fetchAllDeviceStatuses = async () => {
+    const apiBase = 'https://waha-plus-production-705f.up.railway.app'
+    const apiKey = 'dckr_pat_vxeqEu_CqRi5O3CBHnD7FxhnBz0'
+
+    const statuses: Record<string, string> = {}
+
+    for (const device of devices) {
+      if (device.instance) {
+        try {
+          const response = await fetch(`${apiBase}/api/sessions/${device.instance}`, {
+            headers: { 'X-Api-Key': apiKey }
+          })
+          const data = await response.json()
+          statuses[device.id] = data.status || 'UNKNOWN'
+        } catch (error) {
+          statuses[device.id] = 'FAILED'
+        }
+      } else {
+        statuses[device.id] = 'NOT_SETUP'
+      }
+    }
+
+    setDeviceStatuses(statuses)
   }
 
   const checkDeviceIdExists = async (deviceId: string) => {
@@ -311,6 +343,9 @@ export default function DeviceSettings() {
 
         if (error) throw error
 
+        // Update device status to SCAN_QR_CODE
+        setDeviceStatuses(prev => ({ ...prev, [device.id]: 'SCAN_QR_CODE' }))
+
         await Swal.fire({
           icon: 'success',
           title: 'Webhook Generated!',
@@ -334,18 +369,28 @@ export default function DeviceSettings() {
   }
 
   const handleCheckStatus = async (device: Device) => {
-    if (!device.instance) {
-      await Swal.fire({
-        icon: 'warning',
-        title: 'No Instance',
-        text: 'Please generate webhook first',
-      })
-      return
-    }
+    const apiBase = 'https://waha-plus-production-705f.up.railway.app'
+    const apiKey = 'dckr_pat_vxeqEu_CqRi5O3CBHnD7FxhnBz0'
 
     try {
-      const apiBase = 'https://waha-plus-production-705f.up.railway.app'
-      const apiKey = 'dckr_pat_vxeqEu_CqRi5O3CBHnD7FxhnBz0'
+      // If no instance, auto-generate webhook first
+      if (!device.instance) {
+        await handleGenerateWebhook(device)
+        // Reload devices to get updated instance
+        await loadDevices()
+        // Get the updated device
+        const { data: updatedDevices } = await supabase
+          .from('device_setting')
+          .select('*')
+          .eq('id', device.id)
+          .single()
+
+        if (updatedDevices && updatedDevices.instance) {
+          device = updatedDevices
+        } else {
+          return
+        }
+      }
 
       const response = await fetch(`${apiBase}/api/sessions/${device.instance}`, {
         headers: {
@@ -356,6 +401,9 @@ export default function DeviceSettings() {
       const data = await response.json()
 
       setCurrentDevice(device)
+
+      // Update device status in state
+      setDeviceStatuses(prev => ({ ...prev, [device.id]: data.status || 'UNKNOWN' }))
 
       if (data.status === 'SCAN_QR_CODE') {
         // Get QR code - WAHA returns PNG image directly, not JSON
@@ -405,6 +453,7 @@ export default function DeviceSettings() {
       }
     } catch (error: any) {
       console.error('Error checking status:', error)
+      setDeviceStatuses(prev => ({ ...prev, [device.id]: 'FAILED' }))
       await Swal.fire({
         icon: 'error',
         title: 'Failed to Check Status',
@@ -489,12 +538,18 @@ export default function DeviceSettings() {
               <div key={device.id} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-bold text-gray-900">{device.device_id}</h3>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    device.provider === 'waha' ? 'bg-blue-100 text-blue-700' :
-                    device.provider === 'wablas' ? 'bg-purple-100 text-purple-700' :
-                    'bg-green-100 text-green-700'
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
+                    deviceStatuses[device.id] === 'WORKING' ? 'bg-green-100 text-green-700' :
+                    deviceStatuses[device.id] === 'SCAN_QR_CODE' ? 'bg-yellow-100 text-yellow-700' :
+                    deviceStatuses[device.id] === 'NOT_SETUP' ? 'bg-gray-100 text-gray-600' :
+                    deviceStatuses[device.id] === 'FAILED' ? 'bg-red-100 text-red-700' :
+                    'bg-blue-100 text-blue-700'
                   }`}>
-                    {device.provider.toUpperCase()}
+                    {deviceStatuses[device.id] === 'WORKING' ? '✓ Connected' :
+                     deviceStatuses[device.id] === 'SCAN_QR_CODE' ? 'Scan QR' :
+                     deviceStatuses[device.id] === 'NOT_SETUP' ? 'Not Setup' :
+                     deviceStatuses[device.id] === 'FAILED' ? '✗ Failed' :
+                     deviceStatuses[device.id] || 'Loading...'}
                   </span>
                 </div>
 
@@ -514,20 +569,15 @@ export default function DeviceSettings() {
                 </div>
 
                 <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => handleGenerateWebhook(device)}
-                      className="bg-green-50 hover:bg-green-600 border border-green-200 hover:border-green-600 text-green-600 hover:text-white px-3 py-2 rounded-lg transition-colors font-medium text-sm"
-                    >
-                      Generate
-                    </button>
-                    <button
-                      onClick={() => handleCheckStatus(device)}
-                      className="bg-blue-50 hover:bg-blue-600 border border-blue-200 hover:border-blue-600 text-blue-600 hover:text-white px-3 py-2 rounded-lg transition-colors font-medium text-sm"
-                    >
-                      Status
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => handleCheckStatus(device)}
+                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-3 py-2.5 rounded-lg transition-colors font-semibold text-sm shadow-sm"
+                  >
+                    {deviceStatuses[device.id] === 'WORKING' ? 'View Status' :
+                     deviceStatuses[device.id] === 'SCAN_QR_CODE' ? 'Scan QR Code' :
+                     deviceStatuses[device.id] === 'NOT_SETUP' ? 'Setup Device' :
+                     'Check Status'}
+                  </button>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => handleEditDevice(device)}
@@ -603,18 +653,7 @@ export default function DeviceSettings() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Provider *</label>
-                    <select
-                      value={formData.provider}
-                      onChange={(e) => setFormData({ ...formData, provider: e.target.value as any })}
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    >
-                      <option value="waha">WAHA</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">AI Model</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">AI Model *</label>
                     <select
                       value={formData.api_key_option}
                       onChange={(e) => setFormData({ ...formData, api_key_option: e.target.value })}
@@ -731,18 +770,7 @@ export default function DeviceSettings() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Provider *</label>
-                    <select
-                      value={formData.provider}
-                      onChange={(e) => setFormData({ ...formData, provider: e.target.value as any })}
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    >
-                      <option value="waha">WAHA</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">AI Model</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">AI Model *</label>
                     <select
                       value={formData.api_key_option}
                       onChange={(e) => setFormData({ ...formData, api_key_option: e.target.value })}
