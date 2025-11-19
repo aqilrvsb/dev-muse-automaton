@@ -205,6 +205,8 @@ export default function DeviceSettings() {
 
       const addDeviceData = await addDeviceResponse.json()
 
+      console.log('Add device response:', addDeviceData)
+
       if (addDeviceData.success && addDeviceData.data && addDeviceData.data.device_id) {
         const whatsappCenterDeviceId = addDeviceData.data.device_id
 
@@ -256,10 +258,10 @@ export default function DeviceSettings() {
 
           loadDevices()
         } else {
-          throw new Error('Failed to set webhook')
+          throw new Error(`Failed to set webhook: ${JSON.stringify(webhookData)}`)
         }
       } else {
-        throw new Error('Failed to add device to WhatsApp Center')
+        throw new Error(`Failed to add device to WhatsApp Center: ${JSON.stringify(addDeviceData)}`)
       }
     } catch (error: any) {
       console.error('Error adding device:', error)

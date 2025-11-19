@@ -44,16 +44,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(404).json({ error: 'Endpoint not found' })
     }
 
+    console.log('Fetching URL:', url)
+
     const response = await fetch(url, {
       method: 'GET',
       redirect: 'follow'
     })
 
-    const data = await response.json()
+    console.log('Response status:', response.status)
+
+    const text = await response.text()
+    console.log('Response body:', text)
+
+    // Try to parse as JSON
+    let data
+    try {
+      data = JSON.parse(text)
+    } catch (e) {
+      console.error('Failed to parse JSON:', e)
+      return res.status(200).json({
+        success: false,
+        error: 'Invalid JSON response',
+        raw: text
+      })
+    }
+
     return res.status(200).json(data)
 
   } catch (error) {
     console.error('Proxy error:', error)
-    return res.status(500).json({ error: 'Internal server error' })
+    return res.status(500).json({
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : String(error)
+    })
   }
 }
