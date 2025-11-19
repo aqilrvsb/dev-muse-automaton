@@ -87,10 +87,6 @@ export default function DeviceSettings() {
     setDeviceStatuses(statuses)
   }
 
-  const fetchAllDeviceStatuses = async () => {
-    await fetchAllDeviceStatusesWithData(devices)
-  }
-
   const checkDeviceIdExists = async (deviceId: string) => {
     if (!deviceId.trim()) {
       setDeviceIdExists(false)
@@ -417,10 +413,30 @@ export default function DeviceSettings() {
 
       // Check if status is FAILED first, before updating state
       if (data.status === 'FAILED' || data.status === 'STOPPED') {
-        // Session failed or stopped - automatically restart and show QR code
-        setLoadingMessage('Restarting session...')
+        // Session failed or stopped - stop it first, then start fresh
+        setLoadingMessage('Stopping session...')
 
-        // Restart the session
+        // Step 1: Stop the session first
+        try {
+          await fetch(`${apiBase}/api/sessions/${device.instance}/stop`, {
+            method: 'POST',
+            headers: {
+              'X-Api-Key': apiKey,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              name: device.instance,
+            }),
+          })
+        } catch (stopError) {
+          console.log('Stop session error (may already be stopped):', stopError)
+        }
+
+        // Wait a moment after stopping
+        await new Promise(resolve => setTimeout(resolve, 1000))
+
+        // Step 2: Start the session
+        setLoadingMessage('Starting session...')
         const startResponse = await fetch(`${apiBase}/api/sessions/${device.instance}/start`, {
           method: 'POST',
           headers: {
@@ -432,32 +448,47 @@ export default function DeviceSettings() {
           }),
         })
 
-        if (startResponse.ok) {
-          // Session restarted - give it a moment to initialize, then refresh page data
-          setLoadingMessage('Session restarted. Refreshing...')
-
-          // Wait 2 seconds to allow session to initialize
-          await new Promise(resolve => setTimeout(resolve, 2000))
-
-          // Reload device data to check updated status
-          await loadDevices()
-          await fetchAllDeviceStatuses()
-
-          setIsCheckingStatus(false)
-
-          // Show success message
-          await Swal.fire({
-            icon: 'info',
-            title: 'Session Restarted',
-            text: 'Please click "Check Status" again to view QR code.',
-            timer: 3000,
-            showConfirmButton: false,
-          })
-          return
-        } else {
+        if (!startResponse.ok) {
           const errorText = await startResponse.text()
           console.error('Session start failed:', errorText)
-          throw new Error(`Failed to restart session: ${errorText}`)
+          throw new Error(`Failed to start session: ${errorText}`)
+        }
+
+        // Wait for session to initialize
+        setLoadingMessage('Waiting for QR code...')
+        await new Promise(resolve => setTimeout(resolve, 2000))
+
+        // Step 3: Get QR code
+        const qrResponse = await fetch(`${apiBase}/api/${device.instance}/auth/qr`, {
+          headers: {
+            'X-Api-Key': apiKey,
+          },
+        })
+
+        if (qrResponse.ok) {
+          const contentType = qrResponse.headers.get('content-type')
+
+          if (contentType && contentType.includes('image')) {
+            const blob = await qrResponse.blob()
+            const imageUrl = URL.createObjectURL(blob)
+
+            setQrCode(imageUrl)
+            setConnectionStatus('SCAN_QR_CODE')
+            setDeviceStatuses(prev => ({ ...prev, [device.id]: 'SCAN_QR_CODE' }))
+            setIsCheckingStatus(false)
+            setShowQRModal(true)
+          } else {
+            const qrData = await qrResponse.json()
+            if (qrData.qr) {
+              setQrCode(qrData.qr)
+              setConnectionStatus('SCAN_QR_CODE')
+              setDeviceStatuses(prev => ({ ...prev, [device.id]: 'SCAN_QR_CODE' }))
+              setIsCheckingStatus(false)
+              setShowQRModal(true)
+            }
+          }
+        } else {
+          throw new Error('Failed to get QR code after restart')
         }
         return
       }
