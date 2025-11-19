@@ -62,20 +62,26 @@ export default function DeviceSettings() {
   }
 
   const fetchAllDeviceStatusesWithData = async (deviceList: Device[]) => {
-    const apiBase = 'https://waha-plus-copy-production.up.railway.app'
-    const apiKey = 'dckr_pat_vxeqEu_CqRi5O3CBHnD7FxhnBz0'
+    const apiBase = 'https://api.whacenter.com'
 
     const statuses: Record<string, string> = {}
 
     for (const device of deviceList) {
       if (device.instance) {
         try {
-          const response = await fetch(`${apiBase}/api/sessions/${device.instance}`, {
-            headers: { 'X-Api-Key': apiKey }
+          const response = await fetch(`${apiBase}/api/statusDevice?device_id=${encodeURIComponent(device.instance)}`, {
+            headers: { 'accept': 'application/json' }
           })
-          const data = await response.json()
-          // Just set the status, don't auto-restart on page load
-          statuses[device.id] = data.status || 'UNKNOWN'
+          const result = await response.json()
+
+          // WhatsApp Center returns: { success: true, data: { status: "CONNECTED" or "NOT CONNECTED" } }
+          if (result.success && result.data) {
+            const status = result.data.status === 'CONNECTED' ? 'WORKING' :
+                          result.data.status === 'NOT CONNECTED' ? 'SCAN_QR_CODE' : 'UNKNOWN'
+            statuses[device.id] = status
+          } else {
+            statuses[device.id] = 'UNKNOWN'
+          }
         } catch (error) {
           statuses[device.id] = 'FAILED'
         }
@@ -183,86 +189,84 @@ export default function DeviceSettings() {
 
       if (error) throw error
 
-      // Automatically generate webhook and register with WAHA
-      setLoadingMessage('Generating webhook and registering with WAHA...')
+      // Automatically add device and register with WhatsApp Center
+      setLoadingMessage('Adding device to WhatsApp Center...')
 
-      const apiBase = 'https://waha-plus-copy-production.up.railway.app'
-      const apiKey = 'dckr_pat_vxeqEu_CqRi5O3CBHnD7FxhnBz0'
-      const sessionName = `UserChatBot_${formData.device_id}`
-      const webhook = `https://pening-bot.deno.dev/${formData.device_id}/${sessionName}`
+      const apiBase = 'https://api.whacenter.com'
+      const apiKey = 'abebe840-156c-441c-8252-da0342c5a07c'
+      const deviceName = formData.device_id
+      const phoneNumber = formData.phone_number || ''
 
-      // Create new session with webhook
-      const createResponse = await fetch(`${apiBase}/api/sessions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Api-Key': apiKey,
-        },
-        body: JSON.stringify({
-          name: sessionName,
-          start: false,
-          config: {
-            debug: false,
-            markSeen: false,
-            noweb: {
-              store: {
-                enabled: true,
-                fullSync: false,
-              },
-            },
-            webhooks: [
-              {
-                url: webhook,
-                events: ['message'],
-                retries: {
-                  attempts: 1,
-                  delay: 3,
-                  policy: 'constant',
-                },
-              },
-            ],
-          },
-        }),
-      })
+      // Step 1: Add device to WhatsApp Center
+      const addDeviceResponse = await fetch(
+        `${apiBase}/api/addDevice?api_key=${encodeURIComponent(apiKey)}&name=${encodeURIComponent(deviceName)}&number=${encodeURIComponent(phoneNumber)}`,
+        {
+          method: 'GET',
+          headers: {
+            'accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        }
+      )
 
-      const createData = await createResponse.json()
+      const addDeviceData = await addDeviceResponse.json()
 
-      if (createData.name) {
-        // Update device with instance and webhook_id
-        await supabase
-          .from('device_setting')
-          .update({
-            instance: createData.name,
-            webhook_id: webhook,
-            updated_at: new Date().toISOString(),
+      if (addDeviceData.success && addDeviceData.data && addDeviceData.data.device_id) {
+        const whatsappCenterDeviceId = addDeviceData.data.device_id
+
+        // Step 2: Set webhook for this device
+        setLoadingMessage('Registering webhook...')
+        const webhook = `https://pening-bot.deno.dev/${formData.device_id}/${whatsappCenterDeviceId}`
+
+        const webhookResponse = await fetch(
+          `${apiBase}/api/setWebhook?device_id=${encodeURIComponent(whatsappCenterDeviceId)}&webhook=${encodeURIComponent(webhook)}`,
+          {
+            method: 'GET',
+            headers: { 'accept': 'application/json' }
+          }
+        )
+
+        const webhookData = await webhookResponse.json()
+
+        if (webhookData.success) {
+          // Update device with instance (device_id) and webhook_id
+          await supabase
+            .from('device_setting')
+            .update({
+              instance: whatsappCenterDeviceId,
+              webhook_id: webhook,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', deviceId)
+
+          setIsCheckingStatus(false)
+
+          // Reset form and close modal
+          setFormData({
+            device_id: '',
+            instance: '',
+            webhook_id: '',
+            provider: 'waha',
+            api_key_option: 'openai/gpt-4.1',
+            api_key: '',
+            phone_number: '',
           })
-          .eq('id', deviceId)
+          setShowAddModal(false)
 
-        setIsCheckingStatus(false)
+          await Swal.fire({
+            icon: 'success',
+            title: 'Device Created Successfully!',
+            text: 'Device added and webhook registered with WhatsApp Center.',
+            timer: 3000,
+            showConfirmButton: false,
+          })
 
-        // Reset form and close modal
-        setFormData({
-          device_id: '',
-          instance: '',
-          webhook_id: '',
-          provider: 'waha',
-          api_key_option: 'openai/gpt-4.1',
-          api_key: '',
-          phone_number: '',
-        })
-        setShowAddModal(false)
-
-        await Swal.fire({
-          icon: 'success',
-          title: 'Device Created Successfully!',
-          text: 'Device added and webhook registered with WAHA.',
-          timer: 3000,
-          showConfirmButton: false,
-        })
-
-        loadDevices()
+          loadDevices()
+        } else {
+          throw new Error('Failed to set webhook')
+        }
       } else {
-        throw new Error('Failed to create WAHA session')
+        throw new Error('Failed to add device to WhatsApp Center')
       }
     } catch (error: any) {
       console.error('Error adding device:', error)
@@ -343,93 +347,70 @@ export default function DeviceSettings() {
 
   const handleGenerateWebhook = async (device: Device) => {
     try {
-      const apiBase = 'https://waha-plus-copy-production.up.railway.app'
-      const apiKey = 'dckr_pat_vxeqEu_CqRi5O3CBHnD7FxhnBz0'
-      const sessionName = `UserChatBot_${device.device_id}`
-      const webhook = `https://pening-bot.deno.dev/${device.device_id}/${sessionName}`
+      const apiBase = 'https://api.whacenter.com'
+      const apiKey = 'abebe840-156c-441c-8252-da0342c5a07c'
+      const deviceName = device.device_id
+      const phoneNumber = device.phone_number || ''
 
-      // Delete old session if exists
-      if (device.instance) {
-        await fetch(`${apiBase}/api/sessions/${device.instance}`, {
-          method: 'DELETE',
+      // Add device to WhatsApp Center
+      const addDeviceResponse = await fetch(
+        `${apiBase}/api/addDevice?api_key=${encodeURIComponent(apiKey)}&name=${encodeURIComponent(deviceName)}&number=${encodeURIComponent(phoneNumber)}`,
+        {
+          method: 'GET',
           headers: {
-            'X-Api-Key': apiKey,
-          },
-        })
-      }
+            'accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        }
+      )
 
-      // Create new session
-      const createResponse = await fetch(`${apiBase}/api/sessions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Api-Key': apiKey,
-        },
-        body: JSON.stringify({
-          name: sessionName,
-          start: false,
-          config: {
-            debug: false,
-            markSeen: false,
-            noweb: {
-              store: {
-                enabled: true,
-                fullSync: false,
-              },
-            },
-            webhooks: [
-              {
-                url: webhook,
-                events: ['message'],
-                retries: {
-                  attempts: 1,
-                  delay: 3,
-                  policy: 'constant',
-                },
-              },
-            ],
-          },
-        }),
-      })
+      const addDeviceData = await addDeviceResponse.json()
 
-      const createData = await createResponse.json()
+      if (addDeviceData.success && addDeviceData.data && addDeviceData.data.device_id) {
+        const whatsappCenterDeviceId = addDeviceData.data.device_id
+        const webhook = `https://pening-bot.deno.dev/${device.device_id}/${whatsappCenterDeviceId}`
 
-      if (createData.name) {
-        // Start session
-        await fetch(`${apiBase}/api/sessions/${sessionName}/start`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Api-Key': apiKey,
-          },
-        })
+        // Set webhook for this device
+        const webhookResponse = await fetch(
+          `${apiBase}/api/setWebhook?device_id=${encodeURIComponent(whatsappCenterDeviceId)}&webhook=${encodeURIComponent(webhook)}`,
+          {
+            method: 'GET',
+            headers: { 'accept': 'application/json' }
+          }
+        )
 
-        // Update device in database
-        const { error } = await supabase
-          .from('device_setting')
-          .update({
-            instance: createData.name,
-            webhook_id: webhook,
-            updated_at: new Date().toISOString(),
+        const webhookData = await webhookResponse.json()
+
+        if (webhookData.success) {
+          // Update device in database
+          const { error } = await supabase
+            .from('device_setting')
+            .update({
+              instance: whatsappCenterDeviceId,
+              webhook_id: webhook,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', device.id)
+
+          if (error) throw error
+
+          // Update device status to SCAN_QR_CODE
+          setDeviceStatuses(prev => ({ ...prev, [device.id]: 'SCAN_QR_CODE' }))
+
+          await Swal.fire({
+            icon: 'success',
+            title: 'Webhook Generated!',
+            text: 'Device added successfully. You can now check status to scan QR code.',
+            timer: 3000,
+            showConfirmButton: false,
           })
-          .eq('id', device.id)
 
-        if (error) throw error
-
-        // Update device status to SCAN_QR_CODE
-        setDeviceStatuses(prev => ({ ...prev, [device.id]: 'SCAN_QR_CODE' }))
-
-        await Swal.fire({
-          icon: 'success',
-          title: 'Webhook Generated!',
-          text: 'Session created successfully. You can now check status to scan QR code.',
-          timer: 3000,
-          showConfirmButton: false,
-        })
-
-        loadDevices()
+          loadDevices()
+        } else {
+          throw new Error('Failed to set webhook')
+        }
       } else {
-        throw new Error(createData.error || 'Failed to create session')
+        throw new Error(addDeviceData.error || 'Failed to add device')
       }
     } catch (error: any) {
       console.error('Error generating webhook:', error)
@@ -442,8 +423,7 @@ export default function DeviceSettings() {
   }
 
   const handleCheckStatus = async (device: Device) => {
-    const apiBase = 'https://waha-plus-copy-production.up.railway.app'
-    const apiKey = 'dckr_pat_vxeqEu_CqRi5O3CBHnD7FxhnBz0'
+    const apiBase = 'https://api.whacenter.com'
 
     setIsCheckingStatus(true)
     setLoadingMessage('Checking device status...')
@@ -451,7 +431,7 @@ export default function DeviceSettings() {
     try {
       // If no instance, auto-generate webhook first
       if (!device.instance) {
-        setLoadingMessage('Generating webhook...')
+        setLoadingMessage('Adding device...')
         await handleGenerateWebhook(device)
         // Reload devices to get updated instance
         await loadDevices()
@@ -469,151 +449,73 @@ export default function DeviceSettings() {
         }
       }
 
-      const response = await fetch(`${apiBase}/api/sessions/${device.instance}`, {
+      // Check device status with WhatsApp Center
+      const response = await fetch(`${apiBase}/api/statusDevice?device_id=${encodeURIComponent(device.instance)}`, {
         headers: {
-          'X-Api-Key': apiKey,
+          'accept': 'application/json',
         },
       })
 
-      const data = await response.json()
+      const result = await response.json()
 
       setCurrentDevice(device)
 
-      // Check if status is FAILED first, before updating state
-      if (data.status === 'FAILED' || data.status === 'STOPPED') {
-        // Session failed or stopped - stop it first, then start fresh
-        setLoadingMessage('Stopping session...')
+      // WhatsApp Center returns: { success: true, data: { status: "CONNECTED" or "NOT CONNECTED" } }
+      if (result.success && result.data) {
+        const whatsappStatus = result.data.status
 
-        // Step 1: Stop the session first
-        try {
-          await fetch(`${apiBase}/api/sessions/${device.instance}/stop`, {
-            method: 'POST',
+        // If NOT CONNECTED, get QR code
+        if (whatsappStatus === 'NOT CONNECTED') {
+          setLoadingMessage('Generating QR code...')
+
+          // Get QR code from WhatsApp Center
+          const qrResponse = await fetch(`${apiBase}/api/qr?device_id=${encodeURIComponent(device.instance)}`, {
             headers: {
-              'X-Api-Key': apiKey,
-              'Content-Type': 'application/json',
+              'accept': 'application/json',
             },
-            body: JSON.stringify({
-              name: device.instance,
-            }),
           })
-        } catch (stopError) {
-          console.log('Stop session error (may already be stopped):', stopError)
-        }
 
-        // Wait a moment after stopping
-        await new Promise(resolve => setTimeout(resolve, 1000))
+          // WhatsApp Center returns QR code data
+          const qrData = await qrResponse.json()
 
-        // Step 2: Start the session
-        setLoadingMessage('Starting session...')
-        const startResponse = await fetch(`${apiBase}/api/sessions/${device.instance}/start`, {
-          method: 'POST',
-          headers: {
-            'X-Api-Key': apiKey,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            name: device.instance,
-          }),
-        })
+          if (qrData.success && qrData.data && qrData.data.image) {
+            // WhatsApp Center returns base64 image in data.image
+            const qrImageUrl = `data:image/png;base64,${qrData.data.image}`
 
-        if (!startResponse.ok) {
-          const errorText = await startResponse.text()
-          console.error('Session start failed:', errorText)
-          throw new Error(`Failed to start session: ${errorText}`)
-        }
-
-        // Wait for session to initialize
-        setLoadingMessage('Waiting for QR code...')
-        await new Promise(resolve => setTimeout(resolve, 2000))
-
-        // Step 3: Get QR code
-        const qrResponse = await fetch(`${apiBase}/api/${device.instance}/auth/qr`, {
-          headers: {
-            'X-Api-Key': apiKey,
-          },
-        })
-
-        if (qrResponse.ok) {
-          const contentType = qrResponse.headers.get('content-type')
-
-          if (contentType && contentType.includes('image')) {
-            const blob = await qrResponse.blob()
-            const imageUrl = URL.createObjectURL(blob)
-
-            setQrCode(imageUrl)
+            setQrCode(qrImageUrl)
             setConnectionStatus('SCAN_QR_CODE')
             setDeviceStatuses(prev => ({ ...prev, [device.id]: 'SCAN_QR_CODE' }))
             setIsCheckingStatus(false)
             setShowQRModal(true)
           } else {
-            const qrData = await qrResponse.json()
-            if (qrData.qr) {
-              setQrCode(qrData.qr)
-              setConnectionStatus('SCAN_QR_CODE')
-              setDeviceStatuses(prev => ({ ...prev, [device.id]: 'SCAN_QR_CODE' }))
-              setIsCheckingStatus(false)
-              setShowQRModal(true)
-            }
+            throw new Error('Failed to get QR code')
           }
-        } else {
-          throw new Error('Failed to get QR code after restart')
-        }
-        return
-      }
-
-      // Update device status in state
-      setDeviceStatuses(prev => ({ ...prev, [device.id]: data.status || 'UNKNOWN' }))
-
-      if (data.status === 'SCAN_QR_CODE') {
-        // Get QR code - WAHA returns PNG image directly, not JSON
-        setLoadingMessage('Generating QR code...')
-        const qrResponse = await fetch(`${apiBase}/api/${device.instance}/auth/qr`, {
-          headers: {
-            'X-Api-Key': apiKey,
-          },
-        })
-
-        // Check if response is an image
-        const contentType = qrResponse.headers.get('content-type')
-
-        if (contentType && contentType.includes('image')) {
-          // Convert image to blob and create object URL
-          const blob = await qrResponse.blob()
-          const imageUrl = URL.createObjectURL(blob)
-
-          setQrCode(imageUrl)
-          setConnectionStatus('SCAN_QR_CODE')
+        } else if (whatsappStatus === 'CONNECTED') {
+          // Device is connected
+          setConnectionStatus('WORKING')
+          setDeviceStatuses(prev => ({ ...prev, [device.id]: 'WORKING' }))
+          setQrCode('')
           setIsCheckingStatus(false)
-          setShowQRModal(true)
+          await Swal.fire({
+            icon: 'success',
+            title: 'Connected!',
+            text: 'Your WhatsApp device is connected and working.',
+            timer: 2000,
+            showConfirmButton: false,
+          })
         } else {
-          // Try parsing as JSON (fallback for other formats)
-          const qrData = await qrResponse.json()
-          if (qrData.qr) {
-            setQrCode(qrData.qr)
-            setConnectionStatus('SCAN_QR_CODE')
-            setIsCheckingStatus(false)
-            setShowQRModal(true)
-          }
+          // Unknown status
+          setConnectionStatus('UNKNOWN')
+          setDeviceStatuses(prev => ({ ...prev, [device.id]: 'UNKNOWN' }))
+          setIsCheckingStatus(false)
+          await Swal.fire({
+            icon: 'info',
+            title: 'Status',
+            text: `Current status: ${whatsappStatus || 'Unknown'}`,
+          })
         }
-      } else if (data.status === 'WORKING') {
-        setConnectionStatus('WORKING')
-        setQrCode('')
-        setIsCheckingStatus(false)
-        await Swal.fire({
-          icon: 'success',
-          title: 'Connected!',
-          text: 'Your WhatsApp device is connected and working.',
-          timer: 2000,
-          showConfirmButton: false,
-        })
       } else {
-        setConnectionStatus(data.status || 'UNKNOWN')
-        setIsCheckingStatus(false)
-        await Swal.fire({
-          icon: 'info',
-          title: 'Status',
-          text: `Current status: ${data.status || 'Unknown'}`,
-        })
+        throw new Error('Failed to check device status')
       }
     } catch (error: any) {
       console.error('Error checking status:', error)
