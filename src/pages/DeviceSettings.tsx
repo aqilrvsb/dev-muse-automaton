@@ -402,6 +402,57 @@ export default function DeviceSettings() {
 
       setCurrentDevice(device)
 
+      // Check if status is FAILED first, before updating state
+      if (data.status === 'FAILED' || data.status === 'STOPPED') {
+        // Session failed or stopped - automatically restart and show QR code
+        // Restart the session
+        const startResponse = await fetch(`${apiBase}/api/sessions/${device.instance}/start`, {
+          method: 'POST',
+          headers: {
+            'X-Api-Key': apiKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: device.instance,
+          }),
+        })
+
+        if (startResponse.ok) {
+          // Wait a moment for session to initialize
+          await new Promise(resolve => setTimeout(resolve, 2000))
+
+          // Get QR code
+          const qrResponse = await fetch(`${apiBase}/api/${device.instance}/auth/qr`, {
+            headers: {
+              'X-Api-Key': apiKey,
+            },
+          })
+
+          const contentType = qrResponse.headers.get('content-type')
+
+          if (contentType && contentType.includes('image')) {
+            const blob = await qrResponse.blob()
+            const imageUrl = URL.createObjectURL(blob)
+
+            setQrCode(imageUrl)
+            setConnectionStatus('SCAN_QR_CODE')
+            setDeviceStatuses(prev => ({ ...prev, [device.id]: 'SCAN_QR_CODE' }))
+            setShowQRModal(true)
+          } else {
+            const qrData = await qrResponse.json()
+            if (qrData.qr) {
+              setQrCode(qrData.qr)
+              setConnectionStatus('SCAN_QR_CODE')
+              setDeviceStatuses(prev => ({ ...prev, [device.id]: 'SCAN_QR_CODE' }))
+              setShowQRModal(true)
+            }
+          }
+        } else {
+          throw new Error('Failed to restart session')
+        }
+        return
+      }
+
       // Update device status in state
       setDeviceStatuses(prev => ({ ...prev, [device.id]: data.status || 'UNKNOWN' }))
 
@@ -443,53 +494,6 @@ export default function DeviceSettings() {
           timer: 2000,
           showConfirmButton: false,
         })
-      } else if (data.status === 'FAILED' || data.status === 'STOPPED') {
-        // Session failed or stopped - automatically restart and show QR code
-        // Restart the session
-        const startResponse = await fetch(`${apiBase}/api/sessions/${device.instance}/start`, {
-          method: 'POST',
-          headers: {
-            'X-Api-Key': apiKey,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            name: device.instance,
-          }),
-        })
-
-        if (startResponse.ok) {
-          // Wait a moment for session to initialize
-          await new Promise(resolve => setTimeout(resolve, 1000))
-
-          // Get QR code
-          const qrResponse = await fetch(`${apiBase}/api/${device.instance}/auth/qr`, {
-            headers: {
-              'X-Api-Key': apiKey,
-            },
-          })
-
-          const contentType = qrResponse.headers.get('content-type')
-
-          if (contentType && contentType.includes('image')) {
-            const blob = await qrResponse.blob()
-            const imageUrl = URL.createObjectURL(blob)
-
-            setQrCode(imageUrl)
-            setConnectionStatus('SCAN_QR_CODE')
-            setDeviceStatuses(prev => ({ ...prev, [device.id]: 'SCAN_QR_CODE' }))
-            setShowQRModal(true)
-          } else {
-            const qrData = await qrResponse.json()
-            if (qrData.qr) {
-              setQrCode(qrData.qr)
-              setConnectionStatus('SCAN_QR_CODE')
-              setDeviceStatuses(prev => ({ ...prev, [device.id]: 'SCAN_QR_CODE' }))
-              setShowQRModal(true)
-            }
-          }
-        } else {
-          throw new Error('Failed to restart session')
-        }
       } else {
         setConnectionStatus(data.status || 'UNKNOWN')
         await Swal.fire({
