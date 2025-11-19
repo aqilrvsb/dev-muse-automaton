@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Layout from '../components/Layout'
 import { supabase, Device } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -21,6 +21,10 @@ export default function DeviceSettings() {
   const [deviceStatuses, setDeviceStatuses] = useState<Record<string, string>>({})
   const [isCheckingStatus, setIsCheckingStatus] = useState(false)
   const [loadingMessage, setLoadingMessage] = useState('')
+  const [countdown, setCountdown] = useState<number>(10)
+  const [isValidQR, setIsValidQR] = useState<boolean>(false)
+  const qrRefreshTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -39,6 +43,52 @@ export default function DeviceSettings() {
     }
     initializePage()
   }, [])
+
+  // QR Modal countdown effect - starts only when modal is open and QR is valid
+  useEffect(() => {
+    if (showQRModal && currentDevice && isValidQR) {
+      // Reset countdown
+      setCountdown(10)
+
+      // Clear any existing timers
+      if (qrRefreshTimerRef.current) {
+        clearTimeout(qrRefreshTimerRef.current)
+      }
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current)
+      }
+
+      // Start countdown display
+      let currentCount = 10
+      countdownIntervalRef.current = setInterval(() => {
+        currentCount--
+        setCountdown(currentCount)
+
+        if (currentCount <= 0) {
+          if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current)
+          }
+        }
+      }, 1000)
+
+      // Start 10 second timer to refresh status
+      qrRefreshTimerRef.current = setTimeout(() => {
+        handleCheckStatus(currentDevice)
+      }, 10000)
+    }
+
+    // Cleanup timers when modal closes
+    return () => {
+      if (qrRefreshTimerRef.current) {
+        clearTimeout(qrRefreshTimerRef.current)
+        qrRefreshTimerRef.current = null
+      }
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current)
+        countdownIntervalRef.current = null
+      }
+    }
+  }, [showQRModal, currentDevice, isValidQR])
 
   const loadDevices = async () => {
     try {
@@ -344,79 +394,110 @@ export default function DeviceSettings() {
     }
   }
 
-  const handleGenerateWebhook = async (device: Device) => {
+  // Refresh button handler - Delete device from API, create new, register webhook, update DB, show QR
+  const handleRefreshQR = async (device: Device) => {
+    const apiBase = '/api/whacenter'
+
+    setIsCheckingStatus(true)
+    setLoadingMessage('Refreshing device...')
+
     try {
-      const apiBase = '/api/whacenter'
+      // Delete old device from WhatsApp Center API (not from database)
+      if (device.instance) {
+        setLoadingMessage('Deleting old device...')
+        await fetch(`${apiBase}?endpoint=deleteDevice&device_id=${encodeURIComponent(device.instance)}`, {
+          method: 'GET'
+        })
+      }
+
+      setLoadingMessage('Creating new device...')
+
+      // Create new device with same data
       const deviceName = device.device_id
       const phoneNumber = device.phone_number || ''
 
-      // Add device to WhatsApp Center
       const addDeviceResponse = await fetch(
         `${apiBase}?endpoint=addDevice&name=${encodeURIComponent(deviceName)}&number=${encodeURIComponent(phoneNumber)}`,
-        {
-          method: 'GET'
-        }
+        { method: 'GET' }
       )
 
       const addDeviceData = await addDeviceResponse.json()
 
-      console.log('Add device response (generateWebhook):', addDeviceData)
-
       if (addDeviceData.success && addDeviceData.data && addDeviceData.data.device && addDeviceData.data.device.device_id) {
-        const whatsappCenterDeviceId = addDeviceData.data.device.device_id
-        const webhook = `https://pening-bot.deno.dev/${device.device_id}/${whatsappCenterDeviceId}`
+        const newWhatsappCenterDeviceId = addDeviceData.data.device.device_id
 
-        // Set webhook for this device
+        // Set webhook for new device
+        setLoadingMessage('Registering webhook...')
+        const webhook = `https://pening-bot.deno.dev/${device.device_id}/${newWhatsappCenterDeviceId}`
+
         const webhookResponse = await fetch(
-          `${apiBase}?endpoint=setWebhook&device_id=${encodeURIComponent(whatsappCenterDeviceId)}&webhook=${encodeURIComponent(webhook)}`,
-          {
-            method: 'GET'
-          }
+          `${apiBase}?endpoint=setWebhook&device_id=${encodeURIComponent(newWhatsappCenterDeviceId)}&webhook=${encodeURIComponent(webhook)}`,
+          { method: 'GET' }
         )
 
         const webhookData = await webhookResponse.json()
 
         if (webhookData.success) {
-          // Update device in database
-          const { error } = await supabase
+          // Update only instance in database (don't delete from database)
+          await supabase
             .from('device_setting')
             .update({
-              instance: whatsappCenterDeviceId,
-              webhook_id: webhook,
-              updated_at: new Date().toISOString(),
+              instance: newWhatsappCenterDeviceId,
+              webhook_id: webhook
             })
             .eq('id', device.id)
 
-          if (error) throw error
+          // Update local device object
+          device.instance = newWhatsappCenterDeviceId
+        }
+      }
 
-          // Update device status to SCAN_QR_CODE
+      // Get QR code for new device
+      setLoadingMessage('Generating QR code...')
+
+      const qrResponse = await fetch(`${apiBase}?endpoint=qr&device_id=${encodeURIComponent(device.instance)}`, {
+        method: 'GET'
+      })
+
+      const qrData = await qrResponse.json()
+
+      if (qrData.success && qrData.data && qrData.data.image) {
+        // Validate QR code - check if it's a valid PNG (starts with 'iVBORw0KG')
+        const isValid = qrData.data.image.startsWith('iVBORw0KG')
+
+        if (isValid) {
+          // Valid QR code
+          const qrImageUrl = `data:image/png;base64,${qrData.data.image}`
+
+          setQrCode(qrImageUrl)
+          setConnectionStatus('SCAN_QR_CODE')
           setDeviceStatuses(prev => ({ ...prev, [device.id]: 'SCAN_QR_CODE' }))
-
-          await Swal.fire({
-            icon: 'success',
-            title: 'Webhook Generated!',
-            text: 'Device added successfully. You can now check status to scan QR code.',
-            timer: 3000,
-            showConfirmButton: false,
-          })
-
-          loadDevices()
+          setIsCheckingStatus(false)
+          setCurrentDevice(device)
+          setIsValidQR(true)
+          setShowQRModal(true)
+          // Countdown will start automatically via useEffect when modal opens
         } else {
-          throw new Error('Failed to set webhook')
+          // Invalid QR code
+          setIsValidQR(false)
+          throw new Error('Invalid QR code received')
         }
       } else {
-        throw new Error(addDeviceData.error || 'Failed to add device')
+        throw new Error('Failed to get QR code')
       }
+
     } catch (error: any) {
-      console.error('Error generating webhook:', error)
+      console.error('Error refreshing QR:', error)
+      setIsCheckingStatus(false)
       await Swal.fire({
         icon: 'error',
-        title: 'Failed to Generate Webhook',
-        text: error.message || 'Failed to generate webhook',
+        title: 'Refresh Failed',
+        text: error.message || 'Failed to refresh QR code',
       })
     }
   }
 
+  // Check device status only (no delete/create)
   const handleCheckStatus = async (device: Device) => {
     const apiBase = '/api/whacenter'
 
@@ -424,26 +505,6 @@ export default function DeviceSettings() {
     setLoadingMessage('Checking device status...')
 
     try {
-      // If no instance, auto-generate webhook first
-      if (!device.instance) {
-        setLoadingMessage('Adding device...')
-        await handleGenerateWebhook(device)
-        // Reload devices to get updated instance
-        await loadDevices()
-        // Get the updated device
-        const { data: updatedDevices } = await supabase
-          .from('device_setting')
-          .select('*')
-          .eq('id', device.id)
-          .single()
-
-        if (updatedDevices && updatedDevices.instance) {
-          device = updatedDevices
-        } else {
-          return
-        }
-      }
-
       // Check device status with WhatsApp Center
       const response = await fetch(`${apiBase}?endpoint=statusDevice&device_id=${encodeURIComponent(device.instance)}`, {
         method: 'GET'
@@ -453,67 +514,12 @@ export default function DeviceSettings() {
 
       setCurrentDevice(device)
 
-      // WhatsApp Center returns: { status: true, data: { status: "CONNECTED" or "NOT CONNECTED", qr: "timeout" or valid } }
+      // WhatsApp Center returns: { status: true, data: { status: "CONNECTED" or "NOT CONNECTED" } }
       if (result.status && result.data) {
         const whatsappStatus = result.data.status
-        const qrStatus = result.data.qr
 
-        // If NOT CONNECTED, check QR status
+        // If NOT CONNECTED, show QR code
         if (whatsappStatus === 'NOT CONNECTED') {
-          // Check if QR is timeout - need to delete and recreate device
-          if (qrStatus === 'timeout') {
-            setLoadingMessage('QR timeout detected. Deleting old device...')
-
-            // Delete old device from WhatsApp Center
-            await fetch(`${apiBase}?endpoint=deleteDevice&device_id=${encodeURIComponent(device.instance)}`, {
-              method: 'GET'
-            })
-
-            setLoadingMessage('Creating new device...')
-
-            // Create new device with same data
-            const deviceName = device.device_id
-            const phoneNumber = device.phone_number || ''
-
-            const addDeviceResponse = await fetch(
-              `${apiBase}?endpoint=addDevice&name=${encodeURIComponent(deviceName)}&number=${encodeURIComponent(phoneNumber)}`,
-              { method: 'GET' }
-            )
-
-            const addDeviceData = await addDeviceResponse.json()
-
-            if (addDeviceData.success && addDeviceData.data && addDeviceData.data.device && addDeviceData.data.device.device_id) {
-              const newWhatsappCenterDeviceId = addDeviceData.data.device.device_id
-
-              // Set webhook for new device
-              setLoadingMessage('Registering webhook...')
-              const webhook = `https://pening-bot.deno.dev/${device.device_id}/${newWhatsappCenterDeviceId}`
-
-              const webhookResponse = await fetch(
-                `${apiBase}?endpoint=setWebhook&device_id=${encodeURIComponent(newWhatsappCenterDeviceId)}&webhook=${encodeURIComponent(webhook)}`,
-                { method: 'GET' }
-              )
-
-              const webhookData = await webhookResponse.json()
-
-              if (webhookData.success) {
-                // Update device in database with new instance
-                await supabase
-                  .from('device_setting')
-                  .update({
-                    instance: newWhatsappCenterDeviceId,
-                    webhook_id: webhook
-                  })
-                  .eq('id', device.id)
-
-                // Update local device object
-                device.instance = newWhatsappCenterDeviceId
-
-                setLoadingMessage('Generating new QR code...')
-              }
-            }
-          }
-
           setLoadingMessage('Generating QR code...')
 
           // Get QR code from WhatsApp Center
@@ -525,48 +531,26 @@ export default function DeviceSettings() {
           const qrData = await qrResponse.json()
 
           if (qrData.success && qrData.data && qrData.data.image) {
-            // WhatsApp Center returns base64 image in data.image
-            const qrImageUrl = `data:image/png;base64,${qrData.data.image}`
+            // Validate QR code - check if it's a valid PNG (starts with 'iVBORw0KG')
+            const isValid = qrData.data.image.startsWith('iVBORw0KG')
 
-            setQrCode(qrImageUrl)
-            setConnectionStatus('SCAN_QR_CODE')
-            setDeviceStatuses(prev => ({ ...prev, [device.id]: 'SCAN_QR_CODE' }))
-            setIsCheckingStatus(false)
-            setShowQRModal(true)
+            if (isValid) {
+              // Valid QR code
+              const qrImageUrl = `data:image/png;base64,${qrData.data.image}`
 
-            // Start 6 second countdown and auto-refresh
-            let countdown = 6
-            const countdownInterval = setInterval(() => {
-              countdown--
-              if (countdown <= 0) {
-                clearInterval(countdownInterval)
-                // Auto refresh status after 6 seconds
-                handleCheckStatus(device)
-              }
-            }, 1000)
-
-            // Show countdown alert
-            Swal.fire({
-              icon: 'info',
-              title: 'Scan QR Code',
-              html: 'Please scan the QR code with your WhatsApp.<br>Auto-refreshing in <strong id="countdown">6</strong> seconds...',
-              timer: 6000,
-              timerProgressBar: true,
-              showConfirmButton: false,
-              didOpen: () => {
-                const countdownElement = Swal.getHtmlContainer()?.querySelector('#countdown')
-                const updateCountdown = setInterval(() => {
-                  if (countdownElement) {
-                    countdown--
-                    if (countdown > 0) {
-                      countdownElement.textContent = countdown.toString()
-                    } else {
-                      clearInterval(updateCountdown)
-                    }
-                  }
-                }, 1000)
-              }
-            })
+              setQrCode(qrImageUrl)
+              setConnectionStatus('SCAN_QR_CODE')
+              setDeviceStatuses(prev => ({ ...prev, [device.id]: 'SCAN_QR_CODE' }))
+              setIsCheckingStatus(false)
+              setCurrentDevice(device)
+              setIsValidQR(true)
+              setShowQRModal(true)
+              // Countdown will start automatically via useEffect when modal opens
+            } else {
+              // Invalid QR code
+              setIsValidQR(false)
+              throw new Error('Invalid QR code received')
+            }
           } else {
             throw new Error('Failed to get QR code')
           }
@@ -1037,9 +1021,17 @@ export default function DeviceSettings() {
                 </p>
               </div>
 
+              {isValidQR && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4 text-center">
+                  <p className="text-sm font-medium text-yellow-800">
+                    Auto-refreshing in <span className="text-lg font-bold text-yellow-900">{countdown}</span> seconds...
+                  </p>
+                </div>
+              )}
+
               <div className="flex gap-3">
                 <button
-                  onClick={() => handleCheckStatus(currentDevice!)}
+                  onClick={() => handleRefreshQR(currentDevice!)}
                   className="flex-1 bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
                 >
                   Refresh Status
@@ -1050,6 +1042,7 @@ export default function DeviceSettings() {
                     setQrCode('')
                     setConnectionStatus('')
                     setCurrentDevice(null)
+                    setIsValidQR(false)
                   }}
                   className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-medium transition-colors"
                 >
