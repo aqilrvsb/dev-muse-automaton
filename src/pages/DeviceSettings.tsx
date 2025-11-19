@@ -74,6 +74,7 @@ export default function DeviceSettings() {
             headers: { 'X-Api-Key': apiKey }
           })
           const data = await response.json()
+          // Just set the status, don't auto-restart on page load
           statuses[device.id] = data.status || 'UNKNOWN'
         } catch (error) {
           statuses[device.id] = 'FAILED'
