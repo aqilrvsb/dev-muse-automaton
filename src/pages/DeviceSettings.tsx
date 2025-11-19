@@ -449,12 +449,67 @@ export default function DeviceSettings() {
 
       setCurrentDevice(device)
 
-      // WhatsApp Center returns: { status: true, data: { status: "CONNECTED" or "NOT CONNECTED" } }
+      // WhatsApp Center returns: { status: true, data: { status: "CONNECTED" or "NOT CONNECTED", qr: "timeout" or valid } }
       if (result.status && result.data) {
         const whatsappStatus = result.data.status
+        const qrStatus = result.data.qr
 
-        // If NOT CONNECTED, get QR code
+        // If NOT CONNECTED, check QR status
         if (whatsappStatus === 'NOT CONNECTED') {
+          // Check if QR is timeout - need to delete and recreate device
+          if (qrStatus === 'timeout') {
+            setLoadingMessage('QR timeout detected. Deleting old device...')
+
+            // Delete old device from WhatsApp Center
+            await fetch(`${apiBase}?endpoint=deleteDevice&device_id=${encodeURIComponent(device.instance)}`, {
+              method: 'GET'
+            })
+
+            setLoadingMessage('Creating new device...')
+
+            // Create new device with same data
+            const deviceName = device.device_id
+            const phoneNumber = device.phone_number || ''
+
+            const addDeviceResponse = await fetch(
+              `${apiBase}?endpoint=addDevice&name=${encodeURIComponent(deviceName)}&number=${encodeURIComponent(phoneNumber)}`,
+              { method: 'GET' }
+            )
+
+            const addDeviceData = await addDeviceResponse.json()
+
+            if (addDeviceData.success && addDeviceData.data && addDeviceData.data.device && addDeviceData.data.device.device_id) {
+              const newWhatsappCenterDeviceId = addDeviceData.data.device.device_id
+
+              // Set webhook for new device
+              setLoadingMessage('Registering webhook...')
+              const webhook = `https://pening-bot.deno.dev/${device.device_id}/${newWhatsappCenterDeviceId}`
+
+              const webhookResponse = await fetch(
+                `${apiBase}?endpoint=setWebhook&device_id=${encodeURIComponent(newWhatsappCenterDeviceId)}&webhook=${encodeURIComponent(webhook)}`,
+                { method: 'GET' }
+              )
+
+              const webhookData = await webhookResponse.json()
+
+              if (webhookData.success) {
+                // Update device in database with new instance
+                await supabase
+                  .from('device_settings')
+                  .update({
+                    instance: newWhatsappCenterDeviceId,
+                    webhook_id: webhook
+                  })
+                  .eq('id', device.id)
+
+                // Update local device object
+                device.instance = newWhatsappCenterDeviceId
+
+                setLoadingMessage('Generating new QR code...')
+              }
+            }
+          }
+
           setLoadingMessage('Generating QR code...')
 
           // Get QR code from WhatsApp Center
