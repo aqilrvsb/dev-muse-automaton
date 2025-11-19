@@ -25,6 +25,13 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    host: true
+    host: true,
+    proxy: {
+      '/api/whacenter': {
+        target: 'https://api.whacenter.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/whacenter/, '/api')
+      }
+    }
   }
 })

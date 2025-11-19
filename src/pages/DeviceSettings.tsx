@@ -62,15 +62,14 @@ export default function DeviceSettings() {
   }
 
   const fetchAllDeviceStatusesWithData = async (deviceList: Device[]) => {
-    const apiBase = 'https://api.whacenter.com'
+    const apiBase = '/api/whacenter'
     const statuses: Record<string, string> = {}
 
     for (const device of deviceList) {
       if (device.instance) {
         try {
-          const response = await fetch(`${apiBase}/api/statusDevice?device_id=${encodeURIComponent(device.instance)}`, {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' }
+          const response = await fetch(`${apiBase}?endpoint=statusDevice&device_id=${encodeURIComponent(device.instance)}`, {
+            method: 'GET'
           })
           const result = await response.json()
 
@@ -192,19 +191,15 @@ export default function DeviceSettings() {
       // Automatically add device and register with WhatsApp Center
       setLoadingMessage('Adding device to WhatsApp Center...')
 
-      const apiBase = 'https://api.whacenter.com'
-      const apiKey = 'abebe840-156c-441c-8252-da0342c5a07c'
+      const apiBase = '/api/whacenter'
       const deviceName = formData.device_id
       const phoneNumber = formData.phone_number || ''
 
       // Step 1: Add device to WhatsApp Center
       const addDeviceResponse = await fetch(
-        `${apiBase}/api/addDevice?api_key=${encodeURIComponent(apiKey)}&name=${encodeURIComponent(deviceName)}&number=${encodeURIComponent(phoneNumber)}`,
+        `${apiBase}?endpoint=addDevice&name=${encodeURIComponent(deviceName)}&number=${encodeURIComponent(phoneNumber)}`,
         {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json'
-          }
+          method: 'GET'
         }
       )
 
@@ -218,10 +213,9 @@ export default function DeviceSettings() {
         const webhook = `https://pening-bot.deno.dev/${formData.device_id}/${whatsappCenterDeviceId}`
 
         const webhookResponse = await fetch(
-          `${apiBase}/api/setWebhook?device_id=${encodeURIComponent(whatsappCenterDeviceId)}&webhook=${encodeURIComponent(webhook)}`,
+          `${apiBase}?endpoint=setWebhook&device_id=${encodeURIComponent(whatsappCenterDeviceId)}&webhook=${encodeURIComponent(webhook)}`,
           {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' }
+            method: 'GET'
           }
         )
 
@@ -346,19 +340,15 @@ export default function DeviceSettings() {
 
   const handleGenerateWebhook = async (device: Device) => {
     try {
-      const apiBase = 'https://api.whacenter.com'
-      const apiKey = 'abebe840-156c-441c-8252-da0342c5a07c'
+      const apiBase = '/api/whacenter'
       const deviceName = device.device_id
       const phoneNumber = device.phone_number || ''
 
       // Add device to WhatsApp Center
       const addDeviceResponse = await fetch(
-        `${apiBase}/api/addDevice?api_key=${encodeURIComponent(apiKey)}&name=${encodeURIComponent(deviceName)}&number=${encodeURIComponent(phoneNumber)}`,
+        `${apiBase}?endpoint=addDevice&name=${encodeURIComponent(deviceName)}&number=${encodeURIComponent(phoneNumber)}`,
         {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json'
-          }
+          method: 'GET'
         }
       )
 
@@ -370,10 +360,9 @@ export default function DeviceSettings() {
 
         // Set webhook for this device
         const webhookResponse = await fetch(
-          `${apiBase}/api/setWebhook?device_id=${encodeURIComponent(whatsappCenterDeviceId)}&webhook=${encodeURIComponent(webhook)}`,
+          `${apiBase}?endpoint=setWebhook&device_id=${encodeURIComponent(whatsappCenterDeviceId)}&webhook=${encodeURIComponent(webhook)}`,
           {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' }
+            method: 'GET'
           }
         )
 
@@ -421,7 +410,7 @@ export default function DeviceSettings() {
   }
 
   const handleCheckStatus = async (device: Device) => {
-    const apiBase = 'https://api.whacenter.com'
+    const apiBase = '/api/whacenter'
 
     setIsCheckingStatus(true)
     setLoadingMessage('Checking device status...')
@@ -448,11 +437,8 @@ export default function DeviceSettings() {
       }
 
       // Check device status with WhatsApp Center
-      const response = await fetch(`${apiBase}/api/statusDevice?device_id=${encodeURIComponent(device.instance)}`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
+      const response = await fetch(`${apiBase}?endpoint=statusDevice&device_id=${encodeURIComponent(device.instance)}`, {
+        method: 'GET'
       })
 
       const result = await response.json()
@@ -468,10 +454,8 @@ export default function DeviceSettings() {
           setLoadingMessage('Generating QR code...')
 
           // Get QR code from WhatsApp Center
-          const qrResponse = await fetch(`${apiBase}/api/qr?device_id=${encodeURIComponent(device.instance)}`, {
-            headers: {
-              'Accept': 'application/json',
-            },
+          const qrResponse = await fetch(`${apiBase}?endpoint=qr&device_id=${encodeURIComponent(device.instance)}`, {
+            method: 'GET'
           })
 
           // WhatsApp Center returns QR code data

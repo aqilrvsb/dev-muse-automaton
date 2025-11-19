@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-$apiBase = 'https://api.whacenter.com';
+$apiBase = 'https://app.whacenter.com';
 $apiKey = 'abebe840-156c-441c-8252-da0342c5a07c';
 
 // Get the endpoint from the request
