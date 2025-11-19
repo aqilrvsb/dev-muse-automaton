@@ -34,14 +34,11 @@ export default function DeviceSettings() {
   })
 
   useEffect(() => {
-    loadDevices()
-  }, [])
-
-  useEffect(() => {
-    if (devices.length > 0) {
-      fetchAllDeviceStatuses()
+    const initializePage = async () => {
+      await loadDevices()
     }
-  }, [devices])
+    initializePage()
+  }, [])
 
   const loadDevices = async () => {
     try {
@@ -52,6 +49,11 @@ export default function DeviceSettings() {
 
       if (error) throw error
       setDevices(data || [])
+
+      // Fetch statuses immediately after loading devices
+      if (data && data.length > 0) {
+        await fetchAllDeviceStatusesWithData(data)
+      }
     } catch (error) {
       console.error('Error loading devices:', error)
     } finally {
@@ -59,13 +61,13 @@ export default function DeviceSettings() {
     }
   }
 
-  const fetchAllDeviceStatuses = async () => {
+  const fetchAllDeviceStatusesWithData = async (deviceList: Device[]) => {
     const apiBase = 'https://waha-plus-production-705f.up.railway.app'
     const apiKey = 'dckr_pat_vxeqEu_CqRi5O3CBHnD7FxhnBz0'
 
     const statuses: Record<string, string> = {}
 
-    for (const device of devices) {
+    for (const device of deviceList) {
       if (device.instance) {
         try {
           const response = await fetch(`${apiBase}/api/sessions/${device.instance}`, {
@@ -82,6 +84,10 @@ export default function DeviceSettings() {
     }
 
     setDeviceStatuses(statuses)
+  }
+
+  const fetchAllDeviceStatuses = async () => {
+    await fetchAllDeviceStatusesWithData(devices)
   }
 
   const checkDeviceIdExists = async (deviceId: string) => {
