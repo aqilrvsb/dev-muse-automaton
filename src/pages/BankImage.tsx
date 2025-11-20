@@ -599,6 +599,7 @@ export default function BankImage() {
 
             <div className="flex gap-4 mt-6 pt-4 border-t border-gray-200">
               <button
+                type="button"
                 onClick={() => {
                   setShowUploadModal(false)
                   setImageName('')
@@ -610,6 +611,7 @@ export default function BankImage() {
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleUpload}
                 disabled={uploading || !selectedFile || !imageName.trim()}
                 className="flex-1 px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
@@ -660,6 +662,7 @@ export default function BankImage() {
 
             <div className="flex gap-4 mt-6 pt-4 border-t border-gray-200">
               <button
+                type="button"
                 onClick={() => {
                   setShowEditModal(false)
                   setSelectedImage(null)
@@ -670,6 +673,7 @@ export default function BankImage() {
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleUpdate}
                 disabled={!imageName.trim()}
                 className="flex-1 px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -725,6 +729,7 @@ export default function BankImage() {
 
             <div className="flex gap-4 mt-6 pt-4 border-t border-gray-200">
               <button
+                type="button"
                 onClick={() => setShowViewModal(false)}
                 className="flex-1 px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
               >
