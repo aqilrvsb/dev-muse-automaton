@@ -594,7 +594,7 @@ export default function Sequences() {
 
                 <div className="space-y-2 mb-4 text-sm">
                   <div>
-                    <p className="text-gray-500">Niche: {sequence.niche} | Time: {sequence.schedule_time}</p>
+                    <p className="text-gray-500">Niche: {sequence.niche}</p>
                   </div>
                   <div>
                     <p className="text-gray-500">Trigger: {sequence.trigger}</p>
@@ -604,48 +604,13 @@ export default function Sequences() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 mb-4 text-sm">
-                  <span className="text-gray-600">👥 {sequence.contact_count || 0} contacts</span>
-                </div>
-
                 <div className="space-y-2">
                   <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        Swal.fire({
-                          title: sequence.name,
-                          html: `
-                            <div style="text-align: left;">
-                              <p><strong>Niche:</strong> ${sequence.niche}</p>
-                              <p><strong>Trigger:</strong> ${sequence.trigger}</p>
-                              <p><strong>Description:</strong> ${sequence.description}</p>
-                              <p><strong>Schedule Time:</strong> ${sequence.schedule_time}</p>
-                              <p><strong>Delay:</strong> ${sequence.min_delay}s - ${sequence.max_delay}s</p>
-                              <p><strong>Status:</strong> ${sequence.status}</p>
-                              <p><strong>Contacts:</strong> ${sequence.contact_count || 0}</p>
-                            </div>
-                          `,
-                          icon: 'info',
-                          confirmButtonText: 'Close'
-                        })
-                      }}
-                      className="flex-1 bg-white border border-blue-400 text-blue-600 px-3 py-2 rounded-md transition-colors font-medium text-sm hover:bg-blue-50"
-                    >
-                      👁 View
-                    </button>
                     <button
                       onClick={() => handleEditSequence(sequence)}
                       className="flex-1 bg-white border border-green-400 text-green-600 px-3 py-2 rounded-md transition-colors font-medium text-sm hover:bg-green-50"
                     >
                       ✎ Update
-                    </button>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleEditSequence(sequence)}
-                      className="flex-1 bg-white border border-yellow-400 text-yellow-600 px-3 py-2 rounded-md transition-colors font-medium text-sm hover:bg-yellow-50"
-                    >
-                      📋 Flow Update
                     </button>
                     <button
                       onClick={() => handleDeleteSequence(sequence.id)}
