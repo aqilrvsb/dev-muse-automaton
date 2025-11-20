@@ -11,6 +11,7 @@ type AuthContextType = {
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
   refreshUser: () => Promise<void>
+  isSubscriptionExpired: () => boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -174,6 +175,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     navigate('/')
   }
 
+  // Check if subscription is expired
+  const isSubscriptionExpired = (): boolean => {
+    if (!user) return false
+
+    // Admin users never expire
+    if (user.role === 'admin') return false
+
+    // If no subscription_end date, not expired (lifetime or trial)
+    if (!user.subscription_end) return false
+
+    // Check if today is past the subscription_end date
+    const today = new Date()
+    const endDate = new Date(user.subscription_end)
+
+    // Set both dates to midnight for accurate date comparison
+    today.setHours(0, 0, 0, 0)
+    endDate.setHours(0, 0, 0, 0)
+
+    return today >= endDate
+  }
+
   // Initialize auth state
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -218,6 +240,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signUp,
     signOut,
     refreshUser,
+    isSubscriptionExpired,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

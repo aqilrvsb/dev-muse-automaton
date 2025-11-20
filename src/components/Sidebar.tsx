@@ -3,9 +3,10 @@ import { useAuth } from '../contexts/AuthContext'
 
 export default function Sidebar() {
   const location = useLocation()
-  const { user, signOut } = useAuth()
+  const { user, signOut, isSubscriptionExpired } = useAuth()
 
   const isActive = (path: string) => location.pathname === path
+  const isExpired = isSubscriptionExpired()
 
   const navItems = [
     { path: '/dashboard', icon: '📊', label: 'Dashboard' },
@@ -37,20 +38,41 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-1">
-        {navItems.map((item) => (
-          <Link
-            key={item.path}
-            to={item.path}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-              isActive(item.path)
-                ? 'bg-primary-600 text-white shadow-md'
-                : 'text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            <span className="text-xl">{item.icon}</span>
-            <span className="font-medium text-sm">{item.label}</span>
-          </Link>
-        ))}
+        {isExpired && (
+          <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3">
+            <p className="text-xs text-red-700 font-semibold">⚠️ Subscription Expired</p>
+            <p className="text-xs text-red-600 mt-1">Please renew to access all features</p>
+          </div>
+        )}
+
+        {navItems.map((item) => {
+          const isDisabled = isExpired && item.path !== '/billings'
+
+          return isDisabled ? (
+            <div
+              key={item.path}
+              className="flex items-center gap-3 px-4 py-3 rounded-lg bg-gray-100 opacity-50 cursor-not-allowed"
+              title="Subscription expired - Please renew to access this feature"
+            >
+              <span className="text-xl">{item.icon}</span>
+              <span className="font-medium text-sm text-gray-500">{item.label}</span>
+              <span className="ml-auto text-xs">🔒</span>
+            </div>
+          ) : (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                isActive(item.path)
+                  ? 'bg-primary-600 text-white shadow-md'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <span className="text-xl">{item.icon}</span>
+              <span className="font-medium text-sm">{item.label}</span>
+            </Link>
+          )
+        })}
 
         {showPackages && (
           <>

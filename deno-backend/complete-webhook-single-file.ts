@@ -223,6 +223,56 @@ async function executePromptBasedFlow(params: {
 
   console.log(`✅ Device found: ${device.device_id}`);
 
+  // Step 1.5: Check if user's subscription is expired
+  if (device.user_id) {
+    const { data: userData } = await supabaseAdmin
+      .from("user")
+      .select("role, subscription_end")
+      .eq("id", device.user_id)
+      .single();
+
+    if (userData) {
+      // Admin users never expire
+      const isAdmin = userData.role === 'admin';
+
+      if (!isAdmin && userData.subscription_end) {
+        const today = new Date();
+        const endDate = new Date(userData.subscription_end);
+
+        // Set both to midnight for accurate comparison
+        today.setHours(0, 0, 0, 0);
+        endDate.setHours(0, 0, 0, 0);
+
+        const isExpired = today >= endDate;
+
+        if (isExpired) {
+          console.log(`⚠️  Subscription expired for user ${device.user_id}. Deleting device from WhatsApp Center...`);
+
+          // Delete device from WhatsApp Center API (one-time action)
+          try {
+            const deleteUrl = `${WHACENTER_API_URL}/api/${WHACENTER_API_KEY}/deleteDevice/${device.instance}`;
+            console.log(`🗑️  Calling delete API: ${deleteUrl}`);
+
+            const deleteResponse = await fetch(deleteUrl, {
+              method: 'DELETE',
+            });
+
+            if (deleteResponse.ok) {
+              console.log(`✅ Device ${device.instance} deleted from WhatsApp Center`);
+            } else {
+              console.error(`❌ Failed to delete device: ${await deleteResponse.text()}`);
+            }
+          } catch (deleteError) {
+            console.error(`❌ Error deleting device from WhatsApp Center:`, deleteError);
+          }
+
+          console.log(`🚫 Subscription expired - stopping message processing`);
+          return; // Stop processing
+        }
+      }
+    }
+  }
+
   // Step 2: Get prompt from prompts table
   const { data: prompt, error: promptError } = await supabaseAdmin
     .from("prompts")
