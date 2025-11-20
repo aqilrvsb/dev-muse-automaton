@@ -251,19 +251,28 @@ export default function BankImage() {
         }
 
         // Upload new image
+        console.log('Uploading new image to Blob storage...')
         const blob = await put(`bank-images/${user?.id}/${Date.now()}-${selectedFile.name}`, selectedFile, {
           access: 'public',
           token,
         })
+        console.log('New image uploaded:', blob.url)
         newImageUrl = blob.url
         newBlobUrl = blob.url
 
         // Delete old image from Vercel Blob if it exists
         if (selectedImage.blob_url) {
           try {
+            console.log('Attempting to delete old image from Blob:', selectedImage.blob_url)
             await del(selectedImage.blob_url, { token })
-          } catch (blobError) {
+            console.log('Successfully deleted old image from Blob storage')
+          } catch (blobError: any) {
             console.error('Failed to delete old image from Blob storage:', blobError)
+            console.error('Error details:', {
+              message: blobError.message,
+              name: blobError.name,
+              stack: blobError.stack
+            })
             // Continue with update even if old blob deletion fails
           }
         }
@@ -322,15 +331,26 @@ export default function BankImage() {
     try {
       // Delete from Vercel Blob if blob_url exists
       if (image.blob_url) {
-        try {
-          const token = import.meta.env.VITE_BLOB_READ_WRITE_TOKEN
-          if (token) {
+        const token = import.meta.env.VITE_BLOB_READ_WRITE_TOKEN
+        if (!token) {
+          console.warn('No Blob token found, skipping Blob deletion')
+        } else {
+          try {
+            console.log('Attempting to delete from Blob:', image.blob_url)
             await del(image.blob_url, { token })
+            console.log('Successfully deleted from Blob storage')
+          } catch (blobError: any) {
+            console.error('Blob deletion error:', blobError)
+            console.error('Error details:', {
+              message: blobError.message,
+              name: blobError.name,
+              stack: blobError.stack
+            })
+            // Continue with database deletion even if blob deletion fails
           }
-        } catch (blobError) {
-          console.error('Failed to delete from Blob storage:', blobError)
-          // Continue with database deletion even if blob deletion fails
         }
+      } else {
+        console.log('No blob_url found, skipping Blob deletion')
       }
 
       // Delete from database
@@ -344,8 +364,8 @@ export default function BankImage() {
       Swal.fire({
         icon: 'success',
         title: 'Deleted!',
-        text: 'Image has been deleted.',
-        timer: 2000,
+        text: 'Image has been deleted from database. Note: Blob cache may take up to 1 minute to clear.',
+        timer: 3000,
         showConfirmButton: false,
       })
 
