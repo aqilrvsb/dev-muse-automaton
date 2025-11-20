@@ -693,7 +693,7 @@ export default function BankImage() {
                   onChange={handleFileSelect}
                   className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
                 />
-                <p className="text-xs text-gray-500 mt-1">Images compressed to <300KB | MP3/MP4 max 10MB</p>
+                <p className="text-xs text-gray-500 mt-1">Images compressed to &lt;300KB | MP3/MP4 max 10MB</p>
               </div>
 
               {previewUrl && (
