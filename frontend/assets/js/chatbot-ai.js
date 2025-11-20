@@ -100,7 +100,10 @@ function displayConversations(conversations) {
                         <th>Phone Number</th>
                         <th>Niche</th>
                         <th>Stage</th>
+                        <th>Detail</th>
                         <th>Conversation History</th>
+                        <th>Close</th>
+                        <th>Total Price</th>
                         <th>Reply Status</th>
                         <th>Action</th>
                     </tr>
@@ -121,6 +124,25 @@ function displayConversations(conversations) {
                         const replyStatus = conv.human === 1 ? 'Human' : 'AI';
                         const replyBadgeClass = conv.human === 1 ? 'badge-human' : 'badge-ai';
 
+                        // Close Status: Check if stage contains "Close" or similar keywords
+                        const isClosed = conv.stage && (
+                            conv.stage.toLowerCase().includes('close') ||
+                            conv.stage.toLowerCase().includes('completed') ||
+                            conv.stage.toLowerCase().includes('done')
+                        );
+                        const closeStatus = isClosed ? 'YES' : 'NO';
+                        const closeBadgeClass = isClosed ? 'badge-close-yes' : 'badge-close-no';
+
+                        // Total Price: Extract from detail field or set default
+                        let totalPrice = 'RM 0';
+                        if (conv.detail) {
+                            // Try to extract price from detail (format: HARGA: RM120 or PRICE: 120)
+                            const priceMatch = conv.detail.match(/(?:HARGA|PRICE|TOTAL):\s*(?:RM\s*)?(\d+(?:\.\d{2})?)/i);
+                            if (priceMatch) {
+                                totalPrice = `RM ${priceMatch[1]}`;
+                            }
+                        }
+
                         return `
                             <tr>
                                 <td><strong>${index + 1}</strong></td>
@@ -131,8 +153,13 @@ function displayConversations(conversations) {
                                 <td><span class="badge badge-niche">${conv.niche || '-'}</span></td>
                                 <td><span class="badge badge-stage">${conv.stage || 'Welcome Message'}</span></td>
                                 <td>
+                                    <button class="btn-view-detail" onclick='viewDetail(${JSON.stringify(conv.detail || '').replace(/'/g, "&#39;")})' title="View Details">📋</button>
+                                </td>
+                                <td>
                                     <button class="btn-view" onclick='viewConversation(${JSON.stringify(conv).replace(/'/g, "&#39;")})' title="View Conversation History">👁️</button>
                                 </td>
+                                <td><span class="badge ${closeBadgeClass}">${closeStatus}</span></td>
+                                <td><strong style="color: #4CAF50;">${totalPrice}</strong></td>
                                 <td><span class="badge ${replyBadgeClass}">${replyStatus}</span></td>
                                 <td>
                                     <button class="btn-delete" onclick="deleteConversation('${conv.prospect_num}')" title="Delete">🗑️</button>
@@ -311,6 +338,30 @@ function viewConversation(conv) {
             </div>
         `,
         width: '700px',
+        background: '#141414',
+        color: '#ffffff',
+        confirmButtonColor: '#e50914',
+        confirmButtonText: 'Close'
+    });
+}
+
+// View detail information
+function viewDetail(detail) {
+    let detailContent = 'No details available';
+    if (detail && detail.trim()) {
+        detailContent = detail.replace(/\n/g, '<br>');
+    }
+
+    Swal.fire({
+        title: 'Customer Details',
+        html: `
+            <div style="text-align: left; color: #ffffff;">
+                <div style="background: #1a1a1a; padding: 15px; border-radius: 5px; max-height: 400px; overflow-y: auto;">
+                    ${detailContent}
+                </div>
+            </div>
+        `,
+        width: '600px',
         background: '#141414',
         color: '#ffffff',
         confirmButtonColor: '#e50914',
