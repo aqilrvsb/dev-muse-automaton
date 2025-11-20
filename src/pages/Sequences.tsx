@@ -475,38 +475,6 @@ export default function Sequences() {
     })
   }
 
-  // WhatsApp text formatting helpers
-  const insertFormatting = (format: string) => {
-    const textarea = document.getElementById('flow-message') as HTMLTextAreaElement
-    if (!textarea) return
-
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
-    const selectedText = flowFormData.message.substring(start, end)
-
-    let formattedText = ''
-    switch (format) {
-      case 'bold':
-        formattedText = `*${selectedText}*`
-        break
-      case 'italic':
-        formattedText = `_${selectedText}_`
-        break
-      case 'strike':
-        formattedText = `~${selectedText}~`
-        break
-      case 'mono':
-        formattedText = `\`\`\`${selectedText}\`\`\``
-        break
-    }
-
-    const newMessage =
-      flowFormData.message.substring(0, start) +
-      formattedText +
-      flowFormData.message.substring(end)
-
-    setFlowFormData({ ...flowFormData, message: newMessage })
-  }
 
   const isFlowSet = (flowNumber: number, isCreateMode: boolean = false) => {
     if (isCreateMode) {
@@ -973,9 +941,9 @@ export default function Sequences() {
         {/* Flow Edit Modal */}
         {showFlowEditModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]">
-            <div className="bg-white rounded-xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-xl">
+            <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-bold text-gray-900">Flow {currentFlowNumber} Message</h3>
+                <h3 className="text-xl font-bold text-gray-900">Flow {currentFlowNumber} Message</h3>
                 <button
                   onClick={() => {
                     setShowFlowEditModal(false)
@@ -988,21 +956,22 @@ export default function Sequences() {
               </div>
 
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Step Trigger <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={flowFormData.step_trigger}
-                      onChange={(e) => setFlowFormData({ ...flowFormData, step_trigger: e.target.value })}
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      placeholder="e.g., FLOW1"
-                      required
-                    />
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Step Trigger <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={flowFormData.step_trigger}
+                    onChange={(e) => setFlowFormData({ ...flowFormData, step_trigger: e.target.value })}
+                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder="e.g., fitness_day1, welcome_message"
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Unique identifier for this step</p>
+                </div>
 
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Next Trigger</label>
                     <input
@@ -1010,12 +979,11 @@ export default function Sequences() {
                       value={flowFormData.next_trigger}
                       onChange={(e) => setFlowFormData({ ...flowFormData, next_trigger: e.target.value })}
                       className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      placeholder="e.g., FLOW2"
+                      placeholder="e.g., fitness_day2"
                     />
+                    <p className="text-xs text-gray-500 mt-1">Leave empty for last step</p>
                   </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Delay Hours</label>
                     <input
@@ -1025,17 +993,7 @@ export default function Sequences() {
                       className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
                       min="0"
                     />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Image URL</label>
-                    <input
-                      type="text"
-                      value={flowFormData.image_url}
-                      onChange={(e) => setFlowFormData({ ...flowFormData, image_url: e.target.value })}
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      placeholder="https://example.com/image.jpg"
-                    />
+                    <p className="text-xs text-gray-500 mt-1">Hours to wait before next step</p>
                   </div>
                 </div>
 
@@ -1047,77 +1005,54 @@ export default function Sequences() {
                     onChange={(e) => setFlowFormData({ ...flowFormData, is_end: e.target.checked })}
                     className="w-4 h-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                   />
-                  <label htmlFor="is-end" className="text-sm font-medium text-gray-700">
-                    This is the last flow in the sequence
+                  <label htmlFor="is-end" className="text-sm text-gray-700">
+                    This is the end of sequence
                   </label>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Message <span className="text-red-500">*</span>
-                  </label>
-
-                  {/* Formatting Toolbar */}
-                  <div className="flex gap-2 mb-2">
-                    <button
-                      type="button"
-                      onClick={() => insertFormatting('bold')}
-                      className="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded text-sm font-bold"
-                      title="Bold"
-                    >
-                      B
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => insertFormatting('italic')}
-                      className="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded text-sm italic"
-                      title="Italic"
-                    >
-                      I
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => insertFormatting('strike')}
-                      className="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded text-sm line-through"
-                      title="Strikethrough"
-                    >
-                      S
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => insertFormatting('mono')}
-                      className="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded text-sm font-mono"
-                      title="Monospace"
-                    >
-                      M
-                    </button>
-                  </div>
-
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Message</label>
                   <textarea
                     id="flow-message"
                     value={flowFormData.message}
                     onChange={(e) => setFlowFormData({ ...flowFormData, message: e.target.value })}
-                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono"
-                    rows={12}
-                    placeholder="Type your message here...
-
-Use WhatsApp formatting:
-*bold*
-_italic_
-~strikethrough~
-```monospace```"
+                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    rows={6}
+                    placeholder="Enter your message..."
                     required
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    <strong>WhatsApp Formatting:</strong> *bold* | _italic_ | ~strikethrough~ | ```monospace``` | 😊 Emojis supported
+                  </p>
                 </div>
 
-                <div className="flex gap-4 mt-6">
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Live Preview</h4>
+                  <div className="text-sm text-gray-600 whitespace-pre-wrap min-h-[60px]">
+                    {flowFormData.message || 'Your formatted message will appear here...'}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Image URL (Optional)</label>
+                  <input
+                    type="text"
+                    value={flowFormData.image_url}
+                    onChange={(e) => setFlowFormData({ ...flowFormData, image_url: e.target.value })}
+                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder="https://example.com/image.jpg"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Enter the full URL of your image</p>
+                </div>
+
+                <div className="flex gap-4 mt-6 pt-4 border-t">
                   <button
                     type="button"
                     onClick={() => {
                       setShowFlowEditModal(false)
                       resetFlowForm()
                     }}
-                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-medium transition-colors"
+                    className="px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
                   >
                     Cancel
                   </button>
@@ -1139,9 +1074,9 @@ _italic_
                         handleSaveFlowInCreate()
                       }
                     }}
-                    className="flex-1 bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                    className="px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors"
                   >
-                    Save Flow
+                    Finish
                   </button>
                 </div>
               </div>
