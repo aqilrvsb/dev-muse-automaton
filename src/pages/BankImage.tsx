@@ -60,21 +60,64 @@ export default function BankImage() {
     }
   }
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const compressImage = (file: File): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.readAsDataURL(file)
+      reader.onload = (event) => {
+        const img = new Image()
+        img.src = event.target?.result as string
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          const ctx = canvas.getContext('2d')
+          if (!ctx) {
+            reject(new Error('Failed to get canvas context'))
+            return
+          }
+
+          // Calculate new dimensions (max 1200px width/height)
+          let width = img.width
+          let height = img.height
+          const maxDimension = 1200
+
+          if (width > height && width > maxDimension) {
+            height = (height * maxDimension) / width
+            width = maxDimension
+          } else if (height > maxDimension) {
+            width = (width * maxDimension) / height
+            height = maxDimension
+          }
+
+          canvas.width = width
+          canvas.height = height
+          ctx.drawImage(img, 0, 0, width, height)
+
+          // Compress with quality 0.8
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                reject(new Error('Failed to compress image'))
+                return
+              }
+              const compressedFile = new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              })
+              resolve(compressedFile)
+            },
+            'image/jpeg',
+            0.8
+          )
+        }
+        img.onerror = () => reject(new Error('Failed to load image'))
+      }
+      reader.onerror = () => reject(new Error('Failed to read file'))
+    })
+  }
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-
-    // Check file size (max 300KB)
-    const maxSize = 300 * 1024 // 300KB in bytes
-    if (file.size > maxSize) {
-      Swal.fire({
-        icon: 'error',
-        title: 'File Too Large',
-        text: 'Please select an image smaller than 300KB',
-      })
-      e.target.value = ''
-      return
-    }
 
     // Check file type
     if (!file.type.startsWith('image/')) {
@@ -87,14 +130,38 @@ export default function BankImage() {
       return
     }
 
-    setSelectedFile(file)
+    try {
+      // Compress the image
+      const compressedFile = await compressImage(file)
 
-    // Create preview
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      setPreviewUrl(reader.result as string)
+      // Check compressed size (max 300KB)
+      const maxSize = 300 * 1024 // 300KB in bytes
+      if (compressedFile.size > maxSize) {
+        Swal.fire({
+          icon: 'error',
+          title: 'File Too Large',
+          text: `Image is still ${(compressedFile.size / 1024).toFixed(0)}KB after compression. Please select a smaller image.`,
+        })
+        e.target.value = ''
+        return
+      }
+
+      setSelectedFile(compressedFile)
+
+      // Create preview
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result as string)
+      }
+      reader.readAsDataURL(compressedFile)
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Compression Failed',
+        text: 'Failed to compress image. Please try another image.',
+      })
+      e.target.value = ''
     }
-    reader.readAsDataURL(file)
   }
 
   const handleUpload = async () => {
@@ -501,7 +568,7 @@ export default function BankImage() {
                   onChange={handleFileSelect}
                   className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
                 />
-                <p className="text-xs text-gray-500 mt-1">Maximum file size: 300KB</p>
+                <p className="text-xs text-gray-500 mt-1">Images will be automatically compressed. Accepts files up to 2MB.</p>
               </div>
 
               {previewUrl && (
