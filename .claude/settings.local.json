@@ -41,7 +41,8 @@
       "Bash(find:*)",
       "Bash(if [ -d \"C:\\Users\\aqilz\\Documents\\dev-muse-automaton-main\\public\" ])",
       "Bash(then)",
-      "Bash(else)"
+      "Bash(else)",
+      "Bash(npm run dev:*)"
     ],
     "deny": [],
     "ask": []
