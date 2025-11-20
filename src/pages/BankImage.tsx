@@ -239,9 +239,44 @@ export default function BankImage() {
     }
 
     try {
+      setUploading(true)
+      let newImageUrl = selectedImage.image_url
+      let newBlobUrl = selectedImage.blob_url
+
+      // If a new file is selected, upload it and delete the old one
+      if (selectedFile) {
+        const token = import.meta.env.VITE_BLOB_READ_WRITE_TOKEN
+        if (!token) {
+          throw new Error('Blob storage token not configured')
+        }
+
+        // Upload new image
+        const blob = await put(`bank-images/${user?.id}/${Date.now()}-${selectedFile.name}`, selectedFile, {
+          access: 'public',
+          token,
+        })
+        newImageUrl = blob.url
+        newBlobUrl = blob.url
+
+        // Delete old image from Vercel Blob if it exists
+        if (selectedImage.blob_url) {
+          try {
+            await del(selectedImage.blob_url, { token })
+          } catch (blobError) {
+            console.error('Failed to delete old image from Blob storage:', blobError)
+            // Continue with update even if old blob deletion fails
+          }
+        }
+      }
+
+      // Update database
       const { error } = await supabase
         .from('bank_images')
-        .update({ name: imageName.trim() })
+        .update({
+          name: imageName.trim(),
+          image_url: newImageUrl,
+          blob_url: newBlobUrl,
+        })
         .eq('id', selectedImage.id)
 
       if (error) throw error
@@ -249,7 +284,7 @@ export default function BankImage() {
       Swal.fire({
         icon: 'success',
         title: 'Success',
-        text: 'Image name updated successfully!',
+        text: 'Image updated successfully!',
         timer: 2000,
         showConfirmButton: false,
       })
@@ -257,6 +292,8 @@ export default function BankImage() {
       setShowEditModal(false)
       setSelectedImage(null)
       setImageName('')
+      setSelectedFile(null)
+      setPreviewUrl(null)
       fetchImages()
     } catch (error: any) {
       Swal.fire({
@@ -264,6 +301,8 @@ export default function BankImage() {
         title: 'Update Failed',
         text: error.message || 'Failed to update image',
       })
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -640,7 +679,7 @@ export default function BankImage() {
       {showEditModal && selectedImage && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Update Image Name</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Update Image</h3>
 
             <div className="space-y-4">
               <div>
@@ -656,13 +695,31 @@ export default function BankImage() {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Replace Image (Optional)
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+                />
+                <p className="text-xs text-gray-500 mt-1">Leave empty to keep current image</p>
+              </div>
+
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <p className="text-sm font-medium text-gray-700 mb-2">Current Image:</p>
+                <p className="text-sm font-medium text-gray-700 mb-2">{previewUrl ? 'New Image Preview:' : 'Current Image:'}</p>
                 <img
-                  src={selectedImage.image_url}
+                  src={previewUrl || selectedImage.image_url}
                   alt={selectedImage.name}
                   className="max-h-48 mx-auto rounded-lg"
                 />
+                {selectedFile && (
+                  <p className="text-xs text-gray-500 mt-2 text-center">
+                    {selectedFile.name} ({(selectedFile.size / 1024).toFixed(2)} KB)
+                  </p>
+                )}
               </div>
             </div>
 
@@ -673,6 +730,8 @@ export default function BankImage() {
                   setShowEditModal(false)
                   setSelectedImage(null)
                   setImageName('')
+                  setSelectedFile(null)
+                  setPreviewUrl(null)
                 }}
                 className="flex-1 px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
               >
@@ -681,10 +740,17 @@ export default function BankImage() {
               <button
                 type="button"
                 onClick={handleUpdate}
-                disabled={!imageName.trim()}
-                className="flex-1 px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={uploading || !imageName.trim()}
+                className="flex-1 px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Update
+                {uploading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Updating...</span>
+                  </>
+                ) : (
+                  <span>Update</span>
+                )}
               </button>
             </div>
           </div>
