@@ -18,18 +18,30 @@
 4. Paste and **Run** the SQL query
 5. Verify the table was created in **Table Editor**
 
-### 2. Add Environment Variable to Vercel
+### 2. Add Environment Variables to Vercel
 
-**Important:** For production deployment, add the token to Vercel:
+**Important:** For production deployment, add BOTH tokens to Vercel:
 
 1. Go to **Vercel Dashboard** → Your Project
 2. Navigate to **Settings** → **Environment Variables**
-3. Add new variable:
+3. Add **TWO** variables:
+
+   **Variable 1 (Client-side for uploads):**
    - **Name:** `VITE_BLOB_READ_WRITE_TOKEN`
    - **Value:** `vercel_blob_rw_Cq4lFGmFNPojbgtJ_oKFQ7ZzbQJitu6bivnVLB54Oox80gP`
    - **Environment:** Production, Preview, Development (select all)
-4. Click **Save**
+
+   **Variable 2 (Server-side for deletions):**
+   - **Name:** `BLOB_READ_WRITE_TOKEN`
+   - **Value:** `vercel_blob_rw_Cq4lFGmFNPojbgtJ_oKFQ7ZzbQJitu6bivnVLB54Oox80gP`
+   - **Environment:** Production, Preview, Development (select all)
+
+4. Click **Save** for both
 5. Redeploy your application for changes to take effect
+
+**Why Two Variables?**
+- `VITE_BLOB_READ_WRITE_TOKEN` - Used by client-side code for uploads
+- `BLOB_READ_WRITE_TOKEN` - Used by server-side API for deletions (avoids CORS issues)
 
 ### 3. Test the Feature
 
@@ -60,8 +72,8 @@
 ### CRUD Operations
 - **Create:** Upload new images with custom names
 - **Read:** View all images in table format with thumbnails
-- **Update:** Edit image names
-- **Delete:** Remove images (with confirmation)
+- **Update:** Edit image names OR replace images (uploads new, deletes old from Blob)
+- **Delete:** Remove images from both Vercel Blob Storage AND database (with confirmation)
 
 ### Additional Features
 - **Search:** Real-time search by image name
@@ -89,6 +101,21 @@ bank_images
 - Users can only view/edit their own images
 - Automatic cleanup when user is deleted (CASCADE)
 - Token stored in `.env` (gitignored)
+- **Server-side deletion API** prevents CORS issues and enhances security
+
+## 🏗️ Architecture
+
+### Upload Flow (Client-Side)
+1. User selects image → Auto-compressed to <300KB
+2. Client uploads to Vercel Blob using `VITE_BLOB_READ_WRITE_TOKEN`
+3. Blob URL saved to Supabase database
+
+### Delete Flow (Server-Side API)
+1. Client calls `/api/delete-blob` endpoint
+2. Server-side function deletes from Vercel Blob using `BLOB_READ_WRITE_TOKEN`
+3. Client deletes record from Supabase database
+
+**Why server-side delete?** Vercel Blob's delete API blocks client-side CORS requests for security. Upload works client-side, but delete requires server execution.
 
 ## 💰 Vercel Blob Storage Limits
 
