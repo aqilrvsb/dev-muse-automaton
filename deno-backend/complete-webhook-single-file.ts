@@ -7,8 +7,8 @@ const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const JWT_SECRET = Deno.env.get("JWT_SECRET")!;
 const DEBOUNCE_DELAY_MS = parseInt(Deno.env.get("DEBOUNCE_DELAY_MS") || "4000");
-const WAHA_API_URL = Deno.env.get("WAHA_API_URL") || "https://waha-plus-production-705f.up.railway.app";
-const WAHA_API_KEY = Deno.env.get("WAHA_API_KEY") || "dckr_pat_vxeqEu_CqRi5O3CBHnD7FxhnBz0";
+const WHACENTER_API_URL = Deno.env.get("WHACENTER_API_URL") || "https://api.whacenter.com";
+const WHACENTER_API_KEY = Deno.env.get("WHACENTER_API_KEY") || "abebe840-156c-441c-8252-da0342c5a07c";
 
 // Initialize Supabase clients
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -16,6 +16,60 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 // Initialize Deno KV for message queue
 const kv = await Deno.openKv();
+
+// Queue cleanup function - Remove old orphaned entries
+async function cleanupOldQueueEntries() {
+  console.log("🧹 Starting queue cleanup...");
+  const now = Date.now();
+  const ONE_HOUR = 3600000; // 1 hour in milliseconds
+  let cleanedQueueCount = 0;
+  let cleanedRateLimitCount = 0;
+
+  try {
+    // Cleanup message queue entries older than 1 hour
+    const queueEntries = kv.list({ prefix: ["message_queue"] });
+
+    for await (const entry of queueEntries) {
+      const queueData = entry.value as QueuedMessage;
+
+      // Check if the oldest message in the queue is older than 1 hour
+      if (queueData.messages && queueData.messages.length > 0) {
+        const oldestMessage = queueData.messages[0];
+
+        if (now - oldestMessage.timestamp > ONE_HOUR) {
+          // Delete old entry
+          await kv.delete(entry.key);
+          cleanedQueueCount++;
+          console.log(`🗑️  Deleted old queue entry for device ${queueData.deviceId}, phone ${oldestMessage.phone}`);
+        }
+      }
+    }
+
+    // Cleanup rate limit entries older than 1 hour (they should auto-expire, but cleanup orphans)
+    const rateLimitEntries = kv.list({ prefix: ["rate_limit"] });
+
+    for await (const entry of rateLimitEntries) {
+      const rateLimitData = entry.value as { count: number; timestamp: number };
+
+      if (rateLimitData && now - rateLimitData.timestamp > ONE_HOUR) {
+        await kv.delete(entry.key);
+        cleanedRateLimitCount++;
+      }
+    }
+
+    console.log(`✅ Queue cleanup completed: ${cleanedQueueCount} queue entries, ${cleanedRateLimitCount} rate limit entries removed`);
+  } catch (error) {
+    console.error("❌ Queue cleanup error:", error);
+  }
+}
+
+// Run cleanup on startup
+cleanupOldQueueEntries();
+
+// Schedule periodic cleanup every 30 minutes
+setInterval(() => {
+  cleanupOldQueueEntries();
+}, 1800000); // 30 minutes
 
 // CORS headers
 const corsHeaders = {
@@ -38,21 +92,18 @@ interface QueuedMessage {
   provider: string;
 }
 
-interface WebhookPayload {
-  event: string;
-  session: string;
-  payload: {
-    from: string;
-    body?: string;
-    name?: string;
-    timestamp?: number;
-    _data?: {
-      Info?: {
-        PushName?: string;
-      };
-      notifyName?: string;
-      pushname?: string;
-    };
+// WhatsApp Center webhook payload
+interface WhaCenterWebhookPayload {
+  message?: string;
+  from?: string;
+  phone?: string;
+  pushName?: string;
+  deviceId?: string;
+  to?: string;
+  isGroup?: boolean;
+  isFromMe?: boolean;
+  ad_reply?: {
+    source_id?: string;
   };
 }
 
@@ -251,7 +302,13 @@ async function executePromptBasedFlow(params: {
     conversation = updatedConv || conversation;
   }
 
-  // Step 4.5: Check processing lock and insert
+  // Step 4.5: Check if human mode is active
+  if (conversation.human === 1) {
+    console.log(`⚠️  Human mode active for ${phone}, skipping AI processing`);
+    return;
+  }
+
+  // Step 4.6: Check processing lock and insert
   const { data: existingProcess } = await supabaseAdmin
     .from("processing_tracker")
     .select("*")
@@ -314,6 +371,9 @@ async function executePromptBasedFlow(params: {
     // Use unified prompt builder (JSON format + dynamic stages + details)
     const promptData = prompt.prompts_data || "You are a helpful assistant.";
 
+    // Extract stages from prompt for fallback responses
+    const stages = extractStagesFromPrompt(promptData);
+
     const systemContent = buildDynamicSystemPrompt(
       promptData,
       conversationHistoryText,
@@ -324,22 +384,56 @@ async function executePromptBasedFlow(params: {
     const currentText = message;
 
     // Use OpenRouter API key and model from device settings
-    const aiResponseRaw = await generateAIResponse(
-      systemContent,
-      currentText,
-      device.api_key,
-      device.api_key_option || "openai/gpt-4o-mini"
-    );
+    let aiResponseRaw: string = "";
+    let retryCount = 0;
+    const MAX_RETRIES = 2;
 
-    console.log(`✅ AI Response Raw:`, aiResponseRaw);
+    // Retry logic for AI API failures
+    while (retryCount <= MAX_RETRIES) {
+      try {
+        aiResponseRaw = await generateAIResponse(
+          systemContent,
+          currentText,
+          device.api_key,
+          device.api_key_option || "openai/gpt-4o-mini"
+        );
+
+        console.log(`✅ AI Response Raw (attempt ${retryCount + 1}):`, aiResponseRaw);
+        break; // Success, exit retry loop
+
+      } catch (error) {
+        retryCount++;
+        console.error(`❌ AI API failed (attempt ${retryCount}/${MAX_RETRIES + 1}):`, error);
+
+        if (retryCount > MAX_RETRIES) {
+          // Final fallback: Use simple error response
+          console.error(`❌ All AI API retries failed, using fallback response`);
+          aiResponseRaw = JSON.stringify({
+            Stage: currentStage || stages[0] || "Unknown",
+            Detail: "",
+            Response: [
+              { type: "text", content: "Maaf, sistem sedang mengalami gangguan. Sila cuba sebentar lagi. 🙏" }
+            ]
+          });
+        } else {
+          // Wait before retry (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+        }
+      }
+    }
 
     // Parse JSON response
     let aiResponse;
     let extractedDetails: string | null = null;
 
     try {
-      aiResponse = JSON.parse(aiResponseRaw);
+      aiResponse = JSON.parse(aiResponseRaw!);
       console.log(`✅ AI Response Parsed (JSON):`, JSON.stringify(aiResponse, null, 2));
+
+      // Validate response structure
+      if (!aiResponse.Response || !Array.isArray(aiResponse.Response)) {
+        throw new Error("Invalid response structure: missing Response array");
+      }
 
       // Extract details from "Detail" field if present
       if (aiResponse.Detail) {
@@ -350,12 +444,17 @@ async function executePromptBasedFlow(params: {
       }
     } catch (error) {
       console.error(`❌ Failed to parse AI response as JSON:`, error);
-      // Fallback: treat as plain text
+
+      // Fallback: treat as plain text or use error message
+      const fallbackMessage = typeof aiResponseRaw === 'string' && aiResponseRaw.length > 0
+        ? aiResponseRaw.substring(0, 500) // Limit length
+        : "Maaf, terdapat masalah dengan respons AI. Sila cuba lagi.";
+
       aiResponse = {
-        Stage: "Unknown",
+        Stage: currentStage || stages[0] || "Unknown",
         Detail: "",
         Response: [
-          { type: "text", content: aiResponseRaw }
+          { type: "text", content: fallbackMessage }
         ]
       };
     }
@@ -369,15 +468,18 @@ async function executePromptBasedFlow(params: {
       const item = responses[i];
 
       if (item.type === "text") {
+        // Replace auto-variables in message content
+        const messageContent = replaceAutoVariables(item.content, conversation, device);
+
         // Send text message
         console.log(`📤 Sending message ${i + 1}/${responses.length} (text)`);
         await sendWhatsAppMessage({
           provider,
           device,
           phone,
-          message: item.content,
+          message: messageContent,
         });
-        allSentMessages.push(`Bot: ${item.content}`);
+        allSentMessages.push(`Bot: ${messageContent}`);
 
       } else if (item.type === "image" && item.content) {
         // Send image
@@ -465,12 +567,23 @@ async function executePromptBasedFlow(params: {
     console.log(`✅ === PROMPT-BASED FLOW EXECUTION COMPLETE ===\n`);
   } catch (error) {
     console.error("❌ Flow execution error:", error);
+
+    // Clear conv_current even on error to prevent stuck messages
+    try {
+      await supabaseAdmin
+        .from("ai_whatsapp")
+        .update({ conv_current: null })
+        .eq("id_prospect", conversation.id_prospect);
+      console.log(`✅ Cleared conv_current after error`);
+    } catch (clearError) {
+      console.error("❌ Failed to clear conv_current:", clearError);
+    }
   } finally {
     // Step 7: Delete processing lock record (always execute, even on error)
     const { error: deleteLockError } = await supabaseAdmin
       .from("processing_tracker")
       .delete()
-      .eq("id_prospect", conversation.id_prospect)  // ✅ FIXED: Use id_prospect from conversation
+      .eq("id_prospect", conversation.id_prospect)
       .eq("flow_type", "Chatbot AI");
 
     if (deleteLockError) {
@@ -540,6 +653,31 @@ function extractStageFromResponse(response: string): string | null {
   const stageRegex = /!!Stage\s+([^!]+)!!/;
   const match = response.match(stageRegex);
   return match ? match[1].trim() : null;
+}
+
+/**
+ * Replace auto-variables in message content
+ * Supports: {{name}}, {{phone}}, {{product}}
+ */
+function replaceAutoVariables(content: string, conversation: any, device: any): string {
+  let replaced = content;
+
+  // Replace {{name}} with prospect name
+  if (conversation.prospect_name) {
+    replaced = replaced.replace(/\{\{name\}\}/g, conversation.prospect_name);
+  }
+
+  // Replace {{phone}} with prospect phone number
+  if (conversation.prospect_num) {
+    replaced = replaced.replace(/\{\{phone\}\}/g, conversation.prospect_num);
+  }
+
+  // Replace {{product}} with niche/product
+  if (conversation.niche) {
+    replaced = replaced.replace(/\{\{product\}\}/g, conversation.niche);
+  }
+
+  return replaced;
 }
 
 /**
@@ -770,33 +908,33 @@ async function sendWhatsAppMessage(params: {
 }): Promise<void> {
   const { provider, device, phone, message } = params;
 
-  if (provider !== "waha") {
+  if (provider !== "whacenter") {
     console.error(`❌ Unsupported provider: ${provider}`);
     return;
   }
 
   try {
-    // Use hardcoded WAHA API URL
-    const wahaUrl = `${WAHA_API_URL}/api/sendText`;
+    const url = `${WHACENTER_API_URL}/api/send`;
 
-    const response = await fetch(wahaUrl, {
+    // Create form data
+    const formData = new URLSearchParams();
+    formData.append('device_id', device.instance);
+    formData.append('number', phone);
+    formData.append('message', message);
+
+    const response = await fetch(url, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        "X-Api-Key": WAHA_API_KEY,
+        "Content-Type": "application/x-www-form-urlencoded",
       },
-      body: JSON.stringify({
-        session: device.instance,  // ✅ FIXED: Changed from device.webhook_id to device.instance
-        chatId: `${phone}@c.us`,
-        text: message,
-      }),
+      body: formData.toString(),
     });
 
     if (!response.ok) {
-      throw new Error(`WAHA API error: ${response.statusText}`);
+      throw new Error(`WhatsApp Center API error: ${response.statusText}`);
     }
 
-    console.log(`✅ WAHA text message sent to ${phone}`);
+    console.log(`✅ WhatsApp Center text message sent to ${phone}`);
   } catch (error) {
     console.error("❌ Failed to send WhatsApp message:", error);
   }
@@ -812,76 +950,45 @@ async function sendWhatsAppMedia(params: {
 }): Promise<void> {
   const { provider, device, phone, mediaUrl, mediaType, caption } = params;
 
-  if (provider !== "waha") {
+  if (provider !== "whacenter") {
     console.error(`❌ Unsupported provider: ${provider}`);
     return;
   }
 
   try {
-    let endpoint = "";
-    let payload: any = {};
-
-    const chatId = `${phone}@c.us`;
-    const session = device.instance;
+    const url = `${WHACENTER_API_URL}/api/send`;
 
     // Determine media type by extension
     const ext = mediaUrl.split(".").pop()?.toLowerCase() || "";
 
-    if (ext === "mp4" || mediaType === "video") {
-      // Video
-      endpoint = `${WAHA_API_URL}/api/sendVideo`;
-      payload = {
-        session,
-        chatId,
-        file: {
-          mimetype: "video/mp4",
-          url: mediaUrl,
-          filename: "Video",
-        },
-        caption: caption || "",
-      };
-    } else if (ext === "mp3" || ext === "wav" || mediaType === "audio") {
-      // Audio/File
-      endpoint = `${WAHA_API_URL}/api/sendFile`;
-      payload = {
-        session,
-        chatId,
-        file: {
-          mimetype: "audio/mp3",
-          url: mediaUrl,
-          filename: "Audio",
-        },
-        caption: caption || "",
-      };
-    } else {
-      // Image (default)
-      endpoint = `${WAHA_API_URL}/api/sendImage`;
-      payload = {
-        session,
-        chatId,
-        file: {
-          mimetype: "image/jpeg",
-          url: mediaUrl,
-          filename: "Image",
-        },
-        caption: caption || "",
-      };
-    }
+    // Create form data
+    const formData = new URLSearchParams();
+    formData.append('device_id', device.instance);
+    formData.append('number', phone);
+    formData.append('message', caption || '');
+    formData.append('file', mediaUrl);
 
-    const response = await fetch(endpoint, {
+    // Set type based on extension
+    if (ext === "mp4" || mediaType === "video") {
+      formData.append('type', 'video');
+    } else if (ext === "mp3" || ext === "wav" || mediaType === "audio") {
+      formData.append('type', 'audio');
+    }
+    // For images, don't set type parameter (default behavior)
+
+    const response = await fetch(url, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        "X-Api-Key": WAHA_API_KEY,
+        "Content-Type": "application/x-www-form-urlencoded",
       },
-      body: JSON.stringify(payload),
+      body: formData.toString(),
     });
 
     if (!response.ok) {
-      throw new Error(`WAHA API error: ${response.statusText}`);
+      throw new Error(`WhatsApp Center API error: ${response.statusText}`);
     }
 
-    console.log(`✅ WAHA ${mediaType} sent to ${phone}`);
+    console.log(`✅ WhatsApp Center ${mediaType} sent to ${phone}`);
   } catch (error) {
     console.error(`❌ Failed to send WhatsApp ${mediaType}:`, error);
   }
@@ -909,16 +1016,16 @@ async function handleWebhook(request: Request): Promise<Response> {
   console.log(`\n📥 Webhook: POST /${deviceId}/${webhookId}`);
 
   try {
-    // Parse webhook payload
-    const payload: WebhookPayload = await request.json();
+    // Parse webhook payload (WhatsApp Center format)
+    const payload: WhaCenterWebhookPayload = await request.json();
 
-    console.log(`📦 Event: ${payload.event}`);
-    console.log(`📦 Payload:`, JSON.stringify(payload.payload, null, 2));
+    console.log(`📦 Payload:`, JSON.stringify(payload, null, 2));
 
-    // Only process incoming messages
-    if (payload.event !== "message") {
+    // Skip group messages
+    if (payload.isGroup === true) {
+      console.log("⚠️  Group message, ignoring");
       return new Response(
-        JSON.stringify({ success: true, message: "Event ignored" }),
+        JSON.stringify({ success: true, message: "Group message ignored" }),
         { status: 200, headers: corsHeaders }
       );
     }
@@ -928,7 +1035,7 @@ async function handleWebhook(request: Request): Promise<Response> {
       .from("device_setting")
       .select("*")
       .eq("device_id", deviceId)
-      .eq("instance", webhookId)  // ✅ FIXED: Changed from webhook_id to instance
+      .eq("instance", webhookId)
       .single();
 
     if (deviceError || !device) {
@@ -941,16 +1048,10 @@ async function handleWebhook(request: Request): Promise<Response> {
 
     console.log(`✅ Device found: ${device.device_id} (Provider: ${device.provider})`);
 
-    // Extract message details
-    const phone = payload.payload.from.replace("@c.us", "");
-    const message = payload.payload.body || "";
-
-    // Extract name from multiple possible locations in WAHA webhook
-    const name = payload.payload._data?.Info?.PushName ||
-                 payload.payload._data?.notifyName ||
-                 payload.payload._data?.pushname ||
-                 payload.payload.name ||
-                 "";
+    // Extract message details from WhatsApp Center payload
+    const phone = payload.from || payload.phone || "";
+    const message = payload.message?.trim() || "";
+    const name = payload.pushName || "Unknown";
 
     if (!message) {
       console.log("⚠️  Empty message, ignoring");
@@ -960,13 +1061,179 @@ async function handleWebhook(request: Request): Promise<Response> {
       );
     }
 
+    // Handle special commands for messages from self
+    if (payload.isFromMe === true) {
+      const firstChar = message.charAt(0);
+
+      // Command 'cmd' - Set human mode to 1
+      if (message === 'cmd') {
+        await supabaseAdmin
+          .from("ai_whatsapp")
+          .update({ human: 1 })
+          .eq("device_id", device.device_id)
+          .eq("prospect_num", phone);
+
+        console.log(`✅ Set human mode to 1 for ${phone}`);
+        return new Response(
+          JSON.stringify({ success: true, message: "Human mode activated" }),
+          { status: 200, headers: corsHeaders }
+        );
+      }
+
+      // Command 'dmc' - Set human mode to null (disable)
+      if (message === 'dmc') {
+        await supabaseAdmin
+          .from("ai_whatsapp")
+          .update({ human: null })
+          .eq("device_id", device.device_id)
+          .eq("prospect_num", phone);
+
+        console.log(`✅ Set human mode to null for ${phone}`);
+        return new Response(
+          JSON.stringify({ success: true, message: "Human mode deactivated" }),
+          { status: 200, headers: corsHeaders }
+        );
+      }
+
+      // Skip other isFromMe messages unless they start with '%' or '#'
+      if (firstChar !== '%' && firstChar !== '#') {
+        console.log("⚠️  Message from self (not special command), ignoring");
+        return new Response(
+          JSON.stringify({ success: true, message: "Self message ignored" }),
+          { status: 200, headers: corsHeaders }
+        );
+      }
+    }
+
     console.log(`📱 From: ${name} (${phone})`);
     console.log(`💬 Message: ${message}`);
+
+    // Handle DELETE command - Delete conversation and send confirmation
+    if (message === 'DELETE') {
+      const { error: deleteError } = await supabaseAdmin
+        .from("ai_whatsapp")
+        .delete()
+        .eq("device_id", device.device_id)
+        .eq("prospect_num", phone);
+
+      if (!deleteError) {
+        console.log(`✅ Deleted conversation for ${phone}`);
+
+        // Send confirmation message
+        const formData = new URLSearchParams();
+        formData.append('device_id', device.instance);
+        formData.append('number', phone);
+        formData.append('message', 'Sudah Delete Data Anda');
+
+        await fetch(`${WHACENTER_API_URL}/api/send`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: formData.toString(),
+        });
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, message: "Conversation deleted" }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
+    // Handle special character commands
+    const firstChar = message.charAt(0);
+
+    // Command '/' - Set human mode to 1 (extract phone from message)
+    if (firstChar === '/') {
+      const targetPhone = message.substring(1).trim();
+
+      await supabaseAdmin
+        .from("ai_whatsapp")
+        .update({ human: 1 })
+        .eq("device_id", device.device_id)
+        .eq("prospect_num", targetPhone);
+
+      console.log(`✅ Set human mode to 1 for ${targetPhone} via / command`);
+
+      return new Response(
+        JSON.stringify({ success: true, message: "Human mode activated" }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
+    // Command '?' - Set human mode to null (extract phone from message)
+    if (firstChar === '?') {
+      const targetPhone = message.substring(1).trim();
+
+      await supabaseAdmin
+        .from("ai_whatsapp")
+        .update({ human: null })
+        .eq("device_id", device.device_id)
+        .eq("prospect_num", targetPhone);
+
+      console.log(`✅ Set human mode to null for ${targetPhone} via ? command`);
+
+      return new Response(
+        JSON.stringify({ success: true, message: "Human mode deactivated" }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
+    // Command '#' - Trigger manual message with specified phone number
+    if (firstChar === '#') {
+      const targetPhone = message.substring(1).trim();
+
+      // Update to process with special handling (similar to '%')
+      await queueMessageForDebouncing({
+        deviceId: device.device_id,
+        webhookId: device.instance,
+        phone: targetPhone,
+        message: 'Teruskan',  // Default continuation message
+        name: 'Manual',
+        provider: device.provider,
+      });
+
+      console.log(`✅ Manual trigger for ${targetPhone} via # command`);
+
+      return new Response(
+        JSON.stringify({ success: true, message: "Manual message queued" }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
+    // Rate limiting: 10 messages per minute per phone number
+    const rateLimitKey = ["rate_limit", device.device_id, phone];
+    const rateLimitData = await kv.get(rateLimitKey);
+    const now = Date.now();
+    const RATE_LIMIT_WINDOW = 60000; // 1 minute
+    const RATE_LIMIT_MAX = 10; // 10 messages per minute
+
+    if (rateLimitData.value) {
+      const { count, timestamp } = rateLimitData.value as { count: number; timestamp: number };
+
+      if (now - timestamp < RATE_LIMIT_WINDOW) {
+        if (count >= RATE_LIMIT_MAX) {
+          console.log(`⚠️ Rate limit exceeded for ${phone} (${count} messages in last minute)`);
+          return new Response(
+            JSON.stringify({ success: false, message: "Rate limit exceeded. Please wait before sending more messages." }),
+            { status: 429, headers: corsHeaders }
+          );
+        }
+        // Increment count within same window
+        await kv.set(rateLimitKey, { count: count + 1, timestamp }, { expireIn: RATE_LIMIT_WINDOW });
+      } else {
+        // New window, reset count
+        await kv.set(rateLimitKey, { count: 1, timestamp: now }, { expireIn: RATE_LIMIT_WINDOW });
+      }
+    } else {
+      // First message, initialize counter
+      await kv.set(rateLimitKey, { count: 1, timestamp: now }, { expireIn: RATE_LIMIT_WINDOW });
+    }
+
+    console.log(`✅ Rate limit check passed for ${phone}`);
 
     // Queue message for debouncing
     await queueMessageForDebouncing({
       deviceId: device.device_id,
-      webhookId: device.instance,  // ✅ FIXED: Changed from device.webhook_id to device.instance
+      webhookId: device.instance,
       phone,
       message,
       name: name || "",
@@ -978,7 +1245,7 @@ async function handleWebhook(request: Request): Promise<Response> {
         success: true,
         message: "Message queued for processing",
         device_id: device.device_id,
-        instance: device.instance,  // ✅ FIXED: Changed from webhook_id to instance
+        instance: device.instance,
       }),
       { status: 200, headers: corsHeaders }
     );
@@ -1301,3 +1568,5 @@ console.log("✅ Debounce service initialized");
 console.log(`🚀 Dev Muse Automaton Deno Backend Started!`);
 console.log(`📍 Supabase URL: ${SUPABASE_URL}`);
 console.log(`⏱️  Debounce delay: ${DEBOUNCE_DELAY_MS}ms`);
+console.log(`📱 WhatsApp Provider: WhatsApp Center`);
+console.log(`🔗 WhatsApp Center API: ${WHACENTER_API_URL}`);
