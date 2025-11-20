@@ -113,7 +113,6 @@ export default function BankImage() {
       // Upload to Vercel Blob
       const blob = await put(`bank-images/${user?.id}/${Date.now()}-${selectedFile.name}`, selectedFile, {
         access: 'public',
-        token: import.meta.env.VITE_BLOB_READ_WRITE_TOKEN,
       })
 
       // Save to database
@@ -209,9 +208,7 @@ export default function BankImage() {
       // Delete from Vercel Blob if blob_url exists
       if (image.blob_url) {
         try {
-          await del(image.blob_url, {
-            token: import.meta.env.VITE_BLOB_READ_WRITE_TOKEN,
-          })
+          await del(image.blob_url)
         } catch (blobError) {
           console.error('Failed to delete from Blob storage:', blobError)
           // Continue with database deletion even if blob deletion fails
