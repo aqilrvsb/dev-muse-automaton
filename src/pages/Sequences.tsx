@@ -34,9 +34,23 @@ type SequenceFlow = {
   updated_at: string
 }
 
+type Prompt = {
+  id: string
+  niche: string
+  prompts_name: string
+}
+
+type BankImage = {
+  id: string
+  name: string
+  image_url: string
+}
+
 export default function Sequences() {
   const { user } = useAuth()
   const [sequences, setSequences] = useState<Sequence[]>([])
+  const [prompts, setPrompts] = useState<Prompt[]>([])
+  const [bankImages, setBankImages] = useState<BankImage[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -52,7 +66,7 @@ export default function Sequences() {
     niche: '',
     trigger: '',
     description: '',
-    schedule_time: '09:00',
+    schedule_time: '09:00', // Keep in state for backward compatibility but won't show in UI
     min_delay: 5,
     max_delay: 15,
     status: 'inactive' as 'active' | 'inactive',
@@ -71,6 +85,8 @@ export default function Sequences() {
 
   useEffect(() => {
     loadSequences()
+    loadPrompts()
+    loadBankImages()
   }, [])
 
   const loadSequences = async () => {
@@ -115,6 +131,40 @@ export default function Sequences() {
       })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadPrompts = async () => {
+    try {
+      if (!user?.id) return
+
+      const { data, error } = await supabase
+        .from('prompts')
+        .select('id, niche, prompts_name')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setPrompts(data || [])
+    } catch (error) {
+      console.error('Error loading prompts:', error)
+    }
+  }
+
+  const loadBankImages = async () => {
+    try {
+      if (!user?.id) return
+
+      const { data, error } = await supabase
+        .from('bank_images')
+        .select('id, name, image_url')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setBankImages(data || [])
+    } catch (error) {
+      console.error('Error loading bank images:', error)
     }
   }
 
@@ -654,19 +704,24 @@ export default function Sequences() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Niche <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="text"
+                    <select
                       value={formData.niche}
                       onChange={(e) => setFormData({ ...formData, niche: e.target.value })}
                       className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      placeholder="e.g., Sales, Onboarding"
                       required
-                    />
+                    >
+                      <option value="">Select Niche from Prompts</option>
+                      {prompts.map((prompt) => (
+                        <option key={prompt.id} value={prompt.niche}>
+                          {prompt.niche} ({prompt.prompts_name})
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Sequence Trigger</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Stage Trigger</label>
                   <input
                     type="text"
                     value={formData.trigger}
@@ -690,7 +745,7 @@ export default function Sequences() {
                   />
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Min Delay (seconds)</label>
                     <input
@@ -710,16 +765,6 @@ export default function Sequences() {
                       onChange={(e) => setFormData({ ...formData, max_delay: parseInt(e.target.value) || 0 })}
                       className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
                       min="0"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Schedule Time</label>
-                    <input
-                      type="time"
-                      value={formData.schedule_time}
-                      onChange={(e) => setFormData({ ...formData, schedule_time: e.target.value })}
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
                 </div>
@@ -816,18 +861,24 @@ export default function Sequences() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Niche <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="text"
+                    <select
                       value={formData.niche}
                       onChange={(e) => setFormData({ ...formData, niche: e.target.value })}
                       className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
                       required
-                    />
+                    >
+                      <option value="">Select Niche from Prompts</option>
+                      {prompts.map((prompt) => (
+                        <option key={prompt.id} value={prompt.niche}>
+                          {prompt.niche} ({prompt.prompts_name})
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Sequence Trigger</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Stage Trigger</label>
                   <input
                     type="text"
                     value={formData.trigger}
@@ -849,7 +900,7 @@ export default function Sequences() {
                   />
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Min Delay (seconds)</label>
                     <input
@@ -869,16 +920,6 @@ export default function Sequences() {
                       onChange={(e) => setFormData({ ...formData, max_delay: parseInt(e.target.value) || 0 })}
                       className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
                       min="0"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Schedule Time</label>
-                    <input
-                      type="time"
-                      value={formData.schedule_time}
-                      onChange={(e) => setFormData({ ...formData, schedule_time: e.target.value })}
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
                 </div>
@@ -957,57 +998,15 @@ export default function Sequences() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Step Trigger <span className="text-red-500">*</span>
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Delay Hours</label>
                   <input
-                    type="text"
-                    value={flowFormData.step_trigger}
-                    onChange={(e) => setFlowFormData({ ...flowFormData, step_trigger: e.target.value })}
+                    type="number"
+                    value={flowFormData.delay_hours}
+                    onChange={(e) => setFlowFormData({ ...flowFormData, delay_hours: parseInt(e.target.value) || 0 })}
                     className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="e.g., fitness_day1, welcome_message"
-                    required
+                    min="0"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Unique identifier for this step</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Next Trigger</label>
-                    <input
-                      type="text"
-                      value={flowFormData.next_trigger}
-                      onChange={(e) => setFlowFormData({ ...flowFormData, next_trigger: e.target.value })}
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      placeholder="e.g., fitness_day2"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Leave empty for last step</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Delay Hours</label>
-                    <input
-                      type="number"
-                      value={flowFormData.delay_hours}
-                      onChange={(e) => setFlowFormData({ ...flowFormData, delay_hours: parseInt(e.target.value) || 0 })}
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      min="0"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Hours to wait before next step</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="is-end"
-                    checked={flowFormData.is_end}
-                    onChange={(e) => setFlowFormData({ ...flowFormData, is_end: e.target.checked })}
-                    className="w-4 h-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                  />
-                  <label htmlFor="is-end" className="text-sm text-gray-700">
-                    This is the end of sequence
-                  </label>
+                  <p className="text-xs text-gray-500 mt-1">Hours to wait before next step</p>
                 </div>
 
                 <div>
@@ -1034,15 +1033,20 @@ export default function Sequences() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Image URL (Optional)</label>
-                  <input
-                    type="text"
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Image (Optional)</label>
+                  <select
                     value={flowFormData.image_url}
                     onChange={(e) => setFlowFormData({ ...flowFormData, image_url: e.target.value })}
                     className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="https://example.com/image.jpg"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Enter the full URL of your image</p>
+                  >
+                    <option value="">Select Image from Bank</option>
+                    {bankImages.map((image) => (
+                      <option key={image.id} value={image.image_url}>
+                        {image.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">Select an image from your bank images</p>
                 </div>
 
                 <div className="flex gap-4 mt-6 pt-4 border-t">
