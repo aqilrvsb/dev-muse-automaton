@@ -409,17 +409,21 @@ export default function Sequences() {
   }
 
   const handleSaveFlowInCreate = () => {
+    // Auto-generate step_trigger from sequence trigger and flow number
+    const stepTrigger = `${formData.trigger}_flow${currentFlowNumber}`
+    const nextTrigger = `${formData.trigger}_flow${currentFlowNumber + 1}`
+
     // Save to tempFlows for create modal
     const newFlow: SequenceFlow = {
       id: `temp-${currentFlowNumber}`,
       sequence_id: '',
       flow_number: currentFlowNumber,
-      step_trigger: flowFormData.step_trigger,
-      next_trigger: flowFormData.next_trigger || null,
+      step_trigger: stepTrigger,
+      next_trigger: nextTrigger,
       delay_hours: flowFormData.delay_hours,
       message: flowFormData.message,
       image_url: flowFormData.image_url || null,
-      is_end: flowFormData.is_end,
+      is_end: false, // Auto-set to false
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }
@@ -434,6 +438,10 @@ export default function Sequences() {
     if (!currentSequence) return
 
     try {
+      // Auto-generate step_trigger from sequence trigger and flow number
+      const stepTrigger = `${currentSequence.trigger}_flow${currentFlowNumber}`
+      const nextTrigger = `${currentSequence.trigger}_flow${currentFlowNumber + 1}`
+
       // Check if flow already exists
       const existingFlow = sequenceFlows.find(f => f.flow_number === currentFlowNumber)
 
@@ -442,12 +450,12 @@ export default function Sequences() {
         const { error } = await supabase
           .from('sequence_flows')
           .update({
-            step_trigger: flowFormData.step_trigger,
-            next_trigger: flowFormData.next_trigger || null,
+            step_trigger: stepTrigger,
+            next_trigger: nextTrigger,
             delay_hours: flowFormData.delay_hours,
             message: flowFormData.message,
             image_url: flowFormData.image_url || null,
-            is_end: flowFormData.is_end,
+            is_end: false, // Auto-set to false
             updated_at: new Date().toISOString(),
           })
           .eq('id', existingFlow.id)
@@ -460,12 +468,12 @@ export default function Sequences() {
           .insert({
             sequence_id: currentSequence.id,
             flow_number: currentFlowNumber,
-            step_trigger: flowFormData.step_trigger,
-            next_trigger: flowFormData.next_trigger || null,
+            step_trigger: stepTrigger,
+            next_trigger: nextTrigger,
             delay_hours: flowFormData.delay_hours,
             message: flowFormData.message,
             image_url: flowFormData.image_url || null,
-            is_end: flowFormData.is_end,
+            is_end: false, // Auto-set to false
           })
 
         if (error) throw error
@@ -1063,11 +1071,11 @@ export default function Sequences() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (!flowFormData.step_trigger || !flowFormData.message) {
+                      if (!flowFormData.message) {
                         Swal.fire({
                           icon: 'warning',
                           title: 'Missing Required Fields',
-                          text: 'Please fill in Step Trigger and Message',
+                          text: 'Please fill in the Message field',
                         })
                         return
                       }
