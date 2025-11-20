@@ -16,6 +16,7 @@ import Packages from './pages/Packages'
 import Transactions from './pages/Transactions'
 import UserRegister from './pages/UserRegister'
 import Invoice from './pages/Invoice'
+import Sequences from './pages/Sequences'
 
 function App() {
   return (
@@ -40,6 +41,7 @@ function App() {
           <Route path="/packages" element={<ProtectedRoute><Packages /></ProtectedRoute>} />
           <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
           <Route path="/user-register" element={<ProtectedRoute><UserRegister /></ProtectedRoute>} />
+          <Route path="/sequences" element={<ProtectedRoute><Sequences /></ProtectedRoute>} />
 
           {/* Catch all */}
           <Route path="*" element={<Navigate to="/" replace />} />
