@@ -626,7 +626,7 @@ Tanya: "Saya ingin tawarkan {{product}}..."`}
                   <div className="space-y-2 text-sm">
                     <p><strong>Type 1 - Direct in Customer Chat:</strong> <code className="bg-white px-2 py-1 rounded">cmd</code>, <code className="bg-white px-2 py-1 rounded">dmc</code></p>
                     <p><strong>Type 2 - Customer Command:</strong> <code className="bg-white px-2 py-1 rounded">DELETE</code></p>
-                    <p><strong>Type 3 - Remote Control:</strong> <code className="bg-white px-2 py-1 rounded">/phone</code>, <code className="bg-white px-2 py-1 rounded">?phone</code>, <code className="bg-white px-2 py-1 rounded">#phone</code>, <code className="bg-white px-2 py-1 rounded">%phone msg</code></p>
+                    <p><strong>Type 3 - Remote Control:</strong> <code className="bg-white px-2 py-1 rounded">/phone</code>, <code className="bg-white px-2 py-1 rounded">?phone</code>, <code className="bg-white px-2 py-1 rounded">#phone</code>, <code className="bg-white px-2 py-1 rounded">%phone msg</code>, <code className="bg-white px-2 py-1 rounded">!phone</code></p>
                   </div>
                 </div>
 
@@ -684,6 +684,12 @@ Tanya: "Saya ingin tawarkan {{product}}..."`}
                         <td className="border border-gray-300 px-4 py-2">Send custom message via bot</td>
                         <td className="border border-gray-300 px-4 py-2">Send: <code>%60123456789 Hello!</code></td>
                       </tr>
+                      <tr>
+                        <td className="border border-gray-300 px-4 py-2"><code className="bg-purple-50 px-2 py-1 rounded">![phone]</code></td>
+                        <td className="border border-gray-300 px-4 py-2">Your phone TO Business WA</td>
+                        <td className="border border-gray-300 px-4 py-2">Cancel all scheduled sequences</td>
+                        <td className="border border-gray-300 px-4 py-2">Send: <code>!60123456789</code></td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
@@ -702,7 +708,7 @@ Tanya: "Saya ingin tawarkan {{product}}..."`}
                     </div>
                     <div className="bg-white p-3 rounded border border-gray-200">
                       <p className="text-purple-600 font-bold mb-1">✅ Remote Control (from Your Phone)</p>
-                      <p>Your Phone → TO Business WA → Type: <code className="bg-yellow-50 px-1">/phone</code>, <code className="bg-yellow-50 px-1">?phone</code>, <code className="bg-yellow-50 px-1">#phone</code>, <code className="bg-yellow-50 px-1">%phone msg</code></p>
+                      <p>Your Phone → TO Business WA → Type: <code className="bg-yellow-50 px-1">/phone</code>, <code className="bg-yellow-50 px-1">?phone</code>, <code className="bg-yellow-50 px-1">#phone</code>, <code className="bg-yellow-50 px-1">%phone msg</code>, <code className="bg-yellow-50 px-1">!phone</code></p>
                     </div>
                   </div>
                 </div>
@@ -712,7 +718,7 @@ Tanya: "Saya ingin tawarkan {{product}}..."`}
                   <h4 className="font-bold text-yellow-900 mb-3">⚠️ Important Points</h4>
                   <ul className="list-disc list-inside space-y-2 text-sm">
                     <li><code className="bg-white px-2 py-1 rounded">cmd</code> and <code className="bg-white px-2 py-1 rounded">dmc</code> = Type directly in customer chat on Business WhatsApp</li>
-                    <li><code className="bg-white px-2 py-1 rounded">/</code>, <code className="bg-white px-2 py-1 rounded">?</code>, <code className="bg-white px-2 py-1 rounded">#</code>, <code className="bg-white px-2 py-1 rounded">%</code> = Send from YOUR phone <strong>TO</strong> Business WhatsApp number</li>
+                    <li><code className="bg-white px-2 py-1 rounded">/</code>, <code className="bg-white px-2 py-1 rounded">?</code>, <code className="bg-white px-2 py-1 rounded">#</code>, <code className="bg-white px-2 py-1 rounded">%</code>, <code className="bg-white px-2 py-1 rounded">!</code> = Send from YOUR phone <strong>TO</strong> Business WhatsApp number</li>
                     <li><code className="bg-white px-2 py-1 rounded">DELETE</code> = Customer (or you testing) sends TO Business WhatsApp</li>
                     <li>Remote commands must be sent <strong>TO</strong> business WhatsApp, not FROM it!</li>
                     <li>Only the connected business WhatsApp account can receive and process commands</li>

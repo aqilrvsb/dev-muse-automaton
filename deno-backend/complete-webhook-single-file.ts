@@ -190,6 +190,278 @@ async function queueMessageForDebouncing(params: {
 }
 
 // ============================================================================
+// SEQUENCE ENROLLMENT
+// ============================================================================
+
+/**
+ * Check if current stage matches any active sequence trigger and enroll prospect
+ * Implements smart re-enrollment logic:
+ * - If sequence_stage is null: Enroll in new sequence
+ * - If sequence_stage equals current stage: Skip (already enrolled)
+ * - If sequence_stage is different: Delete old scheduled messages and re-enroll
+ */
+async function checkAndEnrollSequences(params: {
+  deviceId: string;
+  prospectNum: string;
+  currentStage: string | null;
+  idProspect: string;
+  instance: string;
+}): Promise<void> {
+  const { deviceId, prospectNum, currentStage, idProspect, instance } = params;
+
+  if (!currentStage) {
+    console.log(`⚠️  No current stage, skipping sequence check`);
+    return;
+  }
+
+  console.log(`📋 Checking sequences for stage: ${currentStage}`);
+
+  try {
+    // Step 1: Find active sequences matching the current stage trigger
+    const { data: matchingSequences, error: sequenceError } = await supabaseAdmin
+      .from("sequences")
+      .select("*, sequence_flows(*)")
+      .eq("trigger", currentStage)
+      .eq("is_active", true)
+      .order("created_at", { ascending: false });
+
+    if (sequenceError) {
+      console.error("❌ Error fetching sequences:", sequenceError);
+      return;
+    }
+
+    if (!matchingSequences || matchingSequences.length === 0) {
+      console.log(`ℹ️  No active sequences found for trigger: ${currentStage}`);
+      return;
+    }
+
+    console.log(`✅ Found ${matchingSequences.length} active sequence(s) for trigger: ${currentStage}`);
+
+    // Step 2: Get current sequence_stage from ai_whatsapp
+    const { data: leadData, error: leadError } = await supabaseAdmin
+      .from("ai_whatsapp")
+      .select("sequence_stage")
+      .eq("id_prospect", idProspect)
+      .single();
+
+    if (leadError) {
+      console.error("❌ Error fetching lead data:", leadError);
+      return;
+    }
+
+    const sequenceStage = leadData?.sequence_stage;
+
+    console.log(`📊 Current sequence_stage: ${sequenceStage || 'null'}`);
+
+    // Step 3: Implement enrollment logic
+    if (sequenceStage === currentStage) {
+      console.log(`⏭️  Already enrolled in sequence for stage "${currentStage}", skipping`);
+      return;
+    }
+
+    // Step 4: If sequence_stage is different (past sequence), delete old scheduled messages
+    if (sequenceStage && sequenceStage !== currentStage) {
+      console.log(`🗑️  Different sequence detected (old: "${sequenceStage}", new: "${currentStage}")`);
+      console.log(`🗑️  Deleting old scheduled messages...`);
+
+      // Get all scheduled messages for this prospect
+      const { data: scheduledMessages, error: scheduledError } = await supabaseAdmin
+        .from("sequence_scheduled_messages")
+        .select("whacenter_message_id")
+        .eq("prospect_num", prospectNum)
+        .eq("device_id", deviceId)
+        .eq("status", "scheduled");
+
+      if (scheduledError) {
+        console.error("❌ Error fetching scheduled messages:", scheduledError);
+      } else if (scheduledMessages && scheduledMessages.length > 0) {
+        console.log(`📋 Found ${scheduledMessages.length} scheduled messages to delete`);
+
+        // Delete from WhatsApp Center API
+        for (const msg of scheduledMessages) {
+          if (msg.whacenter_message_id) {
+            try {
+              const deleteUrl = `${WHACENTER_API_URL}/api/deleteMessage`;
+              const formData = new URLSearchParams();
+              formData.append('device_id', instance);
+              formData.append('id', msg.whacenter_message_id);
+
+              const deleteResponse = await fetch(deleteUrl, {
+                method: 'POST',
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: formData.toString(),
+              });
+
+              if (deleteResponse.ok) {
+                console.log(`✅ Deleted scheduled message: ${msg.whacenter_message_id}`);
+              } else {
+                console.error(`❌ Failed to delete message: ${await deleteResponse.text()}`);
+              }
+            } catch (deleteError) {
+              console.error(`❌ Error deleting message from API:`, deleteError);
+            }
+          }
+        }
+
+        // Update status in database to 'cancelled'
+        const { error: updateError } = await supabaseAdmin
+          .from("sequence_scheduled_messages")
+          .update({ status: "cancelled" })
+          .eq("prospect_num", prospectNum)
+          .eq("device_id", deviceId)
+          .eq("status", "scheduled");
+
+        if (updateError) {
+          console.error("❌ Error updating scheduled messages status:", updateError);
+        } else {
+          console.log(`✅ Updated ${scheduledMessages.length} messages to cancelled status`);
+        }
+      }
+
+      // Delete old enrollment record
+      const { error: deleteEnrollmentError } = await supabaseAdmin
+        .from("sequence_enrollments")
+        .delete()
+        .eq("prospect_num", prospectNum)
+        .eq("device_id", deviceId);
+
+      if (deleteEnrollmentError) {
+        console.error("❌ Error deleting old enrollment:", deleteEnrollmentError);
+      }
+    }
+
+    // Step 5: Enroll in new sequence (using the first matching sequence)
+    const sequence = matchingSequences[0];
+    console.log(`🎯 Enrolling in sequence: ${sequence.name}`);
+
+    // Get sequence flows ordered by flow_number
+    const { data: flows, error: flowsError } = await supabaseAdmin
+      .from("sequence_flows")
+      .select("*")
+      .eq("sequence_id", sequence.id)
+      .order("flow_number", { ascending: true });
+
+    if (flowsError || !flows || flows.length === 0) {
+      console.error("❌ No flows found for sequence:", flowsError);
+      return;
+    }
+
+    console.log(`📨 Found ${flows.length} flow(s) to schedule`);
+
+    // Create enrollment record
+    const { data: enrollment, error: enrollmentError } = await supabaseAdmin
+      .from("sequence_enrollments")
+      .insert({
+        sequence_id: sequence.id,
+        prospect_num: prospectNum,
+        device_id: deviceId,
+        enrolled_at: new Date().toISOString(),
+        status: "active",
+      })
+      .select()
+      .single();
+
+    if (enrollmentError || !enrollment) {
+      console.error("❌ Error creating enrollment:", enrollmentError);
+      return;
+    }
+
+    console.log(`✅ Created enrollment: ${enrollment.id}`);
+
+    // Step 6: Schedule all flow messages with cumulative delays
+    const now = new Date();
+    let cumulativeDelayHours = 0;
+
+    for (const flow of flows) {
+      cumulativeDelayHours += flow.delay_hours;
+
+      // Calculate scheduled time: current time + cumulative delay + 1 hour (Indonesia timezone offset)
+      const scheduledTime = new Date(now);
+      scheduledTime.setHours(scheduledTime.getHours() + cumulativeDelayHours + 1);
+
+      // Format: YYYY-MM-DD HH:MM:SS (Indonesia timezone)
+      const scheduleString = scheduledTime.toISOString()
+        .replace('T', ' ')
+        .substring(0, 19);
+
+      console.log(`📅 Scheduling flow ${flow.flow_number}: ${scheduleString} (delay: ${cumulativeDelayHours}h + 1h offset)`);
+
+      try {
+        // Send scheduled message to WhatsApp Center API
+        const sendUrl = `${WHACENTER_API_URL}/api/send`;
+        const formData = new URLSearchParams();
+        formData.append('device_id', instance);
+        formData.append('number', prospectNum);
+        formData.append('message', flow.message);
+        formData.append('schedule', scheduleString);
+
+        // Add image if present
+        if (flow.image_url) {
+          formData.append('file', flow.image_url);
+        }
+
+        const sendResponse = await fetch(sendUrl, {
+          method: 'POST',
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: formData.toString(),
+        });
+
+        if (!sendResponse.ok) {
+          throw new Error(`WhatsApp API error: ${await sendResponse.text()}`);
+        }
+
+        const responseData = await sendResponse.json();
+        const whacenterMessageId = responseData?.id || responseData?.message_id || null;
+
+        console.log(`✅ Scheduled message via API, ID: ${whacenterMessageId || 'unknown'}`);
+
+        // Save to sequence_scheduled_messages table
+        const { error: saveError } = await supabaseAdmin
+          .from("sequence_scheduled_messages")
+          .insert({
+            enrollment_id: enrollment.id,
+            sequence_id: sequence.id,
+            flow_number: flow.flow_number,
+            prospect_num: prospectNum,
+            device_id: deviceId,
+            whacenter_message_id: whacenterMessageId,
+            message: flow.message,
+            image_url: flow.image_url,
+            scheduled_time: scheduledTime.toISOString(),
+            status: "scheduled",
+          });
+
+        if (saveError) {
+          console.error(`❌ Error saving scheduled message to database:`, saveError);
+        } else {
+          console.log(`💾 Saved scheduled message to database`);
+        }
+
+      } catch (scheduleError) {
+        console.error(`❌ Error scheduling flow ${flow.flow_number}:`, scheduleError);
+      }
+    }
+
+    // Step 7: Update sequence_stage in ai_whatsapp
+    const { error: updateStageError } = await supabaseAdmin
+      .from("ai_whatsapp")
+      .update({ sequence_stage: currentStage })
+      .eq("id_prospect", idProspect);
+
+    if (updateStageError) {
+      console.error("❌ Error updating sequence_stage:", updateStageError);
+    } else {
+      console.log(`✅ Updated sequence_stage to: ${currentStage}`);
+    }
+
+    console.log(`🎉 Successfully enrolled in sequence: ${sequence.name}`);
+
+  } catch (error) {
+    console.error("❌ Sequence enrollment error:", error);
+  }
+}
+
+// ============================================================================
 // PROMPT-BASED FLOW EXECUTION
 // ============================================================================
 
@@ -614,6 +886,16 @@ async function executePromptBasedFlow(params: {
     console.log(`   - Has Details: ${extractedDetails ? 'Yes' : 'No'}`);
     console.log(`   - Cleared conv_current`);
 
+    // Step 7: Check and enroll in sequences (if stage matches)
+    console.log(`🔄 Checking for sequence enrollment...`);
+    await checkAndEnrollSequences({
+      deviceId: device.device_id,
+      prospectNum: phone,
+      currentStage: aiResponse.Stage || null,
+      idProspect: conversation.id_prospect,
+      instance: device.instance,
+    });
+
     console.log(`✅ === PROMPT-BASED FLOW EXECUTION COMPLETE ===\n`);
   } catch (error) {
     console.error("❌ Flow execution error:", error);
@@ -629,7 +911,7 @@ async function executePromptBasedFlow(params: {
       console.error("❌ Failed to clear conv_current:", clearError);
     }
   } finally {
-    // Step 7: Delete processing lock record (always execute, even on error)
+    // Step 8: Delete processing lock record (always execute, even on error)
     const { error: deleteLockError } = await supabaseAdmin
       .from("processing_tracker")
       .delete()
@@ -1225,6 +1507,101 @@ async function handleWebhook(request: Request): Promise<Response> {
         JSON.stringify({ success: true, message: "Human mode deactivated" }),
         { status: 200, headers: corsHeaders }
       );
+    }
+
+    // Command '!' - Cancel/delete all scheduled sequence messages for a phone number
+    if (firstChar === '!') {
+      const targetPhone = message.substring(1).trim();
+
+      console.log(`🛑 Cancelling all scheduled messages for ${targetPhone} via ! command`);
+
+      try {
+        // Get all scheduled messages for this prospect
+        const { data: scheduledMessages, error: scheduledError } = await supabaseAdmin
+          .from("sequence_scheduled_messages")
+          .select("whacenter_message_id")
+          .eq("prospect_num", targetPhone)
+          .eq("device_id", device.device_id)
+          .eq("status", "scheduled");
+
+        if (scheduledError) {
+          console.error("❌ Error fetching scheduled messages:", scheduledError);
+        } else if (scheduledMessages && scheduledMessages.length > 0) {
+          console.log(`📋 Found ${scheduledMessages.length} scheduled messages to cancel`);
+
+          // Delete from WhatsApp Center API
+          for (const msg of scheduledMessages) {
+            if (msg.whacenter_message_id) {
+              try {
+                const deleteUrl = `${WHACENTER_API_URL}/api/deleteMessage`;
+                const formData = new URLSearchParams();
+                formData.append('device_id', device.instance);
+                formData.append('id', msg.whacenter_message_id);
+
+                const deleteResponse = await fetch(deleteUrl, {
+                  method: 'POST',
+                  headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                  body: formData.toString(),
+                });
+
+                if (deleteResponse.ok) {
+                  console.log(`✅ Deleted scheduled message: ${msg.whacenter_message_id}`);
+                } else {
+                  console.error(`❌ Failed to delete message: ${await deleteResponse.text()}`);
+                }
+              } catch (deleteError) {
+                console.error(`❌ Error deleting message from API:`, deleteError);
+              }
+            }
+          }
+
+          // Update status in database to 'cancelled'
+          const { error: updateError } = await supabaseAdmin
+            .from("sequence_scheduled_messages")
+            .update({ status: "cancelled" })
+            .eq("prospect_num", targetPhone)
+            .eq("device_id", device.device_id)
+            .eq("status", "scheduled");
+
+          if (updateError) {
+            console.error("❌ Error updating scheduled messages status:", updateError);
+          } else {
+            console.log(`✅ Cancelled ${scheduledMessages.length} scheduled messages`);
+          }
+
+          // Clear sequence_stage in ai_whatsapp
+          await supabaseAdmin
+            .from("ai_whatsapp")
+            .update({ sequence_stage: null })
+            .eq("device_id", device.device_id)
+            .eq("prospect_num", targetPhone);
+
+          console.log(`✅ Cleared sequence_stage for ${targetPhone}`);
+
+          return new Response(
+            JSON.stringify({
+              success: true,
+              message: `Cancelled ${scheduledMessages.length} scheduled messages for ${targetPhone}`
+            }),
+            { status: 200, headers: corsHeaders }
+          );
+        } else {
+          console.log(`ℹ️  No scheduled messages found for ${targetPhone}`);
+          return new Response(
+            JSON.stringify({
+              success: true,
+              message: `No scheduled messages found for ${targetPhone}`
+            }),
+            { status: 200, headers: corsHeaders }
+          );
+        }
+      } catch (error) {
+        console.error(`❌ Error cancelling scheduled messages:`, error);
+        return new Response(
+          JSON.stringify({ success: false, error: String(error) }),
+          { status: 500, headers: corsHeaders }
+        );
+      }
     }
 
     // Command '#' - Trigger manual message with specified phone number

@@ -180,6 +180,39 @@ You send TO business WhatsApp: %60123456789 Hi, are you interested in our produc
 
 ---
 
+#### **`![phone number]`** - Cancel/Stop All Scheduled Sequence Messages
+**How to use:**
+1. Open WhatsApp on your **personal phone** (NOT the connected business device)
+2. Send a message **TO your connected business WhatsApp number**
+3. Type: `!60123456789` (customer's phone number)
+4. Send the message
+
+**What happens:**
+- Your connected business WhatsApp receives the command
+- Bot fetches all scheduled sequence messages for that customer
+- Deletes ALL scheduled messages from WhatsApp Center API
+- Updates database status to 'cancelled'
+- Clears `sequence_stage` column in database
+- Customer will no longer receive any scheduled sequence messages
+- Useful for: Stopping sequences when customer unsubscribes or requests to stop
+
+**Example:**
+```
+[From your personal phone]
+You send TO business WhatsApp: !60123456789
+✅ Bot cancels all scheduled messages for +60123456789
+✅ Database updated - sequence_stage cleared
+✅ Customer removed from sequence
+```
+
+**Use cases:**
+- Customer requests to stop receiving messages
+- Customer wants to unsubscribe from sequence
+- You want to manually stop automation for a lead
+- Lead converted and no longer needs nurturing sequence
+
+---
+
 ## Visual Flow Diagram
 
 ```
@@ -225,6 +258,7 @@ Method 2: REMOTE CONTROL (from your personal phone TO business WhatsApp)
 │  ?60123456789                            │  →  AI mode for that number
 │  #60123456789                            │  →  Trigger auto flow
 │  %60123456789 Custom message             │  →  Send custom message
+│  !60123456789                            │  →  Cancel all scheduled sequences
 └──────────────────────────────────────────┘
 ✅ Use when you want to control from YOUR phone (not business WhatsApp)
 ```
@@ -249,7 +283,7 @@ Method 2: REMOTE CONTROL (from your personal phone TO business WhatsApp)
 - ✅ Deletes their own conversation
 - ✅ Used for: testing/resetting test conversations
 
-**Method 2: Remote from Personal Phone** (`/`, `?`, `#`, `%`)
+**Method 2: Remote from Personal Phone** (`/`, `?`, `#`, `%`, `!`)
 - ✅ Open YOUR personal WhatsApp (your 2nd phone)
 - ✅ Send command TO your business WhatsApp number
 - ✅ Include customer's phone number in command
@@ -361,6 +395,34 @@ Bot: Sudah Delete Data Anda
 ✅ Useful for testing different conversation paths
 ```
 
+### Scenario 6: Stop Scheduled Sequence Messages
+```
+Customer is enrolled in a 7-day nurturing sequence but requests to stop:
+
+Customer: Please stop sending me messages
+You: Sure, let me cancel all scheduled messages
+
+[From your personal phone, send TO business WhatsApp]
+You send: !60123456789
+
+✅ Bot cancels all 5 remaining scheduled messages
+✅ Clears sequence_stage from database
+✅ Customer will not receive any more automated sequence messages
+✅ You can still manually message them if needed
+```
+
+**Another example - Lead converted:**
+```
+Customer already purchased, no need for nurturing sequence:
+
+[From your personal phone, send TO business WhatsApp]
+You send: !60123456789
+
+✅ Stops all scheduled follow-up messages
+✅ Customer removed from sequence automation
+✅ You can now handle them manually or enroll in different sequence
+```
+
 ---
 
 ## Testing Commands
@@ -416,6 +478,7 @@ When you send commands, check the webhook logs (Deno Deploy dashboard):
 | `dmc` | Customer's chat | Deactivate human mode for current chat | `dmc` |
 | `/[phone]` | Any chat | Activate human mode for phone number | `/60123456789` |
 | `?[phone]` | Any chat | Deactivate human mode for phone number | `?60123456789` |
+| `![phone]` | Any chat | Cancel all scheduled sequence messages | `!60123456789` |
 | `DELETE` | Customer's chat | Delete conversation | `DELETE` |
 | `#[phone]` | Any chat | Trigger auto flow (send "Teruskan") | `#60123456789` |
 | `%[phone] [msg]` | Any chat | Send custom message via bot | `%60123456789 Hello!` |
