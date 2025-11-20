@@ -222,7 +222,7 @@ async function checkAndEnrollSequences(params: {
       .from("sequences")
       .select("*, sequence_flows(*)")
       .eq("trigger", currentStage)
-      .eq("is_active", true)
+      .eq("status", "active")
       .order("created_at", { ascending: false });
 
     if (sequenceError) {
