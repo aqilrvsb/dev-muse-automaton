@@ -122,46 +122,70 @@ export default function BankImage() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // Check file type
-    if (!file.type.startsWith('image/')) {
+    // Check file type - accept images, mp3, and mp4
+    const allowedTypes = ['image/', 'audio/mpeg', 'audio/mp3', 'video/mp4']
+    const isAllowed = allowedTypes.some(type => file.type.startsWith(type) || file.type === type)
+
+    if (!isAllowed) {
       Swal.fire({
         icon: 'error',
         title: 'Invalid File Type',
-        text: 'Please select an image file',
+        text: 'Please select an image (jpg, png, etc.), MP3, or MP4 file',
       })
       e.target.value = ''
       return
     }
 
     try {
-      // Compress the image
-      const compressedFile = await compressImage(file)
+      // Only compress images, not audio/video
+      let finalFile = file
 
-      // Check compressed size (max 300KB)
-      const maxSize = 300 * 1024 // 300KB in bytes
-      if (compressedFile.size > maxSize) {
-        Swal.fire({
-          icon: 'error',
-          title: 'File Too Large',
-          text: `Image is still ${(compressedFile.size / 1024).toFixed(0)}KB after compression. Please select a smaller image.`,
-        })
-        e.target.value = ''
-        return
+      if (file.type.startsWith('image/')) {
+        // Compress the image
+        finalFile = await compressImage(file)
+
+        // Check compressed size (max 300KB for images)
+        const maxSize = 300 * 1024 // 300KB in bytes
+        if (finalFile.size > maxSize) {
+          Swal.fire({
+            icon: 'error',
+            title: 'File Too Large',
+            text: `Image is still ${(finalFile.size / 1024).toFixed(0)}KB after compression. Please select a smaller image.`,
+          })
+          e.target.value = ''
+          return
+        }
+      } else {
+        // For audio/video, check max size (10MB)
+        const maxSize = 10 * 1024 * 1024 // 10MB in bytes
+        if (file.size > maxSize) {
+          Swal.fire({
+            icon: 'error',
+            title: 'File Too Large',
+            text: `File is ${(file.size / (1024 * 1024)).toFixed(2)}MB. Maximum allowed is 10MB.`,
+          })
+          e.target.value = ''
+          return
+        }
       }
 
-      setSelectedFile(compressedFile)
+      setSelectedFile(finalFile)
 
-      // Create preview
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setPreviewUrl(reader.result as string)
+      // Create preview for images only
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          setPreviewUrl(reader.result as string)
+        }
+        reader.readAsDataURL(finalFile)
+      } else {
+        setPreviewUrl(null)
       }
-      reader.readAsDataURL(compressedFile)
     } catch (error) {
       Swal.fire({
         icon: 'error',
-        title: 'Compression Failed',
-        text: 'Failed to compress image. Please try another image.',
+        title: 'Processing Failed',
+        text: 'Failed to process file. Please try another file.',
       })
       e.target.value = ''
     }
@@ -477,14 +501,14 @@ export default function BankImage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-black text-gray-900">Bank Image</h1>
-              <p className="text-sm text-gray-500 mt-1">Manage your image assets</p>
+              <p className="text-sm text-gray-500 mt-1">Manage your media assets (images, MP3, MP4)</p>
             </div>
             <button
               onClick={() => setShowUploadModal(true)}
               className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2.5 rounded-lg font-medium shadow-sm transition-colors flex items-center gap-2"
             >
               <span className="text-lg">➕</span>
-              <span>Upload Image</span>
+              <span>Upload File</span>
             </button>
           </div>
         </div>
@@ -661,15 +685,15 @@ export default function BankImage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Image <span className="text-red-500">*</span>
+                  Select File <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/*,audio/mpeg,audio/mp3,video/mp4"
                   onChange={handleFileSelect}
                   className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
                 />
-                <p className="text-xs text-gray-500 mt-1">Images will be automatically compressed. Accepts files up to 2MB.</p>
+                <p className="text-xs text-gray-500 mt-1">Images compressed to <300KB | MP3/MP4 max 10MB</p>
               </div>
 
               {previewUrl && (
@@ -744,15 +768,15 @@ export default function BankImage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Replace Image (Optional)
+                  Replace File (Optional)
                 </label>
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/*,audio/mpeg,audio/mp3,video/mp4"
                   onChange={handleFileSelect}
                   className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
                 />
-                <p className="text-xs text-gray-500 mt-1">Leave empty to keep current image</p>
+                <p className="text-xs text-gray-500 mt-1">Leave empty to keep current file</p>
               </div>
 
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
