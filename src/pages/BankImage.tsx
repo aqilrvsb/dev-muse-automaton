@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import Swal from 'sweetalert2'
-import { put, del } from '@vercel/blob'
+import { put } from '@vercel/blob'
 import Layout from '../components/Layout'
 
 type BankImage = {
@@ -260,19 +260,29 @@ export default function BankImage() {
         newImageUrl = blob.url
         newBlobUrl = blob.url
 
-        // Delete old image from Vercel Blob if it exists
+        // Delete old image from Vercel Blob using server-side API if it exists
         if (selectedImage.blob_url) {
           try {
-            console.log('Attempting to delete old image from Blob:', selectedImage.blob_url)
-            await del(selectedImage.blob_url, { token })
-            console.log('Successfully deleted old image from Blob storage')
+            console.log('Calling API to delete old image from Blob:', selectedImage.blob_url)
+            const response = await fetch('/api/delete-blob', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ url: selectedImage.blob_url }),
+            })
+
+            const data = await response.json()
+
+            if (!response.ok) {
+              console.error('API delete failed:', data)
+              throw new Error(data.error || 'Failed to delete old image from Blob storage')
+            }
+
+            console.log('Successfully deleted old image from Blob storage via API')
           } catch (blobError: any) {
             console.error('Failed to delete old image from Blob storage:', blobError)
-            console.error('Error details:', {
-              message: blobError.message,
-              name: blobError.name,
-              stack: blobError.stack
-            })
+            console.warn('Continuing with update despite Blob deletion error')
             // Continue with update even if old blob deletion fails
           }
         }
@@ -329,25 +339,30 @@ export default function BankImage() {
     if (!result.isConfirmed) return
 
     try {
-      // Delete from Vercel Blob if blob_url exists
+      // Delete from Vercel Blob using server-side API if blob_url exists
       if (image.blob_url) {
-        const token = import.meta.env.VITE_BLOB_READ_WRITE_TOKEN
-        if (!token) {
-          console.warn('No Blob token found, skipping Blob deletion')
-        } else {
-          try {
-            console.log('Attempting to delete from Blob:', image.blob_url)
-            await del(image.blob_url, { token })
-            console.log('Successfully deleted from Blob storage')
-          } catch (blobError: any) {
-            console.error('Blob deletion error:', blobError)
-            console.error('Error details:', {
-              message: blobError.message,
-              name: blobError.name,
-              stack: blobError.stack
-            })
-            // Continue with database deletion even if blob deletion fails
+        try {
+          console.log('Calling API to delete from Blob:', image.blob_url)
+          const response = await fetch('/api/delete-blob', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ url: image.blob_url }),
+          })
+
+          const data = await response.json()
+
+          if (!response.ok) {
+            console.error('API delete failed:', data)
+            throw new Error(data.error || 'Failed to delete from Blob storage')
           }
+
+          console.log('Successfully deleted from Blob storage via API')
+        } catch (blobError: any) {
+          console.error('Blob deletion error:', blobError)
+          console.warn('Continuing with database deletion despite Blob error')
+          // Continue with database deletion even if blob deletion fails
         }
       } else {
         console.log('No blob_url found, skipping Blob deletion')
@@ -364,7 +379,7 @@ export default function BankImage() {
       Swal.fire({
         icon: 'success',
         title: 'Deleted!',
-        text: 'Image has been deleted from database. Note: Blob cache may take up to 1 minute to clear.',
+        text: 'Image has been deleted. Note: Blob cache may take up to 1 minute to clear.',
         timer: 3000,
         showConfirmButton: false,
       })
