@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import Swal from 'sweetalert2'
@@ -27,6 +27,7 @@ export default function BankImage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [entriesPerPage, setEntriesPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
+  const hasLoadedRef = useRef(false)
 
   // Form state
   const [imageName, setImageName] = useState('')
@@ -34,7 +35,7 @@ export default function BankImage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   useEffect(() => {
-    if (user) {
+    if (user && !hasLoadedRef.current) {
       fetchImages()
     }
   }, [user])
@@ -42,6 +43,7 @@ export default function BankImage() {
   const fetchImages = async () => {
     try {
       setLoading(true)
+      hasLoadedRef.current = true
       const { data, error } = await supabase
         .from('bank_images')
         .select('*')
