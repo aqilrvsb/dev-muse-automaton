@@ -13,6 +13,7 @@ export default function Sidebar() {
     { path: '/prompts', icon: '📝', label: 'Prompts' },
     { path: '/chatbot-ai', icon: '🤖', label: 'Chatbot AI' },
     { path: '/sequences', icon: '📨', label: 'Sequences' },
+    { path: '/bank-image', icon: '🏦', label: 'Bank Image' },
     { path: '/profile', icon: '👤', label: 'Profile' },
     { path: '/billings', icon: '💳', label: 'Billings' },
   ]

@@ -17,6 +17,7 @@ import Transactions from './pages/Transactions'
 import UserRegister from './pages/UserRegister'
 import Invoice from './pages/Invoice'
 import Sequences from './pages/Sequences'
+import BankImage from './pages/BankImage'
 
 function App() {
   return (
@@ -42,6 +43,7 @@ function App() {
           <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
           <Route path="/user-register" element={<ProtectedRoute><UserRegister /></ProtectedRoute>} />
           <Route path="/sequences" element={<ProtectedRoute><Sequences /></ProtectedRoute>} />
+          <Route path="/bank-image" element={<ProtectedRoute><BankImage /></ProtectedRoute>} />
 
           {/* Catch all */}
           <Route path="*" element={<Navigate to="/" replace />} />
