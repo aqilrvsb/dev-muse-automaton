@@ -13,6 +13,7 @@ export default function Prompts() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showInfoModal, setShowInfoModal] = useState(false)
+  const [showCommandModal, setShowCommandModal] = useState(false)
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null)
 
   // Form state
@@ -259,6 +260,14 @@ export default function Prompts() {
             >
               <span className="text-xl">ℹ️</span>
               <span>Info</span>
+            </button>
+            <button
+              onClick={() => setShowCommandModal(true)}
+              className="bg-purple-50 hover:bg-purple-100 text-purple-600 px-4 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 border border-purple-200"
+              title="WhatsApp Commands Guide"
+            >
+              <span className="text-xl">⌘</span>
+              <span>Commands</span>
             </button>
             <button
               onClick={openAddModal}
@@ -587,6 +596,169 @@ Tanya: "Saya ingin tawarkan {{product}}..."`}
                   className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
                 >
                   OK
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Command Guide Modal */}
+        {showCommandModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl p-6 w-full max-w-5xl max-h-[90vh] overflow-y-auto shadow-xl">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                  <span className="text-purple-600">⌘</span>
+                  WhatsApp Bot Commands Guide
+                </h3>
+                <button
+                  onClick={() => setShowCommandModal(false)}
+                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Command Types */}
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                  <h4 className="font-bold text-purple-900 mb-3 text-lg">📱 Command Types</h4>
+                  <div className="space-y-2 text-sm">
+                    <p><strong>Type 1 - Direct in Customer Chat:</strong> <code className="bg-white px-2 py-1 rounded">cmd</code>, <code className="bg-white px-2 py-1 rounded">dmc</code></p>
+                    <p><strong>Type 2 - Customer Command:</strong> <code className="bg-white px-2 py-1 rounded">DELETE</code></p>
+                    <p><strong>Type 3 - Remote Control:</strong> <code className="bg-white px-2 py-1 rounded">/phone</code>, <code className="bg-white px-2 py-1 rounded">?phone</code>, <code className="bg-white px-2 py-1 rounded">#phone</code>, <code className="bg-white px-2 py-1 rounded">%phone msg</code></p>
+                  </div>
+                </div>
+
+                {/* Commands Table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="border border-gray-300 px-4 py-2 text-left">Command</th>
+                        <th className="border border-gray-300 px-4 py-2 text-left">Where to Send</th>
+                        <th className="border border-gray-300 px-4 py-2 text-left">What it Does</th>
+                        <th className="border border-gray-300 px-4 py-2 text-left">Example</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-sm">
+                      <tr>
+                        <td className="border border-gray-300 px-4 py-2"><code className="bg-purple-50 px-2 py-1 rounded">cmd</code></td>
+                        <td className="border border-gray-300 px-4 py-2">Customer's chat (Business WA)</td>
+                        <td className="border border-gray-300 px-4 py-2">Activate human mode</td>
+                        <td className="border border-gray-300 px-4 py-2">Type in chat: <code>cmd</code></td>
+                      </tr>
+                      <tr>
+                        <td className="border border-gray-300 px-4 py-2"><code className="bg-purple-50 px-2 py-1 rounded">dmc</code></td>
+                        <td className="border border-gray-300 px-4 py-2">Customer's chat (Business WA)</td>
+                        <td className="border border-gray-300 px-4 py-2">Deactivate human mode</td>
+                        <td className="border border-gray-300 px-4 py-2">Type in chat: <code>dmc</code></td>
+                      </tr>
+                      <tr>
+                        <td className="border border-gray-300 px-4 py-2"><code className="bg-purple-50 px-2 py-1 rounded">DELETE</code></td>
+                        <td className="border border-gray-300 px-4 py-2">Your test phone TO Business WA</td>
+                        <td className="border border-gray-300 px-4 py-2">Delete test conversation</td>
+                        <td className="border border-gray-300 px-4 py-2">Send: <code>DELETE</code></td>
+                      </tr>
+                      <tr>
+                        <td className="border border-gray-300 px-4 py-2"><code className="bg-purple-50 px-2 py-1 rounded">/[phone]</code></td>
+                        <td className="border border-gray-300 px-4 py-2">Your phone TO Business WA</td>
+                        <td className="border border-gray-300 px-4 py-2">Activate human mode remotely</td>
+                        <td className="border border-gray-300 px-4 py-2">Send: <code>/60123456789</code></td>
+                      </tr>
+                      <tr>
+                        <td className="border border-gray-300 px-4 py-2"><code className="bg-purple-50 px-2 py-1 rounded">?[phone]</code></td>
+                        <td className="border border-gray-300 px-4 py-2">Your phone TO Business WA</td>
+                        <td className="border border-gray-300 px-4 py-2">Deactivate human mode remotely</td>
+                        <td className="border border-gray-300 px-4 py-2">Send: <code>?60123456789</code></td>
+                      </tr>
+                      <tr>
+                        <td className="border border-gray-300 px-4 py-2"><code className="bg-purple-50 px-2 py-1 rounded">#[phone]</code></td>
+                        <td className="border border-gray-300 px-4 py-2">Your phone TO Business WA</td>
+                        <td className="border border-gray-300 px-4 py-2">Trigger auto flow ("Teruskan")</td>
+                        <td className="border border-gray-300 px-4 py-2">Send: <code>#60123456789</code></td>
+                      </tr>
+                      <tr>
+                        <td className="border border-gray-300 px-4 py-2"><code className="bg-purple-50 px-2 py-1 rounded">%[phone] [msg]</code></td>
+                        <td className="border border-gray-300 px-4 py-2">Your phone TO Business WA</td>
+                        <td className="border border-gray-300 px-4 py-2">Send custom message via bot</td>
+                        <td className="border border-gray-300 px-4 py-2">Send: <code>%60123456789 Hello!</code></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Visual Flow */}
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <h4 className="font-bold text-gray-900 mb-3">📊 Visual Flow</h4>
+                  <div className="space-y-4 text-sm font-mono">
+                    <div className="bg-white p-3 rounded border border-gray-200">
+                      <p className="text-green-600 font-bold mb-1">✅ Direct Commands (from Business WA)</p>
+                      <p>Business WA → Customer Chat → Type: <code className="bg-yellow-50 px-1">cmd</code> or <code className="bg-yellow-50 px-1">dmc</code></p>
+                    </div>
+                    <div className="bg-white p-3 rounded border border-gray-200">
+                      <p className="text-blue-600 font-bold mb-1">✅ Testing (from Your Phone)</p>
+                      <p>Your Phone → TO Business WA → Type: <code className="bg-yellow-50 px-1">DELETE</code></p>
+                    </div>
+                    <div className="bg-white p-3 rounded border border-gray-200">
+                      <p className="text-purple-600 font-bold mb-1">✅ Remote Control (from Your Phone)</p>
+                      <p>Your Phone → TO Business WA → Type: <code className="bg-yellow-50 px-1">/phone</code>, <code className="bg-yellow-50 px-1">?phone</code>, <code className="bg-yellow-50 px-1">#phone</code>, <code className="bg-yellow-50 px-1">%phone msg</code></p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Key Points */}
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <h4 className="font-bold text-yellow-900 mb-3">⚠️ Important Points</h4>
+                  <ul className="list-disc list-inside space-y-2 text-sm">
+                    <li><code className="bg-white px-2 py-1 rounded">cmd</code> and <code className="bg-white px-2 py-1 rounded">dmc</code> = Type directly in customer chat on Business WhatsApp</li>
+                    <li><code className="bg-white px-2 py-1 rounded">/</code>, <code className="bg-white px-2 py-1 rounded">?</code>, <code className="bg-white px-2 py-1 rounded">#</code>, <code className="bg-white px-2 py-1 rounded">%</code> = Send from YOUR phone <strong>TO</strong> Business WhatsApp number</li>
+                    <li><code className="bg-white px-2 py-1 rounded">DELETE</code> = Customer (or you testing) sends TO Business WhatsApp</li>
+                    <li>Remote commands must be sent <strong>TO</strong> business WhatsApp, not FROM it!</li>
+                    <li>Only the connected business WhatsApp account can receive and process commands</li>
+                  </ul>
+                </div>
+
+                {/* Examples */}
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <h4 className="font-bold text-green-900 mb-3">💡 Quick Examples</h4>
+                  <div className="space-y-3 text-sm">
+                    <div>
+                      <p className="font-semibold mb-1">Scenario: Take over conversation manually</p>
+                      <p className="bg-white p-2 rounded border border-gray-200">
+                        1. Open Business WA → Customer chat<br/>
+                        2. Type: <code className="bg-yellow-50 px-1">cmd</code><br/>
+                        3. Reply manually<br/>
+                        4. When done, type: <code className="bg-yellow-50 px-1">dmc</code>
+                      </p>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-1">Scenario: Control customer remotely</p>
+                      <p className="bg-white p-2 rounded border border-gray-200">
+                        1. From YOUR phone<br/>
+                        2. Send TO Business WA: <code className="bg-yellow-50 px-1">/60123456789</code><br/>
+                        3. Customer is now in human mode<br/>
+                        4. Open Business WA to reply
+                      </p>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-1">Scenario: Trigger follow-up</p>
+                      <p className="bg-white p-2 rounded border border-gray-200">
+                        From YOUR phone, send TO Business WA:<br/>
+                        <code className="bg-yellow-50 px-1">#60123456789</code><br/>
+                        → Bot sends "Teruskan" to customer
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end mt-6 pt-4 border-t border-gray-200">
+                <button
+                  onClick={() => setShowCommandModal(false)}
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                >
+                  Got it!
                 </button>
               </div>
             </div>

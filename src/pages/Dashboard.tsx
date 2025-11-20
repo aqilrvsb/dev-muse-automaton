@@ -222,8 +222,13 @@ export default function Dashboard() {
     // Total Stuck Intro - stage is "Introduction"
     const stuckIntro = data.filter(c => c.stage === 'Introduction').length
 
-    // Total Response - stage is not null
-    const response = data.filter(c => c.stage !== null && c.stage !== undefined && c.stage !== '').length
+    // Total Response - stage is not null and not "Introduction"
+    const response = data.filter(c =>
+      c.stage !== null &&
+      c.stage !== undefined &&
+      c.stage !== '' &&
+      c.stage !== 'Introduction'
+    ).length
 
     // Total Close - detail is not null
     const close = data.filter(c => c.detail !== null && c.detail !== undefined && c.detail !== '').length

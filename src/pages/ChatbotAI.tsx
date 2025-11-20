@@ -164,8 +164,13 @@ export default function ChatbotAI() {
     // Stuck Intro - conversations with stage = "Introduction"
     const stuck = data.filter(c => c.stage === 'Introduction').length
 
-    // Response - conversations with non-null stage
-    const resp = data.filter(c => c.stage !== null && c.stage !== undefined && c.stage !== '').length
+    // Response - conversations with non-null stage and not "Introduction"
+    const resp = data.filter(c =>
+      c.stage !== null &&
+      c.stage !== undefined &&
+      c.stage !== '' &&
+      c.stage !== 'Introduction'
+    ).length
 
     // Close - conversations with non-null detail field (captured customer details)
     const closed = data.filter(c => c.detail !== null && c.detail !== undefined && c.detail !== '').length
@@ -322,7 +327,7 @@ ${conv.conv_last || 'No conversation history'}
     })
 
     if (result.isConfirmed || result.isDenied) {
-      const newHumanValue = result.isDenied ? 1 : 0
+      const newHumanValue = result.isDenied ? 1 : null
       const newStatus = result.isDenied ? 'Human' : 'AI'
 
       try {
