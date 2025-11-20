@@ -186,7 +186,13 @@ export default function BankImage() {
         throw new Error('Blob storage token not configured')
       }
 
-      const blob = await put(`bank-images/${user?.id}/${Date.now()}-${selectedFile.name}`, selectedFile, {
+      // Create clean filename using email and image name
+      const emailPrefix = user?.email?.split('@')[0] || 'user'
+      const cleanImageName = imageName.trim().replace(/[^a-zA-Z0-9-_]/g, '-')
+      const fileExtension = selectedFile.name.split('.').pop() || 'jpg'
+      const filename = `${emailPrefix}/${cleanImageName}.${fileExtension}`
+
+      const blob = await put(filename, selectedFile, {
         access: 'public',
         token,
       })
@@ -250,9 +256,15 @@ export default function BankImage() {
           throw new Error('Blob storage token not configured')
         }
 
+        // Create clean filename using email and image name
+        const emailPrefix = user?.email?.split('@')[0] || 'user'
+        const cleanImageName = imageName.trim().replace(/[^a-zA-Z0-9-_]/g, '-')
+        const fileExtension = selectedFile.name.split('.').pop() || 'jpg'
+        const filename = `${emailPrefix}/${cleanImageName}.${fileExtension}`
+
         // Upload new image
         console.log('Uploading new image to Blob storage...')
-        const blob = await put(`bank-images/${user?.id}/${Date.now()}-${selectedFile.name}`, selectedFile, {
+        const blob = await put(filename, selectedFile, {
           access: 'public',
           token,
         })
