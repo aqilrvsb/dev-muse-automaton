@@ -191,8 +191,8 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Danger Zone */}
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6 shadow-sm">
+        {/* Danger Zone - Hidden */}
+        {/* <div className="bg-red-50 border border-red-200 rounded-xl p-6 shadow-sm">
           <h3 className="text-xl font-bold text-red-600 mb-4">Danger Zone</h3>
           <p className="text-gray-600 mb-4">
             Delete your account and all associated data. This action cannot be undone.
@@ -200,7 +200,7 @@ export default function Profile() {
           <button className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition-colors">
             Delete Account
           </button>
-        </div>
+        </div> */}
       </div>
     </Layout>
   )
