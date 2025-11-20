@@ -40,10 +40,11 @@ export default function Sequences() {
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
-  const [showFlowModal, setShowFlowModal] = useState(false)
+  const [showFlowEditModal, setShowFlowEditModal] = useState(false)
   const [currentSequence, setCurrentSequence] = useState<Sequence | null>(null)
-  const [currentFlow, setCurrentFlow] = useState<number>(1)
+  const [currentFlowNumber, setCurrentFlowNumber] = useState<number>(1)
   const [sequenceFlows, setSequenceFlows] = useState<SequenceFlow[]>([])
+  const [tempFlows, setTempFlows] = useState<SequenceFlow[]>([]) // For create modal
 
   // Form state for creating/editing sequences
   const [formData, setFormData] = useState({
@@ -123,7 +124,8 @@ export default function Sequences() {
     if (!user?.id) return
 
     try {
-      const { error } = await supabase
+      // Create sequence first
+      const { data: sequenceData, error: sequenceError } = await supabase
         .from('sequences')
         .insert({
           user_id: user.id,
@@ -132,7 +134,27 @@ export default function Sequences() {
         .select()
         .single()
 
-      if (error) throw error
+      if (sequenceError) throw sequenceError
+
+      // Insert all flows that were created in the modal
+      if (tempFlows.length > 0 && sequenceData) {
+        const flowsToInsert = tempFlows.map(flow => ({
+          sequence_id: sequenceData.id,
+          flow_number: flow.flow_number,
+          step_trigger: flow.step_trigger,
+          next_trigger: flow.next_trigger,
+          delay_hours: flow.delay_hours,
+          message: flow.message,
+          image_url: flow.image_url,
+          is_end: flow.is_end,
+        }))
+
+        const { error: flowsError } = await supabase
+          .from('sequence_flows')
+          .insert(flowsToInsert)
+
+        if (flowsError) throw flowsError
+      }
 
       await Swal.fire({
         icon: 'success',
@@ -144,6 +166,7 @@ export default function Sequences() {
 
       setShowCreateModal(false)
       resetForm()
+      setTempFlows([])
       loadSequences()
     } catch (error: any) {
       console.error('Error creating sequence:', error)
@@ -155,7 +178,7 @@ export default function Sequences() {
     }
   }
 
-  const handleEditSequence = (sequence: Sequence) => {
+  const handleEditSequence = async (sequence: Sequence) => {
     setCurrentSequence(sequence)
     setFormData({
       name: sequence.name,
@@ -167,7 +190,26 @@ export default function Sequences() {
       max_delay: sequence.max_delay,
       status: sequence.status,
     })
-    setShowEditModal(true)
+
+    // Load flows for this sequence
+    try {
+      const { data: flowsData, error } = await supabase
+        .from('sequence_flows')
+        .select('*')
+        .eq('sequence_id', sequence.id)
+        .order('flow_number', { ascending: true })
+
+      if (error) throw error
+      setSequenceFlows(flowsData || [])
+      setShowEditModal(true)
+    } catch (error) {
+      console.error('Error loading flows:', error)
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error Loading Flows',
+        text: 'Failed to load sequence flows',
+      })
+    }
   }
 
   const handleUpdateSequence = async (e: React.FormEvent) => {
@@ -196,6 +238,7 @@ export default function Sequences() {
 
       setShowEditModal(false)
       setCurrentSequence(null)
+      setSequenceFlows([])
       resetForm()
       loadSequences()
     } catch (error: any) {
@@ -273,37 +316,76 @@ export default function Sequences() {
     }
   }
 
-  const handleManageFlows = async (sequence: Sequence) => {
-    setCurrentSequence(sequence)
+  const handleOpenFlowEdit = (flowNumber: number, isCreateMode: boolean = false) => {
+    setCurrentFlowNumber(flowNumber)
 
-    try {
-      // Load flows for this sequence
-      const { data: flowsData, error } = await supabase
-        .from('sequence_flows')
-        .select('*')
-        .eq('sequence_id', sequence.id)
-        .order('flow_number', { ascending: true })
-
-      if (error) throw error
-
-      setSequenceFlows(flowsData || [])
-      setShowFlowModal(true)
-    } catch (error) {
-      console.error('Error loading flows:', error)
-      await Swal.fire({
-        icon: 'error',
-        title: 'Error Loading Flows',
-        text: 'Failed to load sequence flows',
-      })
+    if (isCreateMode) {
+      // Load from tempFlows
+      const existingFlow = tempFlows.find(f => f.flow_number === flowNumber)
+      if (existingFlow) {
+        setFlowFormData({
+          flow_number: existingFlow.flow_number,
+          step_trigger: existingFlow.step_trigger,
+          next_trigger: existingFlow.next_trigger || '',
+          delay_hours: existingFlow.delay_hours,
+          message: existingFlow.message,
+          image_url: existingFlow.image_url || '',
+          is_end: existingFlow.is_end,
+        })
+      } else {
+        resetFlowForm()
+        setFlowFormData({ ...flowFormData, flow_number: flowNumber })
+      }
+    } else {
+      // Load from sequenceFlows
+      const existingFlow = sequenceFlows.find(f => f.flow_number === flowNumber)
+      if (existingFlow) {
+        setFlowFormData({
+          flow_number: existingFlow.flow_number,
+          step_trigger: existingFlow.step_trigger,
+          next_trigger: existingFlow.next_trigger || '',
+          delay_hours: existingFlow.delay_hours,
+          message: existingFlow.message,
+          image_url: existingFlow.image_url || '',
+          is_end: existingFlow.is_end,
+        })
+      } else {
+        resetFlowForm()
+        setFlowFormData({ ...flowFormData, flow_number: flowNumber })
+      }
     }
+
+    setShowFlowEditModal(true)
   }
 
-  const handleSaveFlow = async (flowNumber: number) => {
+  const handleSaveFlowInCreate = () => {
+    // Save to tempFlows for create modal
+    const newFlow: SequenceFlow = {
+      id: `temp-${currentFlowNumber}`,
+      sequence_id: '',
+      flow_number: currentFlowNumber,
+      step_trigger: flowFormData.step_trigger,
+      next_trigger: flowFormData.next_trigger || null,
+      delay_hours: flowFormData.delay_hours,
+      message: flowFormData.message,
+      image_url: flowFormData.image_url || null,
+      is_end: flowFormData.is_end,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+
+    const updatedFlows = tempFlows.filter(f => f.flow_number !== currentFlowNumber)
+    setTempFlows([...updatedFlows, newFlow])
+    setShowFlowEditModal(false)
+    resetFlowForm()
+  }
+
+  const handleSaveFlowInEdit = async () => {
     if (!currentSequence) return
 
     try {
       // Check if flow already exists
-      const existingFlow = sequenceFlows.find(f => f.flow_number === flowNumber)
+      const existingFlow = sequenceFlows.find(f => f.flow_number === currentFlowNumber)
 
       if (existingFlow) {
         // Update existing flow
@@ -327,7 +409,7 @@ export default function Sequences() {
           .from('sequence_flows')
           .insert({
             sequence_id: currentSequence.id,
-            flow_number: flowNumber,
+            flow_number: currentFlowNumber,
             step_trigger: flowFormData.step_trigger,
             next_trigger: flowFormData.next_trigger || null,
             delay_hours: flowFormData.delay_hours,
@@ -339,14 +421,6 @@ export default function Sequences() {
         if (error) throw error
       }
 
-      await Swal.fire({
-        icon: 'success',
-        title: 'Flow Saved!',
-        text: `Flow ${flowNumber} has been saved successfully.`,
-        timer: 2000,
-        showConfirmButton: false,
-      })
-
       // Reload flows
       const { data: flowsData } = await supabase
         .from('sequence_flows')
@@ -355,7 +429,16 @@ export default function Sequences() {
         .order('flow_number', { ascending: true })
 
       setSequenceFlows(flowsData || [])
+      setShowFlowEditModal(false)
       resetFlowForm()
+
+      await Swal.fire({
+        icon: 'success',
+        title: 'Flow Saved!',
+        text: `Flow ${currentFlowNumber} has been saved successfully.`,
+        timer: 2000,
+        showConfirmButton: false,
+      })
     } catch (error: any) {
       console.error('Error saving flow:', error)
       await Swal.fire({
@@ -366,82 +449,6 @@ export default function Sequences() {
     }
   }
 
-  const handleDeleteFlow = async (flowId: string, flowNumber: number) => {
-    const result = await Swal.fire({
-      icon: 'warning',
-      title: 'Delete Flow?',
-      text: `Are you sure you want to delete Flow ${flowNumber}?`,
-      showCancelButton: true,
-      confirmButtonText: 'Yes, delete it',
-      cancelButtonText: 'Cancel',
-      confirmButtonColor: '#ef4444',
-    })
-
-    if (!result.isConfirmed) return
-
-    try {
-      const { error } = await supabase
-        .from('sequence_flows')
-        .delete()
-        .eq('id', flowId)
-
-      if (error) throw error
-
-      // Reload flows
-      if (currentSequence) {
-        const { data: flowsData } = await supabase
-          .from('sequence_flows')
-          .select('*')
-          .eq('sequence_id', currentSequence.id)
-          .order('flow_number', { ascending: true })
-
-        setSequenceFlows(flowsData || [])
-      }
-
-      await Swal.fire({
-        icon: 'success',
-        title: 'Deleted!',
-        text: 'Flow has been deleted successfully.',
-        timer: 2000,
-        showConfirmButton: false,
-      })
-    } catch (error: any) {
-      console.error('Error deleting flow:', error)
-      await Swal.fire({
-        icon: 'error',
-        title: 'Failed to Delete',
-        text: error.message || 'Failed to delete flow',
-      })
-    }
-  }
-
-  const loadFlowForEdit = (flowNumber: number) => {
-    const flow = sequenceFlows.find(f => f.flow_number === flowNumber)
-
-    if (flow) {
-      setFlowFormData({
-        flow_number: flow.flow_number,
-        step_trigger: flow.step_trigger,
-        next_trigger: flow.next_trigger || '',
-        delay_hours: flow.delay_hours,
-        message: flow.message,
-        image_url: flow.image_url || '',
-        is_end: flow.is_end,
-      })
-    } else {
-      setFlowFormData({
-        flow_number: flowNumber,
-        step_trigger: '',
-        next_trigger: '',
-        delay_hours: 24,
-        message: '',
-        image_url: '',
-        is_end: false,
-      })
-    }
-
-    setCurrentFlow(flowNumber)
-  }
 
   const resetForm = () => {
     setFormData({
@@ -501,19 +508,31 @@ export default function Sequences() {
     setFlowFormData({ ...flowFormData, message: newMessage })
   }
 
+  const isFlowSet = (flowNumber: number, isCreateMode: boolean = false) => {
+    if (isCreateMode) {
+      return tempFlows.some(f => f.flow_number === flowNumber)
+    } else {
+      return sequenceFlows.some(f => f.flow_number === flowNumber)
+    }
+  }
+
   return (
     <Layout>
       <div className="p-8">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h2 className="text-3xl font-bold text-gray-900">Message Sequences</h2>
-            <p className="text-gray-600">Create and manage automated message sequences</p>
+            <p className="text-gray-600">Create automated drip campaigns for your contacts</p>
           </div>
           <button
-            onClick={() => setShowCreateModal(true)}
-            className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors shadow-sm"
+            onClick={() => {
+              setShowCreateModal(true)
+              setTempFlows([])
+            }}
+            className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors shadow-sm flex items-center gap-2"
           >
-            + Create New Sequence
+            <span>⊕</span>
+            <span>Create Sequence</span>
           </button>
         </div>
 
@@ -526,50 +545,47 @@ export default function Sequences() {
         ) : sequences.length === 0 ? (
           <div className="bg-white border border-gray-200 rounded-xl p-12 text-center shadow-sm">
             <p className="text-gray-600 text-lg">No sequences created yet</p>
-            <p className="text-gray-500 mt-2">Click "Create New Sequence" to get started</p>
+            <p className="text-gray-500 mt-2">Click "Create Sequence" to get started</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {sequences.map((sequence) => (
               <div key={sequence.id} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xl font-bold text-gray-900">{sequence.name}</h3>
-                  <button
-                    onClick={() => handleToggleStatus(sequence)}
-                    className={`px-3 py-1 rounded-full text-xs font-bold uppercase transition-colors ${
-                      sequence.status === 'active'
-                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {sequence.status === 'active' ? '✓ Active' : 'Inactive'}
-                  </button>
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-1">{sequence.name}</h3>
+                    <span
+                      className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase ${
+                        sequence.status === 'active'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-red-100 text-red-700'
+                      }`}
+                    >
+                      {sequence.status}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="space-y-2 mb-4">
+                <div className="space-y-2 mb-4 text-sm">
                   <div>
-                    <p className="text-gray-600 text-sm font-medium">Niche</p>
-                    <p className="text-gray-900">{sequence.niche}</p>
+                    <p className="text-gray-500">Niche: {sequence.niche} | Time: {sequence.schedule_time}</p>
                   </div>
                   <div>
-                    <p className="text-gray-600 text-sm font-medium">Trigger</p>
-                    <p className="text-primary-600 font-mono text-sm">{sequence.trigger}</p>
+                    <p className="text-gray-500">Trigger: {sequence.trigger}</p>
                   </div>
                   <div>
-                    <p className="text-gray-600 text-sm font-medium">Schedule Time</p>
-                    <p className="text-gray-900">{sequence.schedule_time}</p>
+                    <p className="text-gray-900 font-medium">{sequence.description}</p>
                   </div>
-                  <div>
-                    <p className="text-gray-600 text-sm font-medium">Contacts</p>
-                    <p className="text-gray-900 font-bold">{sequence.contact_count || 0}</p>
-                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 mb-4 text-sm">
+                  <span className="text-gray-600">👥 {sequence.contact_count || 0} contacts</span>
                 </div>
 
                 <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="flex gap-2">
                     <button
                       onClick={() => {
-                        // View sequence details (can open a modal with full details)
                         Swal.fire({
                           title: sequence.name,
                           html: `
@@ -587,30 +603,45 @@ export default function Sequences() {
                           confirmButtonText: 'Close'
                         })
                       }}
-                      className="bg-green-50 hover:bg-green-600 border border-green-200 hover:border-green-600 text-green-600 hover:text-white px-3 py-2 rounded-lg transition-colors font-medium text-sm"
+                      className="flex-1 bg-white border border-blue-400 text-blue-600 px-3 py-2 rounded-md transition-colors font-medium text-sm hover:bg-blue-50"
                     >
-                      View
+                      👁 View
                     </button>
                     <button
                       onClick={() => handleEditSequence(sequence)}
-                      className="bg-blue-50 hover:bg-blue-600 border border-blue-200 hover:border-blue-600 text-blue-600 hover:text-white px-3 py-2 rounded-lg transition-colors font-medium text-sm"
+                      className="flex-1 bg-white border border-green-400 text-green-600 px-3 py-2 rounded-md transition-colors font-medium text-sm hover:bg-green-50"
                     >
-                      Update
+                      ✎ Update
                     </button>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="flex gap-2">
                     <button
-                      onClick={() => handleManageFlows(sequence)}
-                      className="bg-purple-50 hover:bg-purple-600 border border-purple-200 hover:border-purple-600 text-purple-600 hover:text-white px-3 py-2 rounded-lg transition-colors font-medium text-sm"
+                      onClick={() => handleEditSequence(sequence)}
+                      className="flex-1 bg-white border border-yellow-400 text-yellow-600 px-3 py-2 rounded-md transition-colors font-medium text-sm hover:bg-yellow-50"
                     >
-                      Flow Update
+                      📋 Flow Update
                     </button>
                     <button
                       onClick={() => handleDeleteSequence(sequence.id)}
-                      className="bg-red-50 hover:bg-red-600 border border-red-200 hover:border-red-600 text-red-600 hover:text-white px-3 py-2 rounded-lg transition-colors font-medium text-sm"
+                      className="flex-1 bg-white border border-red-400 text-red-600 px-3 py-2 rounded-md transition-colors font-medium text-sm hover:bg-red-50"
                     >
-                      Delete
+                      🗑 Delete
                     </button>
+                  </div>
+                  <div className="flex items-center justify-between pt-2">
+                    <span className="text-sm text-gray-600">Status:</span>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={sequence.status === 'active'}
+                        onChange={() => handleToggleStatus(sequence)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                      <span className="ml-2 text-sm font-medium text-gray-700">
+                        {sequence.status === 'active' ? 'Active' : 'Inactive'}
+                      </span>
+                    </label>
                   </div>
                 </div>
               </div>
@@ -620,14 +651,28 @@ export default function Sequences() {
 
         {/* Create Sequence Modal */}
         {showCreateModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl">
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Create New Sequence</h3>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+            <div className="bg-white rounded-xl p-6 w-full max-w-5xl my-8 shadow-xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-gray-900">Create New Sequence</h3>
+                <button
+                  onClick={() => {
+                    setShowCreateModal(false)
+                    resetForm()
+                    setTempFlows([])
+                  }}
+                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
 
               <form onSubmit={handleCreateSequence} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Sequence Name *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Sequence Name <span className="text-red-500">*</span>
+                    </label>
                     <input
                       type="text"
                       value={formData.name}
@@ -638,65 +683,36 @@ export default function Sequences() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Niche *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Niche <span className="text-red-500">*</span>
+                    </label>
                     <input
                       type="text"
                       value={formData.niche}
                       onChange={(e) => setFormData({ ...formData, niche: e.target.value })}
                       className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      placeholder="e.g., Sales, Onboarding"
                       required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Trigger *</label>
-                    <input
-                      type="text"
-                      value={formData.trigger}
-                      onChange={(e) => setFormData({ ...formData, trigger: e.target.value })}
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Schedule Time *</label>
-                    <input
-                      type="time"
-                      value={formData.schedule_time}
-                      onChange={(e) => setFormData({ ...formData, schedule_time: e.target.value })}
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Min Delay (seconds) *</label>
-                    <input
-                      type="number"
-                      value={formData.min_delay}
-                      onChange={(e) => setFormData({ ...formData, min_delay: parseInt(e.target.value) })}
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      required
-                      min="0"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Max Delay (seconds) *</label>
-                    <input
-                      type="number"
-                      value={formData.max_delay}
-                      onChange={(e) => setFormData({ ...formData, max_delay: parseInt(e.target.value) })}
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      required
-                      min="0"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Sequence Trigger</label>
+                  <input
+                    type="text"
+                    value={formData.trigger}
+                    onChange={(e) => setFormData({ ...formData, trigger: e.target.value })}
+                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder="e.g., fitness_start, onboarding_begin"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">This trigger will be used to identify and enroll leads into this sequence</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Sequence Description <span className="text-red-500">*</span>
+                  </label>
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -706,22 +722,87 @@ export default function Sequences() {
                   />
                 </div>
 
-                <div className="flex gap-4 mt-6">
-                  <button
-                    type="submit"
-                    className="flex-1 bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-                  >
-                    Create Sequence
-                  </button>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Min Delay (seconds)</label>
+                    <input
+                      type="number"
+                      value={formData.min_delay}
+                      onChange={(e) => setFormData({ ...formData, min_delay: parseInt(e.target.value) || 0 })}
+                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      min="0"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Max Delay (seconds)</label>
+                    <input
+                      type="number"
+                      value={formData.max_delay}
+                      onChange={(e) => setFormData({ ...formData, max_delay: parseInt(e.target.value) || 0 })}
+                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      min="0"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Schedule Time</label>
+                    <input
+                      type="time"
+                      value={formData.schedule_time}
+                      onChange={(e) => setFormData({ ...formData, schedule_time: e.target.value })}
+                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Sequence Flow Grid */}
+                <div className="mt-6">
+                  <h4 className="text-lg font-bold text-gray-900 mb-4">Sequence Flow</h4>
+                  <div className="grid grid-cols-7 gap-2">
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map((flowNum) => (
+                      <button
+                        key={flowNum}
+                        type="button"
+                        onClick={() => handleOpenFlowEdit(flowNum, true)}
+                        className={`px-3 py-6 rounded-lg border-2 font-medium text-sm transition-colors ${
+                          isFlowSet(flowNum, true)
+                            ? 'bg-green-50 border-green-400 text-green-700'
+                            : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
+                        }`}
+                      >
+                        <div className="text-center">
+                          <div className="font-bold mb-1">Flow {flowNum}</div>
+                          <div className="text-xs">
+                            {isFlowSet(flowNum, true) ? (
+                              <span className="text-green-600">✓ Set</span>
+                            ) : (
+                              <span className="text-gray-500">⊕ Add</span>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex gap-4 mt-6 pt-4 border-t">
                   <button
                     type="button"
                     onClick={() => {
                       setShowCreateModal(false)
                       resetForm()
+                      setTempFlows([])
                     }}
                     className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-medium transition-colors"
                   >
                     Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                  >
+                    Create Sequence
                   </button>
                 </div>
               </form>
@@ -731,14 +812,29 @@ export default function Sequences() {
 
         {/* Edit Sequence Modal */}
         {showEditModal && currentSequence && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl">
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Edit Sequence</h3>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+            <div className="bg-white rounded-xl p-6 w-full max-w-5xl my-8 shadow-xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-gray-900">Edit Sequence</h3>
+                <button
+                  onClick={() => {
+                    setShowEditModal(false)
+                    setCurrentSequence(null)
+                    setSequenceFlows([])
+                    resetForm()
+                  }}
+                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
 
               <form onSubmit={handleUpdateSequence} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Sequence Name *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Sequence Name <span className="text-red-500">*</span>
+                    </label>
                     <input
                       type="text"
                       value={formData.name}
@@ -749,7 +845,9 @@ export default function Sequences() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Niche *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Niche <span className="text-red-500">*</span>
+                    </label>
                     <input
                       type="text"
                       value={formData.niche}
@@ -758,56 +856,22 @@ export default function Sequences() {
                       required
                     />
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Trigger *</label>
-                    <input
-                      type="text"
-                      value={formData.trigger}
-                      onChange={(e) => setFormData({ ...formData, trigger: e.target.value })}
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Schedule Time *</label>
-                    <input
-                      type="time"
-                      value={formData.schedule_time}
-                      onChange={(e) => setFormData({ ...formData, schedule_time: e.target.value })}
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Min Delay (seconds) *</label>
-                    <input
-                      type="number"
-                      value={formData.min_delay}
-                      onChange={(e) => setFormData({ ...formData, min_delay: parseInt(e.target.value) })}
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      required
-                      min="0"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Max Delay (seconds) *</label>
-                    <input
-                      type="number"
-                      value={formData.max_delay}
-                      onChange={(e) => setFormData({ ...formData, max_delay: parseInt(e.target.value) })}
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      required
-                      min="0"
-                    />
-                  </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Sequence Trigger</label>
+                  <input
+                    type="text"
+                    value={formData.trigger}
+                    onChange={(e) => setFormData({ ...formData, trigger: e.target.value })}
+                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Sequence Description <span className="text-red-500">*</span>
+                  </label>
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -817,23 +881,88 @@ export default function Sequences() {
                   />
                 </div>
 
-                <div className="flex gap-4 mt-6">
-                  <button
-                    type="submit"
-                    className="flex-1 bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-                  >
-                    Update Sequence
-                  </button>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Min Delay (seconds)</label>
+                    <input
+                      type="number"
+                      value={formData.min_delay}
+                      onChange={(e) => setFormData({ ...formData, min_delay: parseInt(e.target.value) || 0 })}
+                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      min="0"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Max Delay (seconds)</label>
+                    <input
+                      type="number"
+                      value={formData.max_delay}
+                      onChange={(e) => setFormData({ ...formData, max_delay: parseInt(e.target.value) || 0 })}
+                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      min="0"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Schedule Time</label>
+                    <input
+                      type="time"
+                      value={formData.schedule_time}
+                      onChange={(e) => setFormData({ ...formData, schedule_time: e.target.value })}
+                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Sequence Flow Grid */}
+                <div className="mt-6">
+                  <h4 className="text-lg font-bold text-gray-900 mb-4">Sequence Flow</h4>
+                  <div className="grid grid-cols-7 gap-2">
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map((flowNum) => (
+                      <button
+                        key={flowNum}
+                        type="button"
+                        onClick={() => handleOpenFlowEdit(flowNum, false)}
+                        className={`px-3 py-6 rounded-lg border-2 font-medium text-sm transition-colors ${
+                          isFlowSet(flowNum, false)
+                            ? 'bg-green-50 border-green-400 text-green-700'
+                            : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
+                        }`}
+                      >
+                        <div className="text-center">
+                          <div className="font-bold mb-1">Flow {flowNum}</div>
+                          <div className="text-xs">
+                            {isFlowSet(flowNum, false) ? (
+                              <span className="text-green-600">✓ Set</span>
+                            ) : (
+                              <span className="text-gray-500">⊕ Add</span>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex gap-4 mt-6 pt-4 border-t">
                   <button
                     type="button"
                     onClick={() => {
                       setShowEditModal(false)
                       setCurrentSequence(null)
+                      setSequenceFlows([])
                       resetForm()
                     }}
                     className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-medium transition-colors"
                   >
                     Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                  >
+                    Update Sequence
                   </button>
                 </div>
               </form>
@@ -841,20 +970,15 @@ export default function Sequences() {
           </div>
         )}
 
-        {/* Flow Management Modal */}
-        {showFlowModal && currentSequence && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-            <div className="bg-white rounded-xl p-6 w-full max-w-6xl my-8 shadow-xl">
+        {/* Flow Edit Modal */}
+        {showFlowEditModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]">
+            <div className="bg-white rounded-xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-xl">
               <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-2xl font-bold text-gray-900">Manage Sequence Flows</h3>
-                  <p className="text-gray-600">Sequence: {currentSequence.name}</p>
-                </div>
+                <h3 className="text-2xl font-bold text-gray-900">Flow {currentFlowNumber} Message</h3>
                 <button
                   onClick={() => {
-                    setShowFlowModal(false)
-                    setCurrentSequence(null)
-                    setSequenceFlows([])
+                    setShowFlowEditModal(false)
                     resetFlowForm()
                   }}
                   className="text-gray-400 hover:text-gray-600 text-2xl"
@@ -863,122 +987,75 @@ export default function Sequences() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Flow Selector */}
-                <div>
-                  <h4 className="text-lg font-bold text-gray-900 mb-4">Select Flow to Edit (1-31)</h4>
-                  <div className="grid grid-cols-7 gap-2 mb-6">
-                    {Array.from({ length: 31 }, (_, i) => i + 1).map((flowNum) => {
-                      const flowExists = sequenceFlows.find(f => f.flow_number === flowNum)
-                      return (
-                        <button
-                          key={flowNum}
-                          onClick={() => loadFlowForEdit(flowNum)}
-                          className={`px-3 py-2 rounded-lg font-medium text-sm transition-colors ${
-                            currentFlow === flowNum
-                              ? 'bg-primary-600 text-white'
-                              : flowExists
-                              ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
-                        >
-                          {flowNum}
-                        </button>
-                      )
-                    })}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Step Trigger <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={flowFormData.step_trigger}
+                      onChange={(e) => setFlowFormData({ ...flowFormData, step_trigger: e.target.value })}
+                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      placeholder="e.g., FLOW1"
+                      required
+                    />
                   </div>
 
-                  {/* Flow Form */}
-                  <div className="bg-gray-50 rounded-lg p-4 space-y-4">
-                    <h5 className="font-bold text-gray-900">Flow {currentFlow} Settings</h5>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Step Trigger *</label>
-                      <input
-                        type="text"
-                        value={flowFormData.step_trigger}
-                        onChange={(e) => setFlowFormData({ ...flowFormData, step_trigger: e.target.value })}
-                        className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        placeholder="e.g., FLOW1"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Next Trigger</label>
-                      <input
-                        type="text"
-                        value={flowFormData.next_trigger}
-                        onChange={(e) => setFlowFormData({ ...flowFormData, next_trigger: e.target.value })}
-                        className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        placeholder="e.g., FLOW2"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Delay Hours *</label>
-                      <input
-                        type="number"
-                        value={flowFormData.delay_hours}
-                        onChange={(e) => setFlowFormData({ ...flowFormData, delay_hours: parseInt(e.target.value) })}
-                        className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        min="0"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Image URL</label>
-                      <input
-                        type="text"
-                        value={flowFormData.image_url}
-                        onChange={(e) => setFlowFormData({ ...flowFormData, image_url: e.target.value })}
-                        className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        placeholder="https://example.com/image.jpg"
-                      />
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="is-end"
-                        checked={flowFormData.is_end}
-                        onChange={(e) => setFlowFormData({ ...flowFormData, is_end: e.target.checked })}
-                        className="w-4 h-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                      />
-                      <label htmlFor="is-end" className="text-sm font-medium text-gray-700">
-                        This is the last flow in the sequence
-                      </label>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleSaveFlow(currentFlow)}
-                        disabled={!flowFormData.step_trigger || !flowFormData.message}
-                        className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
-                          !flowFormData.step_trigger || !flowFormData.message
-                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                            : 'bg-primary-600 hover:bg-primary-700 text-white'
-                        }`}
-                      >
-                        Save Flow {currentFlow}
-                      </button>
-                      {sequenceFlows.find(f => f.flow_number === currentFlow) && (
-                        <button
-                          onClick={() => {
-                            const flow = sequenceFlows.find(f => f.flow_number === currentFlow)
-                            if (flow) handleDeleteFlow(flow.id, currentFlow)
-                          }}
-                          className="px-4 py-2 bg-red-50 hover:bg-red-600 border border-red-200 hover:border-red-600 text-red-600 hover:text-white rounded-lg font-medium transition-colors"
-                        >
-                          Delete
-                        </button>
-                      )}
-                    </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Next Trigger</label>
+                    <input
+                      type="text"
+                      value={flowFormData.next_trigger}
+                      onChange={(e) => setFlowFormData({ ...flowFormData, next_trigger: e.target.value })}
+                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      placeholder="e.g., FLOW2"
+                    />
                   </div>
                 </div>
 
-                {/* Message Editor */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Delay Hours</label>
+                    <input
+                      type="number"
+                      value={flowFormData.delay_hours}
+                      onChange={(e) => setFlowFormData({ ...flowFormData, delay_hours: parseInt(e.target.value) || 0 })}
+                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      min="0"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Image URL</label>
+                    <input
+                      type="text"
+                      value={flowFormData.image_url}
+                      onChange={(e) => setFlowFormData({ ...flowFormData, image_url: e.target.value })}
+                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      placeholder="https://example.com/image.jpg"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="is-end"
+                    checked={flowFormData.is_end}
+                    onChange={(e) => setFlowFormData({ ...flowFormData, is_end: e.target.checked })}
+                    className="w-4 h-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="is-end" className="text-sm font-medium text-gray-700">
+                    This is the last flow in the sequence
+                  </label>
+                </div>
+
                 <div>
-                  <h4 className="text-lg font-bold text-gray-900 mb-4">Flow {currentFlow} Message</h4>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Message <span className="text-red-500">*</span>
+                  </label>
 
                   {/* Formatting Toolbar */}
                   <div className="flex gap-2 mb-2">
@@ -1021,7 +1098,7 @@ export default function Sequences() {
                     value={flowFormData.message}
                     onChange={(e) => setFlowFormData({ ...flowFormData, message: e.target.value })}
                     className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono"
-                    rows={20}
+                    rows={12}
                     placeholder="Type your message here...
 
 Use WhatsApp formatting:
@@ -1029,20 +1106,43 @@ Use WhatsApp formatting:
 _italic_
 ~strikethrough~
 ```monospace```"
+                    required
                   />
+                </div>
 
-                  <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <p className="text-sm text-blue-800">
-                      <strong>WhatsApp Formatting Tips:</strong>
-                    </p>
-                    <ul className="text-sm text-blue-700 mt-2 space-y-1">
-                      <li>• Select text and use toolbar buttons to format</li>
-                      <li>• *text* for <strong>bold</strong></li>
-                      <li>• _text_ for <em>italic</em></li>
-                      <li>• ~text~ for <s>strikethrough</s></li>
-                      <li>• ```text``` for monospace</li>
-                    </ul>
-                  </div>
+                <div className="flex gap-4 mt-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowFlowEditModal(false)
+                      resetFlowForm()
+                    }}
+                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-medium transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!flowFormData.step_trigger || !flowFormData.message) {
+                        Swal.fire({
+                          icon: 'warning',
+                          title: 'Missing Required Fields',
+                          text: 'Please fill in Step Trigger and Message',
+                        })
+                        return
+                      }
+
+                      if (currentSequence) {
+                        handleSaveFlowInEdit()
+                      } else {
+                        handleSaveFlowInCreate()
+                      }
+                    }}
+                    className="flex-1 bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                  >
+                    Save Flow
+                  </button>
                 </div>
               </div>
             </div>
