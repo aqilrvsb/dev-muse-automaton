@@ -161,8 +161,8 @@ export default function ChatbotAI() {
     // Total Lead - all conversations
     const lead = data.length
 
-    // Stuck Intro - conversations with null/empty stage
-    const stuck = data.filter(c => !c.stage || c.stage === null || c.stage === '').length
+    // Stuck Intro - conversations with stage = "Introduction"
+    const stuck = data.filter(c => c.stage === 'Introduction').length
 
     // Response - conversations with non-null stage
     const resp = data.filter(c => c.stage !== null && c.stage !== undefined && c.stage !== '').length
