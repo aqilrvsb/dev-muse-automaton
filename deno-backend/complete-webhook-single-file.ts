@@ -345,7 +345,8 @@ async function checkAndEnrollSequences(params: {
 
     // Create enrollment record
     // Calculate Malaysia timezone (UTC+8) for schedule_message column
-    const malaysiaTime = new Date(new Date().getTime() + (8 * 60 * 60 * 1000));
+    // Indonesia timezone is UTC+7, add 1 hour to get Malaysia timezone
+    const malaysiaTime = new Date(new Date().getTime() + (8 * 60 * 60 * 1000) + (1 * 60 * 60 * 1000));
 
     const { data: enrollment, error: enrollmentError } = await supabaseAdmin
       .from("sequence_enrollments")
