@@ -401,7 +401,7 @@ ${conv.conv_last || 'No conversation history'}
   const viewSequences = async (prospectNum: string) => {
     try {
       // Fetch scheduled messages from sequence_scheduled_messages table
-      // Join with sequences and sequence_flows to get stage trigger info
+      // Join with sequences to get stage trigger info
       const { data: scheduledMessages, error } = await supabase
         .from('sequence_scheduled_messages')
         .select(`
@@ -414,9 +414,6 @@ ${conv.conv_last || 'No conversation history'}
           sequence_id,
           sequences (
             trigger
-          ),
-          sequence_flows (
-            step_trigger
           )
         `)
         .eq('prospect_num', prospectNum)
