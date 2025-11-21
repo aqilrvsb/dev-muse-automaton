@@ -26,6 +26,7 @@ export default function DeviceSettings() {
   const [qrRefreshTrigger, setQrRefreshTrigger] = useState<number>(0)
   const qrRefreshTimerRef = useRef<NodeJS.Timeout | null>(null)
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const [showAPIKeyGuide, setShowAPIKeyGuide] = useState(false)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -672,32 +673,41 @@ export default function DeviceSettings() {
               </div>
             )}
           </div>
-          <button
-            onClick={() => {
-              const maxDevices = user?.max_devices || 0
-              const currentDeviceCount = devices.length
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowAPIKeyGuide(true)}
+              className="px-6 py-3 rounded-lg font-medium transition-colors shadow-sm bg-blue-600 hover:bg-blue-700 text-white"
+              title="Learn how to get OpenRouter API Key"
+            >
+              API Key
+            </button>
+            <button
+              onClick={() => {
+                const maxDevices = user?.max_devices || 0
+                const currentDeviceCount = devices.length
 
-              if (currentDeviceCount >= maxDevices) {
-                Swal.fire({
-                  icon: 'warning',
-                  title: 'Device Limit Reached!',
-                  html: `Your current plan allows <strong>${maxDevices} device(s)</strong> and you already have <strong>${currentDeviceCount} device(s)</strong>.<br><br>Please upgrade your plan to add more devices.`,
-                  confirmButtonText: 'OK',
-                })
-              } else {
-                setShowAddModal(true)
-              }
-            }}
-            disabled={devices.length >= (user?.max_devices || 0)}
-            className={`px-6 py-3 rounded-lg font-medium transition-colors shadow-sm ${
-              devices.length >= (user?.max_devices || 0)
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-primary-600 hover:bg-primary-700 text-white'
-            }`}
-            title={devices.length >= (user?.max_devices || 0) ? 'Device limit reached. Please upgrade your plan.' : 'Add a new WhatsApp device'}
-          >
-            + Add New Device
-          </button>
+                if (currentDeviceCount >= maxDevices) {
+                  Swal.fire({
+                    icon: 'warning',
+                    title: 'Device Limit Reached!',
+                    html: `Your current plan allows <strong>${maxDevices} device(s)</strong> and you already have <strong>${currentDeviceCount} device(s)</strong>.<br><br>Please upgrade your plan to add more devices.`,
+                    confirmButtonText: 'OK',
+                  })
+                } else {
+                  setShowAddModal(true)
+                }
+              }}
+              disabled={devices.length >= (user?.max_devices || 0)}
+              className={`px-6 py-3 rounded-lg font-medium transition-colors shadow-sm ${
+                devices.length >= (user?.max_devices || 0)
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-primary-600 hover:bg-primary-700 text-white'
+              }`}
+              title={devices.length >= (user?.max_devices || 0) ? 'Device limit reached. Please upgrade your plan.' : 'Add a new WhatsApp device'}
+            >
+              + Add New Device
+            </button>
+          </div>
         </div>
 
         {/* Devices List */}
@@ -1096,6 +1106,82 @@ export default function DeviceSettings() {
                 >
                   Close
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* API Key Guide Modal */}
+        {showAPIKeyGuide && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-2xl font-bold text-gray-900">How to Get OpenRouter API Key</h3>
+                  <button
+                    onClick={() => setShowAPIKeyGuide(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h4 className="font-bold text-blue-900 mb-2">Step 1: Sign Up & Login</h4>
+                    <ol className="list-decimal list-inside space-y-2 text-gray-700">
+                      <li>Go to <a href="https://openrouter.ai/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-medium">https://openrouter.ai/</a></li>
+                      <li>Sign up with your email</li>
+                      <li>Login to your account</li>
+                    </ol>
+                  </div>
+
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <h4 className="font-bold text-green-900 mb-2">Step 2: Add Credits</h4>
+                    <ol className="list-decimal list-inside space-y-2 text-gray-700">
+                      <li>Click on <strong>Profile</strong> at the top right corner</li>
+                      <li>Go to <strong>Credits</strong></li>
+                      <li>Reload at least <strong>$5 USD</strong></li>
+                    </ol>
+                  </div>
+
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                    <h4 className="font-bold text-purple-900 mb-2">Step 3: Create API Key</h4>
+                    <ol className="list-decimal list-inside space-y-2 text-gray-700">
+                      <li>Click on <strong>Profile</strong> at the top right corner again</li>
+                      <li>Go to <strong>Keys</strong></li>
+                      <li>Click <strong>Create API Key</strong></li>
+                      <li>Fill in the form - use <strong>No Expiration</strong></li>
+                      <li>Click <strong>Create</strong></li>
+                    </ol>
+                  </div>
+
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <h4 className="font-bold text-yellow-900 mb-2">Step 4: Save API Key</h4>
+                    <ol className="list-decimal list-inside space-y-2 text-gray-700">
+                      <li>Copy the API key that is generated</li>
+                      <li>Paste it in <strong>Device Settings</strong> under <strong>API Key (OpenRouter)</strong></li>
+                      <li>Click <strong>Save</strong></li>
+                    </ol>
+                  </div>
+
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <p className="text-red-900 font-medium">
+                      ⚠️ <strong>Important:</strong> Keep your API key secure and never share it publicly!
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex justify-end">
+                  <button
+                    onClick={() => setShowAPIKeyGuide(false)}
+                    className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                  >
+                    Got it!
+                  </button>
+                </div>
               </div>
             </div>
           </div>
