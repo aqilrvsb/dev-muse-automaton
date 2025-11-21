@@ -16,6 +16,7 @@ BEGIN
     status,
     is_active,
     subscription_status,
+    subscription_end,
     max_devices,
     created_at,
     updated_at
@@ -27,7 +28,8 @@ BEGIN
     'Trial',
     true,
     'inactive',
-    0,
+    NOW() + INTERVAL '2 days',
+    1,
     NOW(),
     NOW()
   );
