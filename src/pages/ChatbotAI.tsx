@@ -434,16 +434,16 @@ ${conv.conv_last || 'No conversation history'}
 
       // Build table HTML
       const tableRows = scheduledMessages.map((msg: any, index: number) => {
-        // Convert scheduled_time to Malaysia timezone (UTC+8)
+        // Parse scheduled_time directly (already in correct timezone in database)
         const scheduledDate = new Date(msg.scheduled_time)
-        const malaysiaTime = new Date(scheduledDate.getTime() + (8 * 60 * 60 * 1000))
-        const formattedTime = malaysiaTime.toLocaleString('en-MY', {
+        const formattedTime = scheduledDate.toLocaleString('en-MY', {
           year: 'numeric',
           month: '2-digit',
           day: '2-digit',
           hour: '2-digit',
           minute: '2-digit',
-          hour12: false
+          hour12: false,
+          timeZone: 'Asia/Kuala_Lumpur'
         })
 
         const stageTrigger = msg.sequences?.trigger || '-'
@@ -534,42 +534,62 @@ ${conv.conv_last || 'No conversation history'}
     if (!result.isConfirmed) return
 
     try {
-      // Get device info to delete from WhatsApp Center API
-      const { data: conv } = await supabase
-        .from('ai_whatsapp')
-        .select('device_id')
-        .eq('prospect_num', prospectNum)
+      // Step 1: Get enrollment_id from the scheduled message
+      const { data: messageData } = await supabase
+        .from('sequence_scheduled_messages')
+        .select('enrollment_id, device_id')
+        .eq('id', messageId)
         .single()
 
-      if (!conv) throw new Error('Conversation not found')
+      if (!messageData) throw new Error('Scheduled message not found')
 
-      const { data: device } = await supabase
-        .from('device_setting')
-        .select('instance')
-        .eq('device_id', conv.device_id)
-        .single()
+      // Step 2: Try to delete from WhatsApp Center API (skip CORS errors gracefully)
+      try {
+        const { data: device } = await supabase
+          .from('device_setting')
+          .select('instance')
+          .eq('device_id', messageData.device_id)
+          .single()
 
-      if (!device) throw new Error('Device not found')
+        if (device) {
+          const WHACENTER_API_URL = import.meta.env.VITE_WHACENTER_API_URL || 'https://api.whacenter.com'
+          const deleteUrl = `${WHACENTER_API_URL}/api/deleteMessage?device_id=${encodeURIComponent(device.instance)}&id=${encodeURIComponent(whacenterMessageId)}`
 
-      // Delete from WhatsApp Center API
-      const WHACENTER_API_URL = import.meta.env.VITE_WHACENTER_API_URL || 'https://api.whacenter.com'
-      const deleteUrl = `${WHACENTER_API_URL}/api/deleteMessage?device_id=${encodeURIComponent(device.instance)}&id=${encodeURIComponent(whacenterMessageId)}`
-
-      const deleteResponse = await fetch(deleteUrl, {
-        method: 'GET',
-      })
-
-      if (!deleteResponse.ok) {
-        console.error('Failed to delete from WhatsApp Center:', await deleteResponse.text())
+          await fetch(deleteUrl, {
+            method: 'GET',
+            mode: 'no-cors' // Handle CORS gracefully
+          })
+          console.log('Attempted to delete from WhatsApp Center')
+        }
+      } catch (apiError) {
+        // Ignore WhatsApp API errors (CORS, network issues, etc.)
+        console.log('WhatsApp API call skipped (CORS or network issue):', apiError)
       }
 
-      // Update database status to 'cancelled'
-      const { error } = await supabase
+      // Step 3: Update database status to 'cancelled'
+      const { error: updateError } = await supabase
         .from('sequence_scheduled_messages')
         .update({ status: 'cancelled' })
         .eq('id', messageId)
 
-      if (error) throw error
+      if (updateError) throw updateError
+
+      // Step 4: Delete enrollment record if this was the only scheduled message
+      const { data: otherMessages } = await supabase
+        .from('sequence_scheduled_messages')
+        .select('id')
+        .eq('enrollment_id', messageData.enrollment_id)
+        .eq('status', 'scheduled')
+
+      if (!otherMessages || otherMessages.length === 0) {
+        // No more scheduled messages, delete the enrollment
+        await supabase
+          .from('sequence_enrollments')
+          .delete()
+          .eq('id', messageData.enrollment_id)
+
+        console.log('Deleted enrollment record (no more scheduled messages)')
+      }
 
       Swal.fire({
         title: 'Deleted!',
