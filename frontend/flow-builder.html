@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flow Builder - PeningBot</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="stylesheet" href="assets/css/dashboard.css">
+    <link rel="stylesheet" href="assets/css/flow-builder.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+    <!-- Background Gradient -->
+    <div class="background-gradient"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" style="display: none;">
+        <div class="sidebar-header">
+            <div class="logo">
+                <span class="logo-icon">🤖</span>
+                <h1 class="logo-text">
+                    <span class="logo-dev">Dev</span><span class="logo-muse">Muse</span>
+                </h1>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="dashboard.html" class="nav-item">
+                <span class="nav-icon">📊</span>
+                <span class="nav-text">Dashboard</span>
+            </a>
+            <a href="device-settings.html" class="nav-item">
+                <span class="nav-icon">⚙️</span>
+                <span class="nav-text">Device Settings</span>
+            </a>
+            <a href="profile.html" class="nav-item">
+                <span class="nav-icon">👤</span>
+                <span class="nav-text">Profile</span>
+            </a>
+            <a href="/billings.html" class="nav-item">
+                <span class="nav-icon">💳</span>
+                <span class="nav-text">Billings</span>
+            </a>
+            <a href="/packages.html" class="nav-item" id="packagesTab" style="display: none;">
+                <span class="nav-icon">💳</span>
+                <span class="nav-text">Billings</span>
+            </a>
+            <a href="set-stage.html" class="nav-item">
+                <span class="nav-icon">🎯</span>
+                <span class="nav-text">Set Stage</span>
+            </a>
+            <a href="flow-builder.html" class="nav-item active">
+                <span class="nav-icon">🔀</span>
+                <span class="nav-text">Flow Builder</span>
+            </a>
+            <a href="flow-manager.html" class="nav-item">
+                <span class="nav-icon">📋</span>
+                <span class="nav-text">Flow Manager</span>
+            </a>
+            <a href="/chatbot-ai.html" class="nav-item">
+                <span class="nav-icon">🤖</span>
+                <span class="nav-text">Chatbot AI</span>
+            </a>
+            <a href="/whatsapp-bot.html" class="nav-item">
+                <span class="nav-icon">💬</span>
+                <span class="nav-text">WhatsApp Bot</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">👤</div>
+                <div class="user-details">
+                    <div class="user-email" id="userEmail">Loading...</div>
+                    <button class="btn-logout" onclick="logout()">Logout</button>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content" style="margin-left: 0;">
+        <!-- Header -->
+        <header class="page-header">
+            <div class="header-content">
+                <div>
+                    <h1 class="page-title">Flow Builder</h1>
+                    <p class="page-subtitle">Design and build your conversational flows</p>
+                </div>
+            </div>
+        </header>
+
+        <!-- Flow Controls Section -->
+        <div class="flow-controls-section">
+            <div class="control-group">
+                <label for="deviceSelect">Device *</label>
+                <select id="deviceSelect" onchange="loadFlowForDevice()">
+                    <option value="">Select a device...</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="flowNameSelect">Flow Type *</label>
+                <select id="flowNameSelect">
+                    <option value="">Select flow type...</option>
+                    <option value="Chatbot AI">Chatbot AI</option>
+                    <option value="Whatsapp Bot">Whatsapp Bot</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="nicheInput">Niche</label>
+                <input type="text" id="nicheInput" placeholder="Enter your niche...">
+            </div>
+        </div>
+
+        <!-- Flow Builder Container -->
+        <div class="flow-builder-container">
+            <!-- Left Sidebar - Nodes Panel -->
+            <div class="nodes-panel">
+                <div class="panel-section">
+                    <h3 class="panel-title">Add Nodes</h3>
+
+                    <div class="node-item" draggable="true" data-node-type="send_message">
+                        <span class="node-icon">💬</span>
+                        <span class="node-label">Send Message</span>
+                    </div>
+
+                    <div class="node-item" draggable="true" data-node-type="waiting_reply">
+                        <span class="node-icon">💭</span>
+                        <span class="node-label">Waiting Reply</span>
+                    </div>
+
+                    <div class="node-item" draggable="true" data-node-type="waiting_times">
+                        <span class="node-icon">⏳</span>
+                        <span class="node-label">Waiting Times</span>
+                    </div>
+
+                    <div class="node-item" draggable="true" data-node-type="ai_prompt">
+                        <span class="node-icon">✨</span>
+                        <span class="node-label">AI Prompt</span>
+                    </div>
+
+                    <div class="node-item" draggable="true" data-node-type="stage">
+                        <span class="node-icon">🎯</span>
+                        <span class="node-label">Stage</span>
+                    </div>
+
+                    <div class="node-item" draggable="true" data-node-type="send_image">
+                        <span class="node-icon">🖼️</span>
+                        <span class="node-label">Send Image</span>
+                    </div>
+
+                    <div class="node-item" draggable="true" data-node-type="send_audio">
+                        <span class="node-icon">🔊</span>
+                        <span class="node-label">Send Audio</span>
+                    </div>
+
+                    <div class="node-item" draggable="true" data-node-type="send_video">
+                        <span class="node-icon">🎥</span>
+                        <span class="node-label">Send Video</span>
+                    </div>
+
+                    <div class="node-item" draggable="true" data-node-type="delay">
+                        <span class="node-icon">⏱️</span>
+                        <span class="node-label">Delay</span>
+                    </div>
+
+                    <div class="node-item" draggable="true" data-node-type="conditions">
+                        <span class="node-icon">🔀</span>
+                        <span class="node-label">Conditions</span>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h3 class="panel-title">Actions</h3>
+
+                    <button class="action-btn" onclick="clearCanvas()">
+                        <span>🗑️</span>
+                        <span>Clear Canvas</span>
+                    </button>
+
+                    <button class="action-btn" onclick="exportFlow()">
+                        <span>📤</span>
+                        <span>Export</span>
+                    </button>
+
+                    <button class="action-btn" onclick="importFlow()">
+                        <span>📥</span>
+                        <span>Import</span>
+                    </button>
+
+                    <button class="action-btn" onclick="saveFlow()">
+                        <span>💾</span>
+                        <span>Save Flow</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Canvas Area -->
+            <div class="canvas-container">
+                <!-- Zoom Controls -->
+                <div class="zoom-controls">
+                    <button class="zoom-btn" onclick="zoomIn()" title="Zoom In">
+                        <span>🔍+</span>
+                    </button>
+                    <span id="zoomLevel" class="zoom-level">100%</span>
+                    <button class="zoom-btn" onclick="zoomOut()" title="Zoom Out">
+                        <span>🔍-</span>
+                    </button>
+                    <button class="zoom-btn" onclick="resetZoom()" title="Reset Zoom">
+                        <span>↺</span>
+                    </button>
+                </div>
+
+                <!-- SVG Layer for Connections -->
+                <svg id="connectionLayer" class="connection-layer">
+                    <!-- Edge lines will be drawn here -->
+                </svg>
+
+                <div id="flowCanvas" class="flow-canvas">
+                    <!-- Start Node (always present) -->
+                    <div class="flow-node start-node" data-node-id="start" style="top: 50px; left: 50%;">
+                        <div class="node-header start-header">
+                            <span class="node-icon">▶️</span>
+                            <span class="node-title">Start</span>
+                        </div>
+                        <div class="node-body">
+                            <p>Flow begins here</p>
+                        </div>
+                        <div class="node-connector output-connector" data-connector-type="output"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Node Configuration Modal -->
+    <div id="nodeConfigModal" class="modal">
+        <div class="modal-content node-config-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="nodeConfigTitle">Configure Node</h2>
+                <button class="modal-close" onclick="closeNodeConfigModal()">&times;</button>
+            </div>
+
+            <form id="nodeConfigForm" onsubmit="saveNodeConfig(event)">
+                <div id="nodeConfigFields"></div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeNodeConfigModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="assets/js/flow-builder.js"></script>
+</body>
+</html>

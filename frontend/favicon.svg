@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e50914;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ffd700;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Robot head -->
+  <rect x="25" y="30" width="50" height="50" rx="10" fill="url(#grad)"/>
+
+  <!-- Robot antenna -->
+  <circle cx="50" cy="20" r="4" fill="#ffd700"/>
+  <line x1="50" y1="24" x2="50" y2="30" stroke="#ffd700" stroke-width="2"/>
+
+  <!-- Robot eyes -->
+  <circle cx="38" cy="45" r="5" fill="#fff"/>
+  <circle cx="62" cy="45" r="5" fill="#fff"/>
+  <circle cx="38" cy="45" r="2" fill="#141414"/>
+  <circle cx="62" cy="45" r="2" fill="#141414"/>
+
+  <!-- Robot mouth -->
+  <rect x="40" y="62" width="20" height="8" rx="2" fill="#141414"/>
+  <line x1="45" y1="62" x2="45" y2="70" stroke="#fff" stroke-width="1"/>
+  <line x1="50" y1="62" x2="50" y2="70" stroke="#fff" stroke-width="1"/>
+  <line x1="55" y1="62" x2="55" y2="70" stroke="#fff" stroke-width="1"/>
+</svg>

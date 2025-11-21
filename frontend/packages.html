@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Packages - PeningBot</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="stylesheet" href="/assets/css/dashboard.css">
+    <link rel="stylesheet" href="/assets/css/device-settings.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+    <div class="background-gradient"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <span class="logo-icon">🤖</span>
+                <span class="logo-text">
+                    <span class="logo-dev">Dev</span><span class="logo-muse">Muse</span>
+                </span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="/dashboard.html" class="nav-item">
+                <span class="nav-icon">📊</span>
+                <span class="nav-text">Dashboard</span>
+            </a>
+            <a href="/device-settings.html" class="nav-item">
+                <span class="nav-icon">📱</span>
+                <span class="nav-text">Device Settings</span>
+            </a>
+            <a href="/profile.html" class="nav-item">
+                <span class="nav-icon">👤</span>
+                <span class="nav-text">Profile</span>
+            </a>
+            <a href="/billings.html" class="nav-item">
+                <span class="nav-icon">💳</span>
+                <span class="nav-text">Billings</span>
+            </a>
+            <a href="/packages.html" class="nav-item active">
+                <span class="nav-icon">📦</span>
+                <span class="nav-text">Packages</span>
+            </a>
+            <a href="/set-stage.html" class="nav-item">
+                <span class="nav-icon">🎯</span>
+                <span class="nav-text">Set Stage</span>
+            </a>
+            <a href="/flow-builder.html" class="nav-item">
+                <span class="nav-icon">🔀</span>
+                <span class="nav-text">Flow Builder</span>
+            </a>
+            <a href="/flow-manager.html" class="nav-item">
+                <span class="nav-icon">📋</span>
+                <span class="nav-text">Flow Manager</span>
+            </a>
+            <a href="/chatbot-ai.html" class="nav-item">
+                <span class="nav-icon">🤖</span>
+                <span class="nav-text">Chatbot AI</span>
+            </a>
+            <a href="/whatsapp-bot.html" class="nav-item">
+                <span class="nav-icon">💬</span>
+                <span class="nav-text">WhatsApp Bot</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">👤</div>
+                <div class="user-details">
+                    <div class="user-email" id="userEmail">Loading...</div>
+                    <button class="btn-logout" onclick="logout()">Logout</button>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="content-wrapper">
+            <!-- Page Header -->
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Packages</h1>
+                    <p class="page-subtitle">Manage billing packages (Admin Only)</p>
+                </div>
+                <button class="btn-new-device" onclick="openPackageModal()">
+                    <span class="btn-icon">+</span>
+                    <span>New Package</span>
+                </button>
+            </div>
+
+            <!-- Packages List -->
+            <div id="packagesList" class="devices-grid">
+                <div class="empty-state">
+                    <div class="empty-state-icon">📦</div>
+                    <h2 class="empty-state-title">No Packages Yet</h2>
+                    <p class="empty-state-text">Click "New Package" to add your first billing package</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Package Modal -->
+    <div id="packageModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalTitle">Add New Package</h2>
+                <button class="modal-close" onclick="closePackageModal()">&times;</button>
+            </div>
+
+            <form id="packageForm" onsubmit="savePackage(event)">
+                <div class="form-section">
+                    <div class="form-group">
+                        <label for="packageName">Package Name</label>
+                        <input type="text" id="packageName" placeholder="e.g., Basic Plan, Pro Plan" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="packageAmount">Amount (RM)</label>
+                        <input type="text" id="packageAmount" placeholder="e.g., 100.00" required>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closePackageModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Package</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/assets/js/packages.js"></script>
+</body>
+</html>

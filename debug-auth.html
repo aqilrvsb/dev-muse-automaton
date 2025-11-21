@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Auth</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+        }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>Auth Debug Tool</h1>
+    <button onclick="checkAuth()">Check Auth Status</button>
+    <button onclick="clearAndReload()">Clear All & Reload</button>
+    <div id="results"></div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+        const SUPABASE_URL = 'https://bjnjucwpwdzgsnqmpmff.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqbmp1Y3dwd2R6Z3NucW1wbWZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0OTk1MzksImV4cCI6MjA3NjA3NTUzOX0.vw1rOUqYWFkPNDwTdEgIfsCO9pyvTsFKaXHq3RcRTNU';
+
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        window.supabase = supabase;
+
+        window.checkAuth = async function() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<div class="status">Checking...</div>';
+
+            try {
+                // 1. Check session
+                const { data: { session }, error } = await supabase.auth.getSession();
+
+                results.innerHTML += `<div class="status ${session ? 'success' : 'error'}">
+                    <strong>Session:</strong> ${session ? 'EXISTS' : 'NONE'}<br>
+                    ${session ? `User ID: ${session.user.id}<br>Email: ${session.user.email}` : 'Not logged in'}
+                </div>`;
+
+                if (!session) {
+                    results.innerHTML += '<div class="status error">No session found. Try logging in first.</div>';
+                    return;
+                }
+
+                // 2. Check user in database
+                const { data: userData, error: userError } = await supabase
+                    .from('user')
+                    .select('*')
+                    .eq('id', session.user.id)
+                    .single();
+
+                results.innerHTML += `<div class="status ${userData ? 'success' : 'error'}">
+                    <strong>User in DB:</strong> ${userData ? 'EXISTS' : 'NOT FOUND'}<br>
+                    ${userData ? `Name: ${userData.full_name}<br>Active: ${userData.is_active}<br>Status: ${userData.status}` : `Error: ${userError?.message}`}
+                </div>`;
+
+                // 3. Check localStorage (should be empty now)
+                const hasLocalStorage = localStorage.getItem('auth_token') !== null;
+                results.innerHTML += `<div class="status ${hasLocalStorage ? 'error' : 'success'}">
+                    <strong>localStorage auth_token:</strong> ${hasLocalStorage ? 'EXISTS (BAD!)' : 'NONE (GOOD!)'}
+                </div>`;
+
+            } catch (err) {
+                results.innerHTML += `<div class="status error">
+                    <strong>Error:</strong> ${err.message}
+                </div>`;
+            }
+        };
+
+        window.clearAndReload = function() {
+            localStorage.clear();
+            sessionStorage.clear();
+            alert('Cleared all storage. Click OK to reload.');
+            window.location.reload();
+        };
+
+        // Auto-check on load
+        window.addEventListener('DOMContentLoaded', checkAuth);
+    </script>
+</body>
+</html>

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - PeningBot</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="stylesheet" href="/assets/css/dashboard.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+    <div class="background-gradient"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <span class="logo-icon">🤖</span>
+                <span class="logo-text">
+                    <span class="logo-dev">Dev</span><span class="logo-muse">Muse</span>
+                </span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="/dashboard.html" class="nav-item active">
+                <span class="nav-icon">📊</span>
+                <span class="nav-text">Dashboard</span>
+            </a>
+            <a href="/device-settings.html" class="nav-item">
+                <span class="nav-icon">📱</span>
+                <span class="nav-text">Device Settings</span>
+            </a>
+            <a href="/profile.html" class="nav-item">
+                <span class="nav-icon">👤</span>
+                <span class="nav-text">Profile</span>
+            </a>
+            <a href="/billings.html" class="nav-item">
+                <span class="nav-icon">💳</span>
+                <span class="nav-text">Billings</span>
+            </a>
+            <a href="/packages.html" class="nav-item" id="packagesTab" style="display: none;">
+                <span class="nav-icon">📦</span>
+                <span class="nav-text">Packages</span>
+            </a>
+            <a href="/chatbot-ai.html" class="nav-item">
+                <span class="nav-icon">🤖</span>
+                <span class="nav-text">Chatbot AI</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">👤</div>
+                <div class="user-details">
+                    <div class="user-email" id="userEmail">Loading...</div>
+                    <button class="btn-logout" onclick="logout()">Logout</button>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="content-wrapper">
+            <!-- Page Header -->
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Dashboard</h1>
+                    <p class="page-subtitle">Welcome back! Here's what's happening with your chatbot automation.</p>
+                </div>
+                <div class="header-status">
+                    <span class="status-indicator">●</span>
+                    <span class="status-text" id="systemStatus">System Online (Pro)</span>
+                </div>
+            </div>
+
+            <!-- Filter Section -->
+            <div class="filter-section">
+                <div class="filter-container">
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label for="deviceFilter">Device</label>
+                            <select id="deviceFilter" class="filter-select" onchange="applyFilters()">
+                                <option value="">All Devices</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="stageFilter">Stage</label>
+                            <select id="stageFilter" class="filter-select" onchange="applyFilters()">
+                                <option value="">All Stages</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="startDateFilter">Start Date</label>
+                            <input type="date" id="startDateFilter" class="filter-date-input" onchange="applyFilters()">
+                        </div>
+                        <div class="filter-group">
+                            <label for="endDateFilter">End Date</label>
+                            <input type="date" id="endDateFilter" class="filter-date-input" onchange="applyFilters()">
+                        </div>
+                    </div>
+                    <div class="filter-actions">
+                        <button class="btn-reset" onclick="resetFilters()">Reset Filters</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics Cards -->
+            <div class="analytics-grid">
+                <div class="analytics-card">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        <span>📊</span>
+                    </div>
+                    <div class="card-content">
+                        <div class="card-label">Total Conversations</div>
+                        <div class="card-value" id="totalConversations">0</div>
+                        <div class="card-change" id="totalChange">Chatbot AI + WhatsApp Bot</div>
+                    </div>
+                </div>
+
+                <div class="analytics-card">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                        <span>🤖</span>
+                    </div>
+                    <div class="card-content">
+                        <div class="card-label">Chatbot AI</div>
+                        <div class="card-value" id="chatbotAICount">0</div>
+                        <div class="card-change" id="chatbotAIPercent">0% of total</div>
+                    </div>
+                </div>
+
+                <div class="analytics-card">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                        <span>💬</span>
+                    </div>
+                    <div class="card-content">
+                        <div class="card-label">WhatsApp Bot</div>
+                        <div class="card-value" id="whatsappBotCount">0</div>
+                        <div class="card-change" id="whatsappBotPercent">0% of total</div>
+                    </div>
+                </div>
+
+                <div class="analytics-card">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                        <span>📱</span>
+                    </div>
+                    <div class="card-content">
+                        <div class="card-label">Active Devices</div>
+                        <div class="card-value" id="activeDevices">0</div>
+                        <div class="card-change" id="devicesChange">Across both platforms</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Combined Line Chart -->
+            <div class="chart-section">
+                <div class="chart-card full-width">
+                    <div class="chart-header">
+                        <h3 class="chart-title">Daily Conversation Trends</h3>
+                        <p class="chart-subtitle">Combined view of Chatbot AI and WhatsApp Bot conversations over time</p>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="combinedTrendsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Side by Side Stage Distribution Charts -->
+            <div class="chart-section">
+                <div class="chart-row">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3 class="chart-title">Chatbot AI - Stage Distribution</h3>
+                            <p class="chart-subtitle">Conversation breakdown by stage</p>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="chatbotAIStageChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3 class="chart-title">WhatsApp Bot - Stage Distribution</h3>
+                            <p class="chart-subtitle">Conversation breakdown by stage</p>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="whatsappBotStageChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Additional Charts Row -->
+            <div class="chart-section">
+                <div class="chart-row">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3 class="chart-title">Device Distribution</h3>
+                            <p class="chart-subtitle">Conversations per device</p>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="deviceDistributionChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3 class="chart-title">Source Comparison</h3>
+                            <p class="chart-subtitle">Chatbot AI vs WhatsApp Bot</p>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="sourceComparisonChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="/assets/css/device-settings.css">
+    <script type="module">
+        import { checkDashboardAuth, getCurrentSession, getCurrentUserProfile } from '/assets/js/dashboard-auth-check.js';
+        import { supabase, handleLogout } from '/assets/js/auth.js';
+
+        // Check authentication before loading dashboard
+        const session = await checkDashboardAuth();
+
+        if (session) {
+            // Make supabase and utilities globally available for dashboard.js
+            window.supabase = supabase;
+            window.currentSession = session;
+            window.logout = handleLogout;
+            window.getCurrentUserProfile = getCurrentUserProfile;
+
+            // Load dashboard script dynamically after auth check passes
+            const script = document.createElement('script');
+            script.src = '/assets/js/dashboard.js';
+            document.body.appendChild(script);
+        }
+    </script>
+</body>
+</html>

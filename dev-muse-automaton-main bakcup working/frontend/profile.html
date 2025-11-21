@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - DevMuse Automaton</title>
+    <link rel="stylesheet" href="/assets/css/dashboard.css">
+    <link rel="stylesheet" href="/assets/css/profile.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+    <div class="background-gradient"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <span class="logo-icon">🤖</span>
+                <span class="logo-text">
+                    <span class="logo-dev">Dev</span><span class="logo-muse">Muse</span>
+                </span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="/dashboard.html" class="nav-item">
+                <span class="nav-icon">📊</span>
+                <span class="nav-text">Dashboard</span>
+            </a>
+            <a href="/device-settings.html" class="nav-item">
+                <span class="nav-icon">📱</span>
+                <span class="nav-text">Device Settings</span>
+            </a>
+            <a href="/profile.html" class="nav-item active">
+                <span class="nav-icon">👤</span>
+                <span class="nav-text">Profile</span>
+            </a>
+            <a href="/billings.html" class="nav-item">
+                <span class="nav-icon">💳</span>
+                <span class="nav-text">Billings</span>
+            </a>
+            <a href="/set-stage.html" class="nav-item">
+                <span class="nav-icon">🎯</span>
+                <span class="nav-text">Set Stage</span>
+            </a>
+            <a href="/flow-builder.html" class="nav-item">
+                <span class="nav-icon">🔀</span>
+                <span class="nav-text">Flow Builder</span>
+            </a>
+            <a href="/flow-manager.html" class="nav-item">
+                <span class="nav-icon">📋</span>
+                <span class="nav-text">Flow Manager</span>
+            </a>
+            <a href="/chatbot-ai.html" class="nav-item">
+                <span class="nav-icon">🤖</span>
+                <span class="nav-text">Chatbot AI</span>
+            </a>
+            <a href="/whatsapp-bot.html" class="nav-item">
+                <span class="nav-icon">💬</span>
+                <span class="nav-text">WhatsApp Bot</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">👤</div>
+                <div class="user-details">
+                    <div class="user-email" id="userEmail">Loading...</div>
+                    <button class="btn-logout" onclick="logout()">Logout</button>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="content-wrapper">
+            <!-- Page Header -->
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Profile Settings</h1>
+                    <p class="page-subtitle">Manage your account information and preferences</p>
+                </div>
+            </div>
+
+            <!-- Profile Grid -->
+            <div class="profile-grid">
+                <!-- Profile Information Card -->
+                <div class="profile-card">
+                    <div class="card-header">
+                        <span class="card-icon">👤</span>
+                        <h2 class="card-title">Profile Information</h2>
+                    </div>
+                    <p class="card-subtitle">Your personal information and contact details</p>
+
+                    <div class="info-group">
+                        <label>Full Name</label>
+                        <div class="info-value" id="fullName">Loading...</div>
+                    </div>
+
+                    <div class="info-group">
+                        <label>Email</label>
+                        <div class="info-value" id="email">Loading...</div>
+                        <span class="info-note">Email cannot be changed</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="gmailInput">Gmail (Optional)</label>
+                        <input type="email" id="gmailInput" placeholder="Enter your Gmail address">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="phoneInput">Phone Number (Optional)</label>
+                        <input type="text" id="phoneInput" placeholder="Enter your phone number">
+                    </div>
+
+                    <button type="button" class="btn-save-profile" onclick="saveProfile()">
+                        <span>Save Profile</span>
+                    </button>
+                </div>
+
+                <!-- Account Status Card -->
+                <div class="profile-card">
+                    <div class="card-header">
+                        <span class="card-icon">🔒</span>
+                        <h2 class="card-title">Account Status</h2>
+                    </div>
+                    <p class="card-subtitle">Your account information and status</p>
+
+                    <div class="info-group">
+                        <label>Status</label>
+                        <span class="status-badge" id="status">Loading...</span>
+                    </div>
+
+                    <div class="info-group">
+                        <label>Expires</label>
+                        <div class="info-value" id="expired">-</div>
+                    </div>
+
+                    <div class="info-group">
+                        <label>Member Since</label>
+                        <div class="info-value" id="createdAt">Loading...</div>
+                    </div>
+
+                    <div class="info-group">
+                        <label>Last Login</label>
+                        <div class="info-value" id="lastLogin">Loading...</div>
+                    </div>
+
+                    <div class="info-group">
+                        <label>Account ID</label>
+                        <div class="info-value account-id" id="accountId">Loading...</div>
+                    </div>
+                </div>
+
+                <!-- Change Password Card -->
+                <div class="profile-card password-card">
+                    <div class="card-header">
+                        <span class="card-icon">🔑</span>
+                        <h2 class="card-title">Change Password</h2>
+                    </div>
+                    <p class="card-subtitle">Update your password to keep your account secure</p>
+
+                    <form id="passwordForm" onsubmit="changePassword(event)">
+                        <div class="form-group">
+                            <label for="currentPassword">Current Password</label>
+                            <input type="password" id="currentPassword" required placeholder="Enter current password">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="newPassword">New Password</label>
+                            <input type="password" id="newPassword" required placeholder="Enter new password" minlength="6">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="confirmPassword">Confirm New Password</label>
+                            <input type="password" id="confirmPassword" required placeholder="Confirm new password" minlength="6">
+                        </div>
+
+                        <button type="submit" class="btn-change-password">
+                            <span>Change Password</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/assets/js/profile.js"></script>
+</body>
+</html>
