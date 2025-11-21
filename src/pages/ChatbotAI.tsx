@@ -18,17 +18,6 @@ type AIConversation = {
   detail: string
 }
 
-type ScheduledMessage = {
-  id: string
-  sequence_id: string
-  stage_trigger: string
-  flow_number: number
-  image_url: string | null
-  message: string
-  schedule_message: string
-  whacenter_message_id: string
-}
-
 export default function ChatbotAI() {
   const { user } = useAuth()
   const [conversations, setConversations] = useState<AIConversation[]>([])
