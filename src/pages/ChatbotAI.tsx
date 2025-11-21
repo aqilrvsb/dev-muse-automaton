@@ -461,7 +461,7 @@ ${conv.conv_last || 'No conversation history'}
             <td style="padding: 12px; text-align: left;">${formattedTime}</td>
             <td style="padding: 12px; text-align: center;">
               <button
-                onclick="deleteScheduledMessage('${msg.id}', '${msg.whacenter_message_id}', '${prospectNum}')"
+                onclick="deleteScheduledMessage('${msg.id}', '${msg.whacenter_message_id}')"
                 style="background: #ef4444; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600;"
               >
                 🗑️ Delete
@@ -498,8 +498,8 @@ ${conv.conv_last || 'No conversation history'}
         confirmButtonColor: '#667eea',
         didOpen: () => {
           // Attach delete function to window for button onclick handlers
-          (window as any).deleteScheduledMessage = async (messageId: string, whacenterMessageId: string, phone: string) => {
-            await deleteScheduledMessage(messageId, whacenterMessageId, phone)
+          (window as any).deleteScheduledMessage = async (messageId: string, whacenterMessageId: string) => {
+            await deleteScheduledMessage(messageId, whacenterMessageId)
             // Close and reopen modal with updated data
             Swal.close()
             viewSequences(prospectNum)
@@ -519,7 +519,7 @@ ${conv.conv_last || 'No conversation history'}
   }
 
   // Delete a specific scheduled message
-  const deleteScheduledMessage = async (messageId: string, whacenterMessageId: string, prospectNum: string) => {
+  const deleteScheduledMessage = async (messageId: string, whacenterMessageId: string) => {
     const result = await Swal.fire({
       title: 'Delete Scheduled Message?',
       text: 'This will cancel the scheduled message from WhatsApp Center',
