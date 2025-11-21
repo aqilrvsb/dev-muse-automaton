@@ -469,7 +469,7 @@ ${conv.conv_last || 'No conversation history'}
   const viewSequences = async (prospectNum: string) => {
     try {
       // Fetch scheduled messages from sequence_scheduled_messages table
-      // Join with sequences to get stage trigger info
+      // Join with sequence_enrollments to get the correct schedule_message time
       const { data: scheduledMessages, error } = await supabase
         .from('sequence_scheduled_messages')
         .select(`
@@ -477,11 +477,13 @@ ${conv.conv_last || 'No conversation history'}
           flow_number,
           message,
           image_url,
-          scheduled_time,
           whacenter_message_id,
           sequence_id,
           sequences (
             trigger
+          ),
+          sequence_enrollments!inner (
+            schedule_message
           )
         `)
         .eq('prospect_num', prospectNum)
@@ -502,10 +504,11 @@ ${conv.conv_last || 'No conversation history'}
 
       // Build table HTML
       const tableRows = scheduledMessages.map((msg: any, index: number) => {
-        // Format scheduled_time directly from database value without any timezone conversion
-        // Database format: 2025-11-21T08:33:14.418+00 or 2025-11-21 08:33:14.418+00
-        // Display format: 21/11/2025, 08:33
-        const timestamp = msg.scheduled_time.replace('T', ' ').split('.')[0]
+        // Format schedule_message from sequence_enrollments
+        // Database format: 2025-11-21 19:16:04.165+00
+        // Display format: 21/11/2025, 19:16
+        const scheduleMessage = msg.sequence_enrollments?.schedule_message || msg.scheduled_time
+        const timestamp = scheduleMessage.replace('T', ' ').split('.')[0]
         const [datePart, timePart] = timestamp.split(' ')
         const [year, month, day] = datePart.split('-')
         const [hour, minute] = timePart.split(':')
