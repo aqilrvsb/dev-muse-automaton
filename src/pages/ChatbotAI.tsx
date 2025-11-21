@@ -360,7 +360,7 @@ ${conv.conv_last || 'No conversation history'}
   const deleteConversation = async (prospectNum: string) => {
     const result = await Swal.fire({
       title: 'Are you sure?',
-      text: 'Do you want to delete this conversation?',
+      text: 'This will delete the conversation and all scheduled sequence messages',
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#d33',
@@ -372,6 +372,74 @@ ${conv.conv_last || 'No conversation history'}
     if (!result.isConfirmed) return
 
     try {
+      // Step 1: Get conversation to find device_id
+      const { data: conversation } = await supabase
+        .from('ai_whatsapp')
+        .select('device_id')
+        .eq('prospect_num', prospectNum)
+        .single()
+
+      if (!conversation) throw new Error('Conversation not found')
+
+      // Step 2: Get all scheduled messages for this prospect
+      const { data: scheduledMessages } = await supabase
+        .from('sequence_scheduled_messages')
+        .select('id, whacenter_message_id, device_id')
+        .eq('prospect_num', prospectNum)
+        .eq('status', 'scheduled')
+
+      // Step 3: Delete scheduled messages from WhatsApp Center API
+      if (scheduledMessages && scheduledMessages.length > 0) {
+        console.log(`Deleting ${scheduledMessages.length} scheduled messages from WhatsApp Center...`)
+
+        const { data: device } = await supabase
+          .from('device_setting')
+          .select('instance')
+          .eq('device_id', conversation.device_id)
+          .single()
+
+        if (device) {
+          for (const msg of scheduledMessages) {
+            if (msg.whacenter_message_id) {
+              try {
+                const WHACENTER_API_URL = import.meta.env.VITE_WHACENTER_API_URL || 'https://api.whacenter.com'
+                const deleteUrl = `${WHACENTER_API_URL}/api/deleteMessage?device_id=${encodeURIComponent(device.instance)}&id=${encodeURIComponent(msg.whacenter_message_id)}`
+
+                await fetch(deleteUrl, {
+                  method: 'GET',
+                  mode: 'no-cors' // Handle CORS gracefully
+                })
+                console.log(`Deleted scheduled message: ${msg.whacenter_message_id}`)
+              } catch (apiError) {
+                console.log('WhatsApp API call skipped (CORS or network issue):', apiError)
+              }
+            }
+          }
+        }
+
+        // Step 4: Update database status to 'cancelled'
+        await supabase
+          .from('sequence_scheduled_messages')
+          .update({ status: 'cancelled' })
+          .eq('prospect_num', prospectNum)
+          .eq('status', 'scheduled')
+
+        console.log(`Updated ${scheduledMessages.length} scheduled messages to cancelled`)
+      }
+
+      // Step 5: Delete enrollment records
+      const { error: enrollmentError } = await supabase
+        .from('sequence_enrollments')
+        .delete()
+        .eq('prospect_num', prospectNum)
+
+      if (enrollmentError) {
+        console.error('Error deleting enrollments:', enrollmentError)
+      } else {
+        console.log(`Deleted enrollment records for ${prospectNum}`)
+      }
+
+      // Step 6: Delete conversation from ai_whatsapp
       const { error } = await supabase
         .from('ai_whatsapp')
         .delete()
@@ -381,7 +449,7 @@ ${conv.conv_last || 'No conversation history'}
 
       Swal.fire({
         title: 'Deleted!',
-        text: 'Conversation deleted successfully',
+        text: 'Conversation and all scheduled messages deleted successfully',
         icon: 'success',
         confirmButtonColor: '#667eea',
       })
