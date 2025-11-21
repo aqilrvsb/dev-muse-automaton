@@ -508,7 +508,7 @@ async function executePromptBasedFlow(params: {
   if (device.user_id) {
     const { data: userData } = await supabaseAdmin
       .from("user")
-      .select("role, subscription_end")
+      .select("role, subscription_status, subscription_end")
       .eq("id", device.user_id)
       .single();
 
@@ -516,7 +516,7 @@ async function executePromptBasedFlow(params: {
       // Admin users never expire
       const isAdmin = userData.role === 'admin';
 
-      if (!isAdmin && userData.subscription_end) {
+      if (!isAdmin && userData.subscription_status === 'active' && userData.subscription_end) {
         const today = new Date();
         const endDate = new Date(userData.subscription_end);
 
@@ -528,6 +528,14 @@ async function executePromptBasedFlow(params: {
 
         if (isExpired) {
           console.log(`⚠️  Subscription expired for user ${device.user_id}. Deleting device from WhatsApp Center...`);
+
+          // Update subscription_status to 'expired' in database
+          await supabaseAdmin
+            .from("user")
+            .update({ subscription_status: 'expired' })
+            .eq("id", device.user_id);
+
+          console.log(`📝 Updated subscription_status to 'expired' for user ${device.user_id}`);
 
           // Delete device from WhatsApp Center API (one-time action)
           try {
