@@ -434,17 +434,14 @@ ${conv.conv_last || 'No conversation history'}
 
       // Build table HTML
       const tableRows = scheduledMessages.map((msg: any, index: number) => {
-        // Parse scheduled_time directly (already in correct timezone in database)
-        const scheduledDate = new Date(msg.scheduled_time)
-        const formattedTime = scheduledDate.toLocaleString('en-MY', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false,
-          timeZone: 'Asia/Kuala_Lumpur'
-        })
+        // Format scheduled_time directly from database value without any timezone conversion
+        // Database format: 2025-11-21T08:33:14.418+00 or 2025-11-21 08:33:14.418+00
+        // Display format: 21/11/2025, 08:33
+        const timestamp = msg.scheduled_time.replace('T', ' ').split('.')[0]
+        const [datePart, timePart] = timestamp.split(' ')
+        const [year, month, day] = datePart.split('-')
+        const [hour, minute] = timePart.split(':')
+        const formattedTime = `${day}/${month}/${year}, ${hour}:${minute}`
 
         const stageTrigger = msg.sequences?.trigger || '-'
         const imagePreview = msg.image_url
