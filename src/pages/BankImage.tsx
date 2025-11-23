@@ -613,13 +613,7 @@ export default function BankImage() {
                           <button
                             onClick={() => {
                               navigator.clipboard.writeText(image.image_url)
-                              Swal.fire({
-                                icon: 'success',
-                                title: 'Copied!',
-                                text: 'URL copied to clipboard',
-                                timer: 1500,
-                                showConfirmButton: false,
-                              })
+                              alert('Copied!')
                             }}
                             className="flex-shrink-0 text-gray-600 hover:text-primary-600 transition-colors p-1 hover:bg-gray-100 rounded"
                             title="Copy URL"

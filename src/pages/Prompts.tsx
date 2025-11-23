@@ -25,16 +25,46 @@ export default function Prompts() {
     prompts_data: '',
   })
 
-  // Example prompt template
-  const examplePrompt = `You are an intelligent and persuasive sales chatbot designed to guide parents step by step through a proven sales flow.
-Your goal is to listen empathetically, build trust, create urgency, and close sales confidently using SPIN Selling, FOMO, and emotional triggers.
+  // Example prompt state
+  const [examplePrompt, setExamplePrompt] = useState('')
 
-### Key Instructions
+  // Load example prompt from database
+  useEffect(() => {
+    const loadExamplePrompt = async () => {
+      try {
+        // First get user ID for email aqilrvsb@gmail.com
+        const { data: userData, error: userError } = await supabase
+          .from('user')
+          .select('id')
+          .eq('email', 'aqilrvsb@gmail.com')
+          .single()
 
-#### Current Stage:
-This customer is currently at the *" . ($stage) . "* stage. Strictly follow the steps relevant to this stage and respond accordingly.
-- *Do not skip any stages or jump to another stage* unless explicitly directed by the user.
-- Use $stage to guide your responses and ensure alignment with the stage flow.`
+        if (userError || !userData) {
+          console.error('Error loading example user:', userError)
+          return
+        }
+
+        // Then get prompt for that user with niche EXSTART
+        const { data: promptData, error: promptError } = await supabase
+          .from('prompts')
+          .select('prompts_data')
+          .eq('user_id', userData.id)
+          .eq('niche', 'EXSTART')
+          .single()
+
+        if (promptError || !promptData) {
+          console.error('Error loading example prompt:', promptError)
+          return
+        }
+
+        setExamplePrompt(promptData.prompts_data)
+      } catch (error) {
+        console.error('Error:', error)
+      }
+    }
+
+    loadExamplePrompt()
+  }, [])
 
   // Function to insert emoji at cursor position
   const insertEmoji = (emoji: string) => {
@@ -109,16 +139,14 @@ This customer is currently at the *" . ($stage) . "* stage. Strictly follow the 
     }, 0)
   }
 
-  // Function to copy example prompt
-  const copyExamplePrompt = () => {
-    navigator.clipboard.writeText(examplePrompt)
-    Swal.fire({
-      icon: 'success',
-      title: 'Copied!',
-      text: 'Example prompt copied to clipboard',
-      timer: 1500,
-      showConfirmButton: false,
-    })
+  // Function to paste example prompt directly into editor
+  const pasteExamplePrompt = () => {
+    setFormData({ ...formData, prompts_data: examplePrompt })
+    alert('Example prompt pasted into editor!')
+    // Focus the textarea
+    setTimeout(() => {
+      textareaRef.current?.focus()
+    }, 0)
   }
 
   useEffect(() => {
@@ -456,14 +484,14 @@ This customer is currently at the *" . ($stage) . "* stage. Strictly follow the 
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={copyExamplePrompt}
+                    onClick={pasteExamplePrompt}
                     className="flex items-center gap-2 text-gray-600 hover:text-primary-600 transition-colors p-2 hover:bg-gray-100 rounded-lg"
-                    title="Copy Example Prompt"
+                    title="Paste Example Prompt"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                     </svg>
-                    <span className="text-sm font-medium">Copy Example</span>
+                    <span className="text-sm font-medium">Paste Example</span>
                   </button>
                   <button
                     type="button"
@@ -563,14 +591,6 @@ This customer is currently at the *" . ($stage) . "* stage. Strictly follow the 
                         >
                           S
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => applyFormatting('code')}
-                          className="px-3 py-1.5 bg-white hover:bg-gray-200 border border-gray-300 rounded transition-colors font-mono text-xs"
-                          title="Code"
-                        >
-                          &lt;/&gt;
-                        </button>
                       </div>
 
                       {/* Emoji Toolbar */}
@@ -646,14 +666,14 @@ This customer is currently at the *" . ($stage) . "* stage. Strictly follow the 
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={copyExamplePrompt}
+                    onClick={pasteExamplePrompt}
                     className="flex items-center gap-2 text-gray-600 hover:text-primary-600 transition-colors p-2 hover:bg-gray-100 rounded-lg"
-                    title="Copy Example Prompt"
+                    title="Paste Example Prompt"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                     </svg>
-                    <span className="text-sm font-medium">Copy Example</span>
+                    <span className="text-sm font-medium">Paste Example</span>
                   </button>
                   <button
                     type="button"
@@ -741,14 +761,6 @@ This customer is currently at the *" . ($stage) . "* stage. Strictly follow the 
                           title="Strikethrough"
                         >
                           S
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => applyFormatting('code')}
-                          className="px-3 py-1.5 bg-white hover:bg-gray-200 border border-gray-300 rounded transition-colors font-mono text-xs"
-                          title="Code"
-                        >
-                          &lt;/&gt;
                         </button>
                       </div>
 
