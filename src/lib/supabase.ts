@@ -28,6 +28,9 @@ export type User = {
   role?: string
   created_at: string
   updated_at: string
+  packages?: {
+    name: string
+  }
 }
 
 export type Device = {
