@@ -33,7 +33,7 @@ export default function UserRegister() {
       setLoading(true)
       const { data, error } = await supabase
         .from('user')
-        .select('*')
+        .select('*, packages(name)')
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -208,7 +208,8 @@ export default function UserRegister() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Full Name</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Email</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Phone</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Package</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Subscription End</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Active</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Role</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Max Devices</th>
@@ -224,12 +225,15 @@ export default function UserRegister() {
                       <td className="px-6 py-4 text-sm text-gray-600">{u.phone || '-'}</td>
                       <td className="px-6 py-4 text-sm">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          u.status === 'Premium' ? 'bg-purple-100 text-purple-800' :
-                          u.status === 'Trial' ? 'bg-blue-100 text-blue-800' :
+                          u.packages?.name === 'Pro' ? 'bg-purple-100 text-purple-800' :
+                          u.packages?.name === 'Starter' ? 'bg-blue-100 text-blue-800' :
                           'bg-gray-100 text-gray-800'
                         }`}>
-                          {u.status || '-'}
+                          {u.packages?.name || u.status || 'Trial'}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {u.subscription_end ? new Date(u.subscription_end).toLocaleDateString('en-GB') : '-'}
                       </td>
                       <td className="px-6 py-4 text-sm">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
