@@ -34,6 +34,7 @@ export default function UserRegister() {
       const { data, error } = await supabase
         .from('user')
         .select('*')
+        .neq('role', 'admin') // Exclude admin users
         .order('created_at', { ascending: false })
 
       if (error) throw error
