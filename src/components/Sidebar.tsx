@@ -8,7 +8,15 @@ export default function Sidebar() {
   const isActive = (path: string) => location.pathname === path
   const isExpired = isSubscriptionExpired()
 
-  const navItems = [
+  // Admin-only navigation items
+  const adminNavItems = [
+    { path: '/packages', icon: '📦', label: 'Packages' },
+    { path: '/transactions', icon: '💰', label: 'Transactions' },
+    { path: '/user-register', icon: '👥', label: 'User Register' },
+  ]
+
+  // Regular user navigation items
+  const userNavItems = [
     { path: '/dashboard', icon: '📊', label: 'Dashboard' },
     { path: '/device-settings', icon: '⚙️', label: 'Device Settings' },
     { path: '/prompts', icon: '📝', label: 'Prompts' },
@@ -19,8 +27,9 @@ export default function Sidebar() {
     { path: '/billings', icon: '💳', label: 'Billings' },
   ]
 
-  // Show packages tab for admin
-  const showPackages = user?.role === 'admin'
+  // Determine which nav items to show based on user role
+  const isAdmin = user?.role === 'admin'
+  const navItems = isAdmin ? adminNavItems : userNavItems
 
   return (
     <div className="w-64 bg-white min-h-screen flex flex-col border-r border-gray-200">
@@ -38,7 +47,8 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-1">
-        {isExpired && (
+        {/* Show subscription warning only for non-admin users */}
+        {!isAdmin && isExpired && (
           <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3">
             <p className="text-xs text-red-700 font-semibold">⚠️ Subscription Expired</p>
             <p className="text-xs text-red-600 mt-1">Please renew to access all features</p>
@@ -46,7 +56,8 @@ export default function Sidebar() {
         )}
 
         {navItems.map((item) => {
-          const isDisabled = isExpired && item.path !== '/billings'
+          // Admins are never disabled
+          const isDisabled = !isAdmin && isExpired && item.path !== '/billings'
 
           return isDisabled ? (
             <div
@@ -73,44 +84,6 @@ export default function Sidebar() {
             </Link>
           )
         })}
-
-        {showPackages && (
-          <>
-            <Link
-              to="/packages"
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                isActive('/packages')
-                  ? 'bg-primary-600 text-white shadow-md'
-                  : 'text-gray-700 hover:bg-gray-100'
-              }`}
-            >
-              <span className="text-xl">📦</span>
-              <span className="font-medium text-sm">Packages</span>
-            </Link>
-            <Link
-              to="/transactions"
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                isActive('/transactions')
-                  ? 'bg-primary-600 text-white shadow-md'
-                  : 'text-gray-700 hover:bg-gray-100'
-              }`}
-            >
-              <span className="text-xl">💰</span>
-              <span className="font-medium text-sm">Transactions</span>
-            </Link>
-            <Link
-              to="/user-register"
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                isActive('/user-register')
-                  ? 'bg-primary-600 text-white shadow-md'
-                  : 'text-gray-700 hover:bg-gray-100'
-              }`}
-            >
-              <span className="text-xl">👥</span>
-              <span className="font-medium text-sm">User Register</span>
-            </Link>
-          </>
-        )}
       </nav>
 
       {/* User Info & Logout */}
