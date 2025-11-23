@@ -34,12 +34,13 @@ export default function UserRegister() {
       const { data, error } = await supabase
         .from('user')
         .select('*')
-        .neq('role', 'admin') // Exclude admin users
         .order('created_at', { ascending: false })
 
       if (error) throw error
 
-      setUsers(data || [])
+      // Filter out admin users on client side (handles both role='admin' and null cases)
+      const filteredData = (data || []).filter(u => u.role !== 'admin')
+      setUsers(filteredData)
     } catch (error) {
       console.error('Error loading users:', error)
       await Swal.fire({
