@@ -600,15 +600,35 @@ export default function BankImage() {
                           </div>
                         </button>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
-                        <a
-                          href={image.image_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary-600 hover:text-primary-700 hover:underline"
-                        >
-                          {image.image_url}
-                        </a>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <a
+                            href={image.image_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary-600 hover:text-primary-700 hover:underline text-sm max-w-xs truncate block"
+                          >
+                            {image.image_url}
+                          </a>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(image.image_url)
+                              Swal.fire({
+                                icon: 'success',
+                                title: 'Copied!',
+                                text: 'URL copied to clipboard',
+                                timer: 1500,
+                                showConfirmButton: false,
+                              })
+                            }}
+                            className="flex-shrink-0 text-gray-600 hover:text-primary-600 transition-colors p-1 hover:bg-gray-100 rounded"
+                            title="Copy URL"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                          </button>
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-center gap-2">

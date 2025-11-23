@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Layout from '../components/Layout'
 import { supabase, Prompt, Device } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -15,6 +15,7 @@ export default function Prompts() {
   const [showInfoModal, setShowInfoModal] = useState(false)
   const [showCommandModal, setShowCommandModal] = useState(false)
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -23,6 +24,49 @@ export default function Prompts() {
     prompts_name: '',
     prompts_data: '',
   })
+
+  // Example prompt template
+  const examplePrompt = `You are an intelligent and persuasive sales chatbot designed to guide parents step by step through a proven sales flow.
+Your goal is to listen empathetically, build trust, create urgency, and close sales confidently using SPIN Selling, FOMO, and emotional triggers.
+
+### Key Instructions
+
+#### Current Stage:
+This customer is currently at the *" . ($stage) . "* stage. Strictly follow the steps relevant to this stage and respond accordingly.
+- *Do not skip any stages or jump to another stage* unless explicitly directed by the user.
+- Use $stage to guide your responses and ensure alignment with the stage flow.`
+
+  // Function to insert emoji at cursor position
+  const insertEmoji = (emoji: string) => {
+    const textarea = textareaRef.current
+    if (!textarea) return
+
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const text = formData.prompts_data
+    const before = text.substring(0, start)
+    const after = text.substring(end)
+
+    setFormData({ ...formData, prompts_data: before + emoji + after })
+
+    // Set cursor position after emoji
+    setTimeout(() => {
+      textarea.selectionStart = textarea.selectionEnd = start + emoji.length
+      textarea.focus()
+    }, 0)
+  }
+
+  // Function to copy example prompt
+  const copyExamplePrompt = () => {
+    navigator.clipboard.writeText(examplePrompt)
+    Swal.fire({
+      icon: 'success',
+      title: 'Copied!',
+      text: 'Example prompt copied to clipboard',
+      timer: 1500,
+      showConfirmButton: false,
+    })
+  }
 
   useEffect(() => {
     loadPrompts()
@@ -354,7 +398,20 @@ export default function Prompts() {
         {showAddModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl">
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Add New Prompt</h3>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-gray-900">Add New Prompt</h3>
+                <button
+                  type="button"
+                  onClick={copyExamplePrompt}
+                  className="flex items-center gap-2 text-gray-600 hover:text-primary-600 transition-colors p-2 hover:bg-gray-100 rounded-lg"
+                  title="Copy Example Prompt"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  <span className="text-sm font-medium">Copy Example</span>
+                </button>
+              </div>
 
               <form onSubmit={handleAddPrompt} className="space-y-4">
                 <div>
@@ -402,14 +459,34 @@ export default function Prompts() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Prompt Data *</label>
+                  <div className="mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Prompt Data *</label>
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 mb-2">
+                      <div className="flex flex-wrap gap-1">
+                        {['😊', '😂', '😍', '🥰', '😎', '🤔', '😢', '😭', '😡', '😱', '🤩', '😇', '🤗', '🙏', '👍', '👎', '👏', '✌️', '🤝', '💪', '❤️', '💙', '💚', '💛', '🧡', '💜', '🔥', '✨', '⭐', '✅', '❌', '⚠️'].map((emoji) => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => insertEmoji(emoji)}
+                            className="text-lg hover:bg-gray-200 px-2 py-1 rounded transition-colors"
+                            title={`Insert ${emoji}`}
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                   <textarea
+                    ref={textareaRef}
                     value={formData.prompts_data}
                     onChange={(e) => setFormData({ ...formData, prompts_data: e.target.value })}
-                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-y min-h-[200px] font-mono text-sm"
                     rows={8}
                     required
+                    placeholder="Enter your prompt data here... You can use emojis from the toolbar above."
                   />
+                  <p className="text-xs text-gray-500 mt-1">💡 Tip: Drag the bottom-right corner to resize the text area</p>
                 </div>
 
                 <div className="flex gap-4 mt-6">
@@ -449,7 +526,20 @@ export default function Prompts() {
         {showEditModal && editingPrompt && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl">
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Edit Prompt</h3>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-gray-900">Edit Prompt</h3>
+                <button
+                  type="button"
+                  onClick={copyExamplePrompt}
+                  className="flex items-center gap-2 text-gray-600 hover:text-primary-600 transition-colors p-2 hover:bg-gray-100 rounded-lg"
+                  title="Copy Example Prompt"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  <span className="text-sm font-medium">Copy Example</span>
+                </button>
+              </div>
 
               <form onSubmit={handleUpdatePrompt} className="space-y-4">
                 <div>
@@ -486,14 +576,34 @@ export default function Prompts() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Prompt Data *</label>
+                  <div className="mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Prompt Data *</label>
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 mb-2">
+                      <div className="flex flex-wrap gap-1">
+                        {['😊', '😂', '😍', '🥰', '😎', '🤔', '😢', '😭', '😡', '😱', '🤩', '😇', '🤗', '🙏', '👍', '👎', '👏', '✌️', '🤝', '💪', '❤️', '💙', '💚', '💛', '🧡', '💜', '🔥', '✨', '⭐', '✅', '❌', '⚠️'].map((emoji) => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => insertEmoji(emoji)}
+                            className="text-lg hover:bg-gray-200 px-2 py-1 rounded transition-colors"
+                            title={`Insert ${emoji}`}
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                   <textarea
+                    ref={textareaRef}
                     value={formData.prompts_data}
                     onChange={(e) => setFormData({ ...formData, prompts_data: e.target.value })}
-                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-y min-h-[200px] font-mono text-sm"
                     rows={8}
                     required
+                    placeholder="Enter your prompt data here... You can use emojis from the toolbar above."
                   />
+                  <p className="text-xs text-gray-500 mt-1">💡 Tip: Drag the bottom-right corner to resize the text area</p>
                 </div>
 
                 <div className="flex gap-4 mt-6">
