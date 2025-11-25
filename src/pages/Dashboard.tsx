@@ -79,140 +79,132 @@ export default function Dashboard() {
         userDeviceIds = userDevices?.map(d => d.device_id) || []
       }
 
-      // Build query for AI WhatsApp conversations with filters
-      let query = supabase
+      // Build queries in parallel for faster loading
+      const isAdmin = user?.role === 'admin'
+
+      // Query 1: AI WhatsApp conversations with filters
+      let conversationsQuery = supabase
         .from('ai_whatsapp')
         .select('*')
 
-      // For non-admin users, filter by their device IDs
-      if (user && user.role !== 'admin' && userDeviceIds.length > 0) {
-        query = query.in('device_id', userDeviceIds)
+      if (!isAdmin && userDeviceIds.length > 0) {
+        conversationsQuery = conversationsQuery.in('device_id', userDeviceIds)
       }
-
-      // Apply device filter
       if (deviceFilter) {
-        query = query.eq('device_id', deviceFilter)
+        conversationsQuery = conversationsQuery.eq('device_id', deviceFilter)
       }
-
-      // Apply stage filter
       if (stageFilter) {
         if (stageFilter === 'Welcome Message') {
-          query = query.is('stage', null)
+          conversationsQuery = conversationsQuery.is('stage', null)
         } else {
-          query = query.eq('stage', stageFilter)
+          conversationsQuery = conversationsQuery.eq('stage', stageFilter)
         }
       }
-
-      // Apply date range filter using date_insert
       if (startDate) {
-        query = query.gte('date_insert', startDate)
+        conversationsQuery = conversationsQuery.gte('date_insert', startDate)
       }
       if (endDate) {
-        query = query.lte('date_insert', endDate)
+        conversationsQuery = conversationsQuery.lte('date_insert', endDate)
       }
 
-      const { data: aiConversations } = await query
-
-      // Extract unique devices from device_setting table and stages from ai_whatsapp
+      // Query 2: Device settings for dropdown
       let deviceSettingsQuery = supabase
         .from('device_setting')
-        .select('device_id')
+        .select('*')
 
-      // For non-admin users, filter dropdown options by their devices
-      if (user && user.role !== 'admin') {
-        deviceSettingsQuery = deviceSettingsQuery.eq('user_id', user.id)
+      if (!isAdmin) {
+        deviceSettingsQuery = deviceSettingsQuery.eq('user_id', user?.id)
       }
 
-      const { data: deviceSettings } = await deviceSettingsQuery
-
-      // Get unique stages from conversations
+      // Query 3: Stages from conversations
       let stagesQuery = supabase
         .from('ai_whatsapp')
         .select('stage')
 
-      if (user && user.role !== 'admin' && userDeviceIds.length > 0) {
+      if (!isAdmin && userDeviceIds.length > 0) {
         stagesQuery = stagesQuery.in('device_id', userDeviceIds)
       }
 
-      const { data: stagesData } = await stagesQuery
+      // Run all queries in parallel
+      const [conversationsResult, deviceSettingsResult, stagesResult] = await Promise.all([
+        conversationsQuery,
+        deviceSettingsQuery,
+        stagesQuery
+      ])
 
-      if (deviceSettings) {
-        const uniqueDevices = [...new Set(deviceSettings.map(d => d.device_id).filter(Boolean))]
-        setDevices(uniqueDevices)
-      }
+      const aiConversations = conversationsResult.data || []
+      const devicesData = deviceSettingsResult.data || []
+      const stagesData = stagesResult.data || []
 
-      if (stagesData) {
-        const uniqueStages = [...new Set(stagesData.map(c => c.stage || 'Welcome Message'))]
-        setStages(uniqueStages)
-      }
+      // Set devices and stages for dropdowns
+      const uniqueDevices = [...new Set(devicesData.map(d => d.device_id).filter(Boolean))]
+      setDevices(uniqueDevices)
 
-      // Fetch devices (admin sees all, users see only their own)
-      let devicesQuery = supabase
-        .from('device_setting')
-        .select('*')
+      const uniqueStages = [...new Set(stagesData.map(c => c.stage || 'Welcome Message'))]
+      setStages(uniqueStages)
 
-      if (user && user.role !== 'admin') {
-        devicesQuery = devicesQuery.eq('user_id', user.id)
-      }
-
-      const { data: devicesData } = await devicesQuery
-
-      // Calculate device statistics by checking real-time status from WhatsApp Center API
-      const totalDevices = devicesData?.length || 0
-      let activeDevices = 0
-
-      if (devicesData && devicesData.length > 0) {
-        const apiBase = '/api/whacenter'
-
-        // Check status for each device
-        const statusChecks = devicesData.map(async (device) => {
-          if (!device.instance) return false
-
-          try {
-            const response = await fetch(`${apiBase}?endpoint=statusDevice&device_id=${encodeURIComponent(device.instance)}`, {
-              method: 'GET'
-            })
-            const result = await response.json()
-
-            // WhatsApp Center returns: { status: true, data: { status: "CONNECTED" or "NOT CONNECTED" } }
-            return result.status && result.data && result.data.status === 'CONNECTED'
-          } catch (error) {
-            return false
-          }
-        })
-
-        const results = await Promise.all(statusChecks)
-        activeDevices = results.filter(isConnected => isConnected).length
-      }
-
-      const offlineDevices = totalDevices - activeDevices
-
+      // Set initial device stats (without online status - that's loaded async)
+      const totalDevices = devicesData.length
       setStats({
         totalDevices,
-        activeDevices,
-        offlineDevices,
+        activeDevices: 0,
+        offlineDevices: totalDevices,
       })
 
-      // Calculate analytics
-      calculateAnalytics(aiConversations || [])
+      // Calculate analytics immediately
+      calculateAnalytics(aiConversations)
 
       // Render charts with filtered data
-      if (aiConversations && aiConversations.length > 0) {
+      if (aiConversations.length > 0) {
         renderDailyTrendsChart(aiConversations)
         renderStageDistribution(aiConversations)
       } else {
-        // Clear charts if no data
         if (dailyTrendsChartInstance.current) {
           dailyTrendsChartInstance.current.destroy()
           dailyTrendsChartInstance.current = null
         }
         setStageDistribution([])
       }
+
+      // Set loading to false early - data is ready
+      setLoading(false)
+
+      // Load device status asynchronously (don't block UI)
+      if (devicesData.length > 0) {
+        loadDeviceStatuses(devicesData, totalDevices)
+      }
     } catch (error) {
       console.error('Error loading dashboard data:', error)
-    } finally {
       setLoading(false)
     }
+  }
+
+  // Load device statuses asynchronously to not block initial render
+  const loadDeviceStatuses = async (devicesData: any[], totalDevices: number) => {
+    const apiBase = '/api/whacenter'
+
+    const statusChecks = devicesData.map(async (device) => {
+      if (!device.instance) return false
+
+      try {
+        const response = await fetch(`${apiBase}?endpoint=statusDevice&device_id=${encodeURIComponent(device.instance)}`, {
+          method: 'GET'
+        })
+        const result = await response.json()
+        return result.status && result.data && result.data.status === 'CONNECTED'
+      } catch (error) {
+        return false
+      }
+    })
+
+    const results = await Promise.all(statusChecks)
+    const activeDevices = results.filter(isConnected => isConnected).length
+
+    setStats({
+      totalDevices,
+      activeDevices,
+      offlineDevices: totalDevices - activeDevices,
+    })
   }
 
   const calculateAnalytics = (data: any[]) => {
