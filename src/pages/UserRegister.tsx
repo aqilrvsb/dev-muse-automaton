@@ -204,38 +204,31 @@ export default function UserRegister() {
   }
 
   const loginAsUser = async (targetUser: User) => {
-    if (!targetUser.password) {
-      await Swal.fire({
-        icon: 'warning',
-        title: 'No Password',
-        text: 'This user has no password saved. Please add a password first using the edit button.',
-      })
-      return
-    }
-
     setLoggingIn(targetUser.id)
 
     try {
-      // First sign out admin
-      await supabase.auth.signOut()
-
-      // Then sign in as the target user
-      const { error } = await supabase.auth.signInWithPassword({
-        email: targetUser.email,
-        password: targetUser.password,
+      // Call edge function to get magic link
+      const { data, error } = await supabase.functions.invoke('admin-login-as-user', {
+        body: { userId: targetUser.id }
       })
 
       if (error) throw error
 
-      // Navigate to dashboard
-      navigate('/dashboard')
+      if (data?.url) {
+        // Sign out current admin first
+        await supabase.auth.signOut()
+        // Redirect to magic link URL
+        window.location.href = data.url
+      } else {
+        throw new Error('No login URL received')
+      }
     } catch (error) {
       console.error('Error logging in as user:', error)
       setLoggingIn(null)
       await Swal.fire({
         icon: 'error',
         title: 'Login Failed',
-        text: 'Failed to login as user. The password may be incorrect.',
+        text: 'Failed to login as user.',
       })
     }
   }
