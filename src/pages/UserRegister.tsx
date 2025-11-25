@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 import Swal from 'sweetalert2'
 
 export default function UserRegister() {
-  const { user, signOut } = useAuth()
+  const { user } = useAuth()
   const navigate = useNavigate()
   const [users, setUsers] = useState<User[]>([])
   const [packages, setPackages] = useState<Package[]>([])
@@ -213,23 +213,11 @@ export default function UserRegister() {
       return
     }
 
-    const result = await Swal.fire({
-      title: 'Login as User',
-      html: `<p>Login as <strong>${targetUser.email}</strong>?</p><p class="text-sm text-gray-500 mt-2">You will be logged out of your admin account.</p>`,
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, Login',
-      confirmButtonColor: '#667eea',
-      cancelButtonColor: '#6c757d',
-    })
-
-    if (!result.isConfirmed) return
-
     setLoggingIn(targetUser.id)
 
     try {
       // First sign out admin
-      await signOut()
+      await supabase.auth.signOut()
 
       // Then sign in as the target user
       const { error } = await supabase.auth.signInWithPassword({
