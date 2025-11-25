@@ -127,17 +127,38 @@ export default function DeviceSettings() {
 
           // WhatsApp Center returns: { status: true, data: { status: "CONNECTED" or "NOT CONNECTED" } }
           if (result.status && result.data) {
-            const status = result.data.status === 'CONNECTED' ? 'WORKING' :
-                          result.data.status === 'NOT CONNECTED' ? 'SCAN_QR_CODE' : 'UNKNOWN'
-            statuses[device.id] = status
+            const status = result.data.status === 'CONNECTED' ? 'CONNECTED' :
+                          result.data.status === 'NOT CONNECTED' ? 'NOT_CONNECTED' : 'UNKNOWN'
+            statuses[device.id] = status === 'CONNECTED' ? 'WORKING' : status === 'NOT_CONNECTED' ? 'SCAN_QR_CODE' : 'UNKNOWN'
+
+            // Save status to database
+            await supabase
+              .from('device_setting')
+              .update({ status })
+              .eq('id', device.id)
           } else {
             statuses[device.id] = 'UNKNOWN'
+            // Save unknown status to database
+            await supabase
+              .from('device_setting')
+              .update({ status: 'UNKNOWN' })
+              .eq('id', device.id)
           }
         } catch (error) {
           statuses[device.id] = 'FAILED'
+          // Save failed status to database
+          await supabase
+            .from('device_setting')
+            .update({ status: 'FAILED' })
+            .eq('id', device.id)
         }
       } else {
         statuses[device.id] = 'NOT_SETUP'
+        // Save not setup status to database
+        await supabase
+          .from('device_setting')
+          .update({ status: 'NOT_SETUP' })
+          .eq('id', device.id)
       }
     }
 

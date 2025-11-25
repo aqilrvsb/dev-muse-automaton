@@ -44,6 +44,7 @@ export type Device = {
   api_key: string
   phone_number: string
   user_id: string
+  status?: string
   created_at: string
   updated_at: string
 }

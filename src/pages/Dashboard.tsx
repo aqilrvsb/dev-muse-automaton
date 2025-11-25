@@ -68,24 +68,25 @@ export default function Dashboard() {
     try {
       setLoading(true)
 
-      // Fetch user's devices first (for non-admin users)
-      let userDeviceIds: string[] = []
-      if (user && user.role !== 'admin') {
-        const { data: userDevices } = await supabase
-          .from('device_setting')
-          .select('device_id')
-          .eq('user_id', user.id)
-
-        userDeviceIds = userDevices?.map(d => d.device_id) || []
-      }
-
-      // Build queries in parallel for faster loading
       const isAdmin = user?.role === 'admin'
 
-      // Query 1: AI WhatsApp conversations with filters
+      // Query 1: Device settings (needed for user filtering and stats)
+      let deviceSettingsQuery = supabase
+        .from('device_setting')
+        .select('device_id, status')
+
+      if (!isAdmin) {
+        deviceSettingsQuery = deviceSettingsQuery.eq('user_id', user?.id)
+      }
+
+      // Get devices first (fast query)
+      const { data: devicesData } = await deviceSettingsQuery
+      const userDeviceIds = devicesData?.map(d => d.device_id).filter(Boolean) || []
+
+      // Query 2: AI WhatsApp conversations - only needed columns
       let conversationsQuery = supabase
         .from('ai_whatsapp')
-        .select('*')
+        .select('stage, date_insert, detail, device_id')
 
       if (!isAdmin && userDeviceIds.length > 0) {
         conversationsQuery = conversationsQuery.in('device_id', userDeviceIds)
@@ -107,55 +108,29 @@ export default function Dashboard() {
         conversationsQuery = conversationsQuery.lte('date_insert', endDate)
       }
 
-      // Query 2: Device settings for dropdown
-      let deviceSettingsQuery = supabase
-        .from('device_setting')
-        .select('*')
+      const { data: aiConversations } = await conversationsQuery
 
-      if (!isAdmin) {
-        deviceSettingsQuery = deviceSettingsQuery.eq('user_id', user?.id)
-      }
+      // Set devices for dropdown
+      setDevices(userDeviceIds)
 
-      // Query 3: Stages from conversations
-      let stagesQuery = supabase
-        .from('ai_whatsapp')
-        .select('stage')
-
-      if (!isAdmin && userDeviceIds.length > 0) {
-        stagesQuery = stagesQuery.in('device_id', userDeviceIds)
-      }
-
-      // Run all queries in parallel
-      const [conversationsResult, deviceSettingsResult, stagesResult] = await Promise.all([
-        conversationsQuery,
-        deviceSettingsQuery,
-        stagesQuery
-      ])
-
-      const aiConversations = conversationsResult.data || []
-      const devicesData = deviceSettingsResult.data || []
-      const stagesData = stagesResult.data || []
-
-      // Set devices and stages for dropdowns
-      const uniqueDevices = [...new Set(devicesData.map(d => d.device_id).filter(Boolean))]
-      setDevices(uniqueDevices)
-
-      const uniqueStages = [...new Set(stagesData.map(c => c.stage || 'Welcome Message'))]
+      // Get unique stages from conversations (no extra query needed)
+      const uniqueStages = [...new Set((aiConversations || []).map(c => c.stage || 'Welcome Message'))]
       setStages(uniqueStages)
 
-      // Set initial device stats (without online status - that's loaded async)
-      const totalDevices = devicesData.length
+      // Calculate device stats from database status column (no API calls)
+      const totalDevices = devicesData?.length || 0
+      const activeDevices = devicesData?.filter(d => d.status === 'CONNECTED').length || 0
       setStats({
         totalDevices,
-        activeDevices: 0,
-        offlineDevices: totalDevices,
+        activeDevices,
+        offlineDevices: totalDevices - activeDevices,
       })
 
       // Calculate analytics immediately
-      calculateAnalytics(aiConversations)
+      calculateAnalytics(aiConversations || [])
 
       // Render charts with filtered data
-      if (aiConversations.length > 0) {
+      if (aiConversations && aiConversations.length > 0) {
         renderDailyTrendsChart(aiConversations)
         renderStageDistribution(aiConversations)
       } else {
@@ -166,45 +141,12 @@ export default function Dashboard() {
         setStageDistribution([])
       }
 
-      // Set loading to false early - data is ready
+      // Set loading to false - all data is ready
       setLoading(false)
-
-      // Load device status asynchronously (don't block UI)
-      if (devicesData.length > 0) {
-        loadDeviceStatuses(devicesData, totalDevices)
-      }
     } catch (error) {
       console.error('Error loading dashboard data:', error)
       setLoading(false)
     }
-  }
-
-  // Load device statuses asynchronously to not block initial render
-  const loadDeviceStatuses = async (devicesData: any[], totalDevices: number) => {
-    const apiBase = '/api/whacenter'
-
-    const statusChecks = devicesData.map(async (device) => {
-      if (!device.instance) return false
-
-      try {
-        const response = await fetch(`${apiBase}?endpoint=statusDevice&device_id=${encodeURIComponent(device.instance)}`, {
-          method: 'GET'
-        })
-        const result = await response.json()
-        return result.status && result.data && result.data.status === 'CONNECTED'
-      } catch (error) {
-        return false
-      }
-    })
-
-    const results = await Promise.all(statusChecks)
-    const activeDevices = results.filter(isConnected => isConnected).length
-
-    setStats({
-      totalDevices,
-      activeDevices,
-      offlineDevices: totalDevices - activeDevices,
-    })
   }
 
   const calculateAnalytics = (data: any[]) => {
