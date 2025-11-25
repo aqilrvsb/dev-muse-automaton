@@ -17,6 +17,7 @@ export type User = {
   email: string
   full_name: string
   phone?: string
+  password?: string
   is_active: boolean
   status: string
   expired?: string
