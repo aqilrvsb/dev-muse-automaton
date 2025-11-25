@@ -73,15 +73,24 @@ Deno.serve(async (req) => {
       throw new Error('Target user not found')
     }
 
-    // Generate a magic link (OTP) for the user
-    const { data, error } = await supabaseAdmin.auth.admin.generateLink({
+    // Generate a session for the target user using admin API
+    const { data: authData, error: authGenError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
       email: targetUser.email,
+      options: {
+        redirectTo: 'https://peningbot.com/dashboard'
+      }
     })
 
-    if (error) {
-      console.error('Error generating magic link:', error)
-      throw error
+    if (authGenError) {
+      console.error('Error generating magic link:', authGenError)
+      throw authGenError
+    }
+
+    // Extract the token from the magic link and create a direct login URL
+    const actionLink = authData.properties?.action_link
+    if (!actionLink) {
+      throw new Error('Failed to generate login link')
     }
 
     console.log('Magic link generated for:', targetUser.email)
@@ -89,7 +98,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        url: data.properties?.action_link,
+        url: actionLink,
         email: targetUser.email
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
