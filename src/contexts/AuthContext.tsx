@@ -146,7 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Sign up
   const signUp = async (email: string, password: string, fullName: string) => {
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -158,6 +158,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) {
         return { error: error.message }
+      }
+
+      // Save password to public.user table for admin reference
+      // Wait a moment for the trigger to create the user record first
+      if (data?.user) {
+        setTimeout(async () => {
+          await supabase
+            .from('user')
+            .update({ password: password })
+            .eq('id', data.user!.id)
+        }, 1000)
       }
 
       return { error: null }
