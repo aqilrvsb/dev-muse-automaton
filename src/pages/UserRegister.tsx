@@ -207,20 +207,27 @@ export default function UserRegister() {
     setLoggingIn(targetUser.id)
 
     try {
-      // Call edge function to get magic link
+      // Call edge function to get session tokens
       const { data, error } = await supabase.functions.invoke('admin-login-as-user', {
         body: { userId: targetUser.id }
       })
 
       if (error) throw error
 
-      if (data?.url) {
+      if (data?.session) {
         // Sign out current admin first
         await supabase.auth.signOut()
-        // Redirect to magic link URL
-        window.location.href = data.url
+
+        // Set the new session directly
+        await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token
+        })
+
+        // Redirect to dashboard
+        window.location.href = '/dashboard'
       } else {
-        throw new Error('No login URL received')
+        throw new Error('No session received')
       }
     } catch (error) {
       console.error('Error logging in as user:', error)

@@ -73,32 +73,62 @@ Deno.serve(async (req) => {
       throw new Error('Target user not found')
     }
 
-    // Generate a session for the target user using admin API
-    const { data: authData, error: authGenError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'magiclink',
-      email: targetUser.email,
-      options: {
-        redirectTo: 'https://peningbot.com/dashboard'
-      }
-    })
+    // Get the auth user by email to get their user id
+    const { data: authUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers()
 
-    if (authGenError) {
-      console.error('Error generating magic link:', authGenError)
-      throw authGenError
+    if (listError) {
+      console.error('Error listing users:', listError)
+      throw listError
     }
 
-    // Extract the token from the magic link and create a direct login URL
-    const actionLink = authData.properties?.action_link
+    const authUser = authUsers.users.find((u: { email?: string }) => u.email === targetUser.email)
+    if (!authUser) {
+      throw new Error('Auth user not found')
+    }
+
+    // Generate a session for the target user using admin API
+    // This creates access_token and refresh_token directly
+    const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'magiclink',
+      email: targetUser.email,
+    })
+
+    if (sessionError) {
+      console.error('Error generating session:', sessionError)
+      throw sessionError
+    }
+
+    // Extract the token hash from the action_link
+    const actionLink = sessionData.properties?.action_link
     if (!actionLink) {
       throw new Error('Failed to generate login link')
     }
 
-    console.log('Magic link generated for:', targetUser.email)
+    // Parse the token from the action link
+    const linkUrl = new URL(actionLink)
+    const otpToken = linkUrl.searchParams.get('token')
+
+    if (!otpToken) {
+      throw new Error('No token in magic link')
+    }
+
+    // Verify the OTP token to get actual session
+    const { data: verifyData, error: verifyError } = await supabaseAdmin.auth.verifyOtp({
+      token_hash: otpToken,
+      type: 'magiclink',
+    })
+
+    if (verifyError) {
+      console.error('Error verifying OTP:', verifyError)
+      throw verifyError
+    }
+
+    console.log('Session generated for:', targetUser.email)
 
     return new Response(
       JSON.stringify({
         success: true,
-        url: actionLink,
+        session: verifyData.session,
         email: targetUser.email
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
