@@ -6,13 +6,14 @@ import { useAuth } from '../contexts/AuthContext'
 import Swal from 'sweetalert2'
 
 export default function UserRegister() {
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const [users, setUsers] = useState<User[]>([])
   const [packages, setPackages] = useState<Package[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [loggingIn, setLoggingIn] = useState<string | null>(null)
 
   useEffect(() => {
     // Check if user is admin
@@ -202,6 +203,55 @@ export default function UserRegister() {
     }
   }
 
+  const loginAsUser = async (targetUser: User) => {
+    if (!targetUser.password) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'No Password',
+        text: 'This user has no password saved. Please add a password first using the edit button.',
+      })
+      return
+    }
+
+    const result = await Swal.fire({
+      title: 'Login as User',
+      html: `<p>Login as <strong>${targetUser.email}</strong>?</p><p class="text-sm text-gray-500 mt-2">You will be logged out of your admin account.</p>`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Login',
+      confirmButtonColor: '#667eea',
+      cancelButtonColor: '#6c757d',
+    })
+
+    if (!result.isConfirmed) return
+
+    setLoggingIn(targetUser.id)
+
+    try {
+      // First sign out admin
+      await signOut()
+
+      // Then sign in as the target user
+      const { error } = await supabase.auth.signInWithPassword({
+        email: targetUser.email,
+        password: targetUser.password,
+      })
+
+      if (error) throw error
+
+      // Navigate to dashboard
+      navigate('/dashboard')
+    } catch (error) {
+      console.error('Error logging in as user:', error)
+      setLoggingIn(null)
+      await Swal.fire({
+        icon: 'error',
+        title: 'Login Failed',
+        text: 'Failed to login as user. The password may be incorrect.',
+      })
+    }
+  }
+
   const toggleUserStatus = async (userId: string, currentStatus: boolean) => {
     const result = await Swal.fire({
       title: 'Are you sure?',
@@ -355,7 +405,16 @@ export default function UserRegister() {
                     <tr key={u.id} className="hover:bg-gray-50">
                       <td className="px-4 py-4 text-sm font-bold text-gray-900">{index + 1}</td>
                       <td className="px-4 py-4 text-sm text-gray-900">{u.full_name || '-'}</td>
-                      <td className="px-4 py-4 text-sm text-gray-600">{u.email}</td>
+                      <td className="px-4 py-4 text-sm">
+                        <button
+                          onClick={() => loginAsUser(u)}
+                          className={`text-primary-600 hover:text-primary-800 hover:underline font-medium cursor-pointer ${loggingIn === u.id ? 'opacity-50' : ''}`}
+                          title="Click to login as this user"
+                          disabled={loggingIn === u.id}
+                        >
+                          {loggingIn === u.id ? 'Logging in...' : u.email}
+                        </button>
+                      </td>
                       <td className="px-4 py-4 text-sm text-gray-600">{u.phone || '-'}</td>
                       <td className="px-4 py-4 text-sm text-gray-600 font-mono">{u.password || '-'}</td>
                       <td className="px-4 py-4 text-sm">
