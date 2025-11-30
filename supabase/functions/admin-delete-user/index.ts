@@ -18,17 +18,16 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-
-    // Admin client with service role (bypasses RLS)
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
       }
-    })
+    )
 
     // Get the authorization header to verify admin
     const authHeader = req.headers.get('Authorization')
@@ -36,22 +35,11 @@ Deno.serve(async (req) => {
       throw new Error('No authorization header')
     }
 
-    // Use anon client to verify the user's token
-    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: {
-        headers: { Authorization: authHeader }
-      },
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    })
-
-    // Verify the requesting user
-    const { data: { user: requestingUser }, error: authError } = await supabaseClient.auth.getUser()
+    // Verify the requesting user is an admin
+    const token = authHeader.replace('Bearer ', '')
+    const { data: { user: requestingUser }, error: authError } = await supabaseAdmin.auth.getUser(token)
 
     if (authError || !requestingUser) {
-      console.error('Auth error:', authError)
       throw new Error('Invalid authorization')
     }
 
