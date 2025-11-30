@@ -241,6 +241,17 @@ export default function UserRegister() {
   }
 
   const deleteUser = async (targetUser: User) => {
+    // Check if admin user is loaded
+    if (!user?.id) {
+      await Swal.fire({
+        title: 'Error!',
+        text: 'Admin session not loaded. Please refresh the page.',
+        icon: 'error',
+        confirmButtonColor: '#d33',
+      })
+      return
+    }
+
     const result = await Swal.fire({
       title: 'Delete User?',
       html: `
@@ -261,7 +272,7 @@ export default function UserRegister() {
     try {
       // Use edge function to delete user (bypasses RLS)
       const { data, error } = await supabase.functions.invoke('admin-delete-user', {
-        body: { userId: targetUser.id, adminId: user?.id }
+        body: { userId: targetUser.id, adminId: user.id }
       })
 
       if (error) throw error
@@ -274,11 +285,11 @@ export default function UserRegister() {
         confirmButtonColor: '#667eea',
       })
       loadUsers()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting user:', error)
       await Swal.fire({
         title: 'Error!',
-        text: 'Failed to delete user.',
+        text: error?.message || 'Failed to delete user.',
         icon: 'error',
         confirmButtonColor: '#d33',
       })
