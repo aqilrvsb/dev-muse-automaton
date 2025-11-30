@@ -392,7 +392,7 @@ export default function DeviceSettings() {
         device_id: '',
         instance: '',
         webhook_id: '',
-        provider: 'waha',
+        provider: 'whacenter',
         api_key_option: 'openai/gpt-4.1',
         api_key: '',
         phone_number: '',
