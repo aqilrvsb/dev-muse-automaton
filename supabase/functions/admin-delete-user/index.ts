@@ -64,26 +64,79 @@ Deno.serve(async (req) => {
     }
 
     // Delete related data first (to avoid foreign key constraints)
+    // Order matters due to foreign key relationships!
 
-    // 1. Delete user's devices
+    // 1. Get user's sequences first (needed for cascade delete)
+    const { data: userSequences } = await supabaseAdmin
+      .from('sequences')
+      .select('id')
+      .eq('user_id', userId)
+
+    const sequenceIds = userSequences?.map((s: { id: string }) => s.id) || []
+
+    // 2. Delete sequence_scheduled_messages (depends on sequence_enrollments and sequences)
+    if (sequenceIds.length > 0) {
+      await supabaseAdmin
+        .from('sequence_scheduled_messages')
+        .delete()
+        .in('sequence_id', sequenceIds)
+
+      // 3. Delete sequence_enrollments (depends on sequences)
+      await supabaseAdmin
+        .from('sequence_enrollments')
+        .delete()
+        .in('sequence_id', sequenceIds)
+
+      // 4. Delete sequence_flows (depends on sequences)
+      await supabaseAdmin
+        .from('sequence_flows')
+        .delete()
+        .in('sequence_id', sequenceIds)
+
+      // 5. Delete sequences
+      await supabaseAdmin
+        .from('sequences')
+        .delete()
+        .eq('user_id', userId)
+    }
+
+    // 6. Delete user's bank_images
+    await supabaseAdmin
+      .from('bank_images')
+      .delete()
+      .eq('user_id', userId)
+
+    // 7. Delete user's payments
+    await supabaseAdmin
+      .from('payments')
+      .delete()
+      .eq('user_id', userId)
+
+    // 8. Delete user's orders
+    await supabaseAdmin
+      .from('orders')
+      .delete()
+      .eq('user_id', userId)
+
+    // 9. Delete user's devices
     await supabaseAdmin
       .from('device_setting')
       .delete()
       .eq('user_id', userId)
 
-    // 2. Delete user's prompts
+    // 10. Delete user's prompts
     await supabaseAdmin
       .from('prompts')
       .delete()
       .eq('user_id', userId)
 
-    // 3. Delete user's ai_whatsapp conversations
+    // 11. Delete user's ai_whatsapp conversations
     await supabaseAdmin
       .from('ai_whatsapp')
       .delete()
       .eq('user_id', userId)
 
-    // 4. Delete user from public.user table
+    // 12. Delete user from public.user table
     const { error: deleteError } = await supabaseAdmin
       .from('user')
       .delete()
