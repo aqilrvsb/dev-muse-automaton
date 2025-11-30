@@ -240,6 +240,51 @@ export default function UserRegister() {
     }
   }
 
+  const deleteUser = async (targetUser: User) => {
+    const result = await Swal.fire({
+      title: 'Delete User?',
+      html: `
+        <p>Are you sure you want to delete this user?</p>
+        <p class="text-sm text-gray-500 mt-2"><strong>${targetUser.full_name || targetUser.email}</strong></p>
+        <p class="text-xs text-red-500 mt-2">This action cannot be undone!</p>
+      `,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'Cancel'
+    })
+
+    if (!result.isConfirmed) return
+
+    try {
+      // Delete user from public.user table
+      const { error } = await supabase
+        .from('user')
+        .delete()
+        .eq('id', targetUser.id)
+
+      if (error) throw error
+
+      await Swal.fire({
+        title: 'Deleted!',
+        text: 'User has been deleted successfully',
+        icon: 'success',
+        confirmButtonColor: '#667eea',
+      })
+      loadUsers()
+    } catch (error) {
+      console.error('Error deleting user:', error)
+      await Swal.fire({
+        title: 'Error!',
+        text: 'Failed to delete user. They may have related data.',
+        icon: 'error',
+        confirmButtonColor: '#d33',
+      })
+    }
+  }
+
   const toggleUserStatus = async (userId: string, currentStatus: boolean) => {
     const result = await Swal.fire({
       title: 'Are you sure?',
@@ -454,6 +499,13 @@ export default function UserRegister() {
                             title={u.is_active ? 'Deactivate' : 'Activate'}
                           >
                             {u.is_active ? '🔒' : '🔓'}
+                          </button>
+                          <button
+                            onClick={() => deleteUser(u)}
+                            className="text-red-600 hover:text-red-800 font-medium"
+                            title="Delete User"
+                          >
+                            🗑️
                           </button>
                         </div>
                       </td>
