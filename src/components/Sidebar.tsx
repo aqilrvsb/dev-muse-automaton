@@ -25,6 +25,7 @@ export default function Sidebar() {
     { path: '/bank-image', icon: '🏦', label: 'Bank Image' },
     { path: '/profile', icon: '👤', label: 'Profile' },
     { path: '/billings', icon: '💳', label: 'Billings' },
+    { path: 'https://chat.whatsapp.com/KTYPSFQOKvNKrwONno4j8h', icon: '💬', label: 'Support', external: true },
   ]
 
   // Determine which nav items to show based on user role
@@ -55,9 +56,26 @@ export default function Sidebar() {
           </div>
         )}
 
-        {navItems.map((item) => {
+        {navItems.map((item: any) => {
           // Admins are never disabled
           const isDisabled = !isAdmin && isExpired && item.path !== '/billings'
+
+          // Handle external links (like Support WhatsApp group)
+          if (item.external) {
+            return (
+              <a
+                key={item.path}
+                href={item.path}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-gray-700 hover:bg-green-50 hover:text-green-600"
+              >
+                <span className="text-xl">{item.icon}</span>
+                <span className="font-medium text-sm">{item.label}</span>
+                <span className="ml-auto text-xs">↗</span>
+              </a>
+            )
+          }
 
           return isDisabled ? (
             <div

@@ -6,7 +6,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const JWT_SECRET = Deno.env.get("JWT_SECRET")!;
-const DEBOUNCE_DELAY_MS = parseInt(Deno.env.get("DEBOUNCE_DELAY_MS") || "8000");
+const DEBOUNCE_DELAY_MS = parseInt(Deno.env.get("DEBOUNCE_DELAY_MS") || "5000");
 const WHACENTER_API_URL = Deno.env.get("WHACENTER_API_URL") || "https://api.whacenter.com";
 const WHACENTER_API_KEY = Deno.env.get("WHACENTER_API_KEY") || "abebe840-156c-441c-8252-da0342c5a07c";
 
@@ -597,7 +597,7 @@ async function executePromptBasedFlow(params: {
 
     const { data: newConversation, error: createError } = await supabaseAdmin
       .from("ai_whatsapp")
-      .insert(conversationData)
+      .upsert(conversationData, { onConflict: 'device_id,prospect_num' })
       .select()
       .single();
 
