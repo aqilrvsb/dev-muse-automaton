@@ -261,7 +261,7 @@ export default function UserRegister() {
     try {
       // Use edge function to delete user (bypasses RLS)
       const { data, error } = await supabase.functions.invoke('admin-delete-user', {
-        body: { userId: targetUser.id }
+        body: { userId: targetUser.id, adminId: user?.id }
       })
 
       if (error) throw error

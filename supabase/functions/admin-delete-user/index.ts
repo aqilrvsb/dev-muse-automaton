@@ -29,38 +29,28 @@ Deno.serve(async (req) => {
       }
     )
 
-    // Get the authorization header to verify admin
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      throw new Error('No authorization header')
+    const { userId, adminId } = await req.json()
+
+    if (!userId) {
+      throw new Error('User ID is required')
     }
 
-    // Verify the requesting user is an admin
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user: requestingUser }, error: authError } = await supabaseAdmin.auth.getUser(token)
-
-    if (authError || !requestingUser) {
-      throw new Error('Invalid authorization')
+    if (!adminId) {
+      throw new Error('Admin ID is required')
     }
 
-    // Check if requesting user is admin
+    // Verify the requesting user is an admin by checking database
     const { data: adminUser, error: adminError } = await supabaseAdmin
       .from('user')
       .select('role')
-      .eq('id', requestingUser.id)
+      .eq('id', adminId)
       .single()
 
     if (adminError || adminUser?.role !== 'admin') {
       throw new Error('Only admins can use this function')
     }
 
-    const { userId } = await req.json()
-
-    if (!userId) {
-      throw new Error('User ID is required')
-    }
-
-    console.log('Admin deleting user:', userId)
+    console.log('Admin', adminId, 'deleting user:', userId)
 
     // Get user email first for auth deletion
     const { data: targetUser, error: userError } = await supabaseAdmin
