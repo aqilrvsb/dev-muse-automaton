@@ -246,7 +246,7 @@ export default function UserRegister() {
       html: `
         <p>Are you sure you want to delete this user?</p>
         <p class="text-sm text-gray-500 mt-2"><strong>${targetUser.full_name || targetUser.email}</strong></p>
-        <p class="text-xs text-red-500 mt-2">This action cannot be undone!</p>
+        <p class="text-xs text-red-500 mt-2">This will also delete all their devices, prompts, and conversations!</p>
       `,
       icon: 'warning',
       showCancelButton: true,
@@ -259,13 +259,13 @@ export default function UserRegister() {
     if (!result.isConfirmed) return
 
     try {
-      // Delete user from public.user table
-      const { error } = await supabase
-        .from('user')
-        .delete()
-        .eq('id', targetUser.id)
+      // Use edge function to delete user (bypasses RLS)
+      const { data, error } = await supabase.functions.invoke('admin-delete-user', {
+        body: { userId: targetUser.id }
+      })
 
       if (error) throw error
+      if (data?.error) throw new Error(data.error)
 
       await Swal.fire({
         title: 'Deleted!',
@@ -278,7 +278,7 @@ export default function UserRegister() {
       console.error('Error deleting user:', error)
       await Swal.fire({
         title: 'Error!',
-        text: 'Failed to delete user. They may have related data.',
+        text: 'Failed to delete user.',
         icon: 'error',
         confirmButtonColor: '#d33',
       })
