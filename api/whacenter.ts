@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 const API_BASE = 'https://api.whacenter.com'
-const API_KEY = 'abebe840-156c-441c-8252-da0342c5a07c'
+const API_KEY = 'd44ac50f-0bd8-4ed0-b85f-55465e08d7cf'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS headers
