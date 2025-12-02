@@ -202,8 +202,8 @@ export default function Billings() {
             <p class="mb-3"><span class="text-green-600 font-semibold">Full Discount Applied!</span> You're within the first ${FULL_DISCOUNT_DAYS} days of your subscription.</p>
             <div class="bg-green-50 p-4 rounded-lg text-sm border border-green-200">
               <div class="flex justify-between mb-2">
-                <span>Days used:</span>
-                <span class="font-semibold">${prorated.daysUsed} of ${FULL_DISCOUNT_DAYS} days</span>
+                <span>Full discount period:</span>
+                <span class="font-semibold">${FULL_DISCOUNT_DAYS - prorated.daysUsed} days remaining</span>
               </div>
               <div class="flex justify-between mb-2">
                 <span>${currentPackage?.name} credit:</span>
@@ -413,7 +413,7 @@ export default function Billings() {
                     <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-3">
                       {prorated.isFullDiscount ? (
                         <>
-                          <p className="text-xs text-green-700 font-medium">Full Discount (Day {prorated.daysUsed + 1} of {FULL_DISCOUNT_DAYS})</p>
+                          <p className="text-xs text-green-700 font-medium">Full Discount ({FULL_DISCOUNT_DAYS - prorated.daysUsed} days left)</p>
                           <p className="text-lg font-bold text-green-600">
                             {formatCurrency(prorated.proratedAmount, pkg.currency)}
                           </p>
