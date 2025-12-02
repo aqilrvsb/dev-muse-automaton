@@ -217,11 +217,11 @@ async function checkAndEnrollSequences(params: {
   console.log(`📋 Checking sequences for stage: ${currentStage}`);
 
   try {
-    // Step 1: Find active sequences matching the current stage trigger
+    // Step 1: Find active sequences matching the current stage trigger (case-insensitive)
     const { data: matchingSequences, error: sequenceError } = await supabaseAdmin
       .from("sequences")
       .select("*, sequence_flows(*)")
-      .eq("trigger", currentStage)
+      .ilike("trigger", currentStage)
       .eq("status", "active")
       .order("created_at", { ascending: false });
 
