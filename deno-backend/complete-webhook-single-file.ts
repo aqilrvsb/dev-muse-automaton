@@ -1348,8 +1348,8 @@ async function handleWebhook(request: Request): Promise<Response> {
     );
   }
 
-  const deviceId = pathParts[0];
-  const webhookId = pathParts[1];
+  const deviceId = decodeURIComponent(pathParts[0]);
+  const webhookId = decodeURIComponent(pathParts[1]);
 
   console.log(`\n📥 Webhook: POST /${deviceId}/${webhookId}`);
 
