@@ -206,8 +206,9 @@ async function checkAndEnrollSequences(params: {
   currentStage: string | null;
   idProspect: string;
   instance: string;
+  userId: string;
 }): Promise<void> {
-  const { deviceId, prospectNum, currentStage, idProspect, instance } = params;
+  const { deviceId, prospectNum, currentStage, idProspect, instance, userId } = params;
 
   if (!currentStage) {
     console.log(`⚠️  No current stage, skipping sequence check`);
@@ -217,11 +218,12 @@ async function checkAndEnrollSequences(params: {
   console.log(`📋 Checking sequences for stage: ${currentStage}`);
 
   try {
-    // Step 1: Find active sequences matching the current stage trigger (case-insensitive)
+    // Step 1: Find active sequences matching the current stage trigger (filter by user_id)
     const { data: matchingSequences, error: sequenceError } = await supabaseAdmin
       .from("sequences")
       .select("*, sequence_flows(*)")
-      .ilike("trigger", currentStage)
+      .eq("trigger", currentStage)
+      .eq("user_id", userId)
       .eq("status", "active")
       .order("created_at", { ascending: false });
 
@@ -901,6 +903,7 @@ async function executePromptBasedFlow(params: {
       currentStage: aiResponse.Stage || null,
       idProspect: conversation.id_prospect,
       instance: device.instance,
+      userId: device.user_id,
     });
 
     console.log(`✅ === PROMPT-BASED FLOW EXECUTION COMPLETE ===\n`);
