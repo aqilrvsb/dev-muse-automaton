@@ -1076,13 +1076,19 @@ Ensure all placeholders in the confirmation template are dynamically replaced wi
               <form onSubmit={handleUpdatePrompt} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Device ID</label>
-                  <input
-                    type="text"
+                  <select
                     value={formData.device_id}
-                    className="w-full bg-gray-100 border border-gray-300 text-gray-600 rounded-lg px-4 py-2 cursor-not-allowed"
-                    readOnly
-                    disabled
-                  />
+                    onChange={(e) => setFormData({ ...formData, device_id: e.target.value })}
+                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    required
+                  >
+                    <option value="">Select a device</option>
+                    {devices.map((device) => (
+                      <option key={device.id} value={device.device_id}>
+                        {device.device_id} - {device.phone_number || 'No phone'}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
