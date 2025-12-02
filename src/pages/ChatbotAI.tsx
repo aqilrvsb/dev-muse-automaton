@@ -161,15 +161,20 @@ export default function ChatbotAI() {
     // Total Lead - all conversations
     const lead = data.length
 
-    // Stuck Intro - conversations with stage = "Welcome Message" (first stage, no response yet)
-    const stuck = data.filter(c => c.stage === 'Welcome Message').length
+    // Stuck Intro - conversations with stage = "Welcome Message" or "Introduction" (case insensitive)
+    const isStuckIntro = (stage: string | null | undefined) => {
+      if (!stage) return false
+      const s = stage.toLowerCase()
+      return s === 'welcome message' || s === 'introduction'
+    }
+    const stuck = data.filter(c => isStuckIntro(c.stage)).length
 
-    // Response - conversations with non-null stage and not "Welcome Message"
+    // Response - conversations with non-null stage and not stuck intro
     const resp = data.filter(c =>
       c.stage !== null &&
       c.stage !== undefined &&
       c.stage !== '' &&
-      c.stage !== 'Welcome Message'
+      !isStuckIntro(c.stage)
     ).length
 
     // Close - conversations with non-null detail field (captured customer details)

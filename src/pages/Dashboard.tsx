@@ -153,15 +153,20 @@ export default function Dashboard() {
     // Total Lead - all conversations
     const lead = data.length
 
-    // Total Stuck Intro - stage is "Welcome Message" (first stage, no response yet)
-    const stuckIntro = data.filter(c => c.stage === 'Welcome Message').length
+    // Total Stuck Intro - stage is "Welcome Message" or "Introduction" (case insensitive)
+    const isStuckIntro = (stage: string | null | undefined) => {
+      if (!stage) return false
+      const s = stage.toLowerCase()
+      return s === 'welcome message' || s === 'introduction'
+    }
+    const stuckIntro = data.filter(c => isStuckIntro(c.stage)).length
 
-    // Total Response - stage is not null and not "Welcome Message"
+    // Total Response - stage is not null and not stuck intro
     const response = data.filter(c =>
       c.stage !== null &&
       c.stage !== undefined &&
       c.stage !== '' &&
-      c.stage !== 'Welcome Message'
+      !isStuckIntro(c.stage)
     ).length
 
     // Total Close - detail is not null
