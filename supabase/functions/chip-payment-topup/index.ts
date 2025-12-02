@@ -47,7 +47,7 @@ const handler = async (req)=>{
     }
     // Regular API call from frontend
     const body = await req.json();
-    const { user_id, package_id, amount, description } = body;
+    const { user_id, package_id, amount, description, is_upgrade, prorated_credit } = body;
     if (!user_id || !package_id || !amount) {
       return new Response(JSON.stringify({
         error: 'user_id, package_id and amount are required'
@@ -95,9 +95,11 @@ const handler = async (req)=>{
       currency: 'MYR',
       status: 'pending',
       metadata: {
-        type: 'subscription',
+        type: is_upgrade ? 'upgrade' : 'subscription',
         package_name: packageData.name,
-        description: description || `Subscription - ${packageData.name}`
+        description: description || `${is_upgrade ? 'Upgrade to' : 'Subscription -'} ${packageData.name}`,
+        is_upgrade: is_upgrade || false,
+        prorated_credit: prorated_credit || 0
       }
     }).select().single();
     if (paymentError) {
@@ -141,7 +143,8 @@ const handler = async (req)=>{
           user_id: user_id,
           payment_id: payment.id,
           package_id: package_id,
-          type: 'subscription'
+          type: is_upgrade ? 'upgrade' : 'subscription',
+          is_upgrade: is_upgrade || false
         }
       },
       success_redirect: `${appOrigin}/billings?status=success`,
@@ -306,7 +309,9 @@ async function handleWebhook(req, signature) {
     console.log(`✅ Payment ${payment.id} status updated to: ${newStatus}`);
     // ONLY activate subscription if payment is successful
     if (status === 'paid' && newStatus === 'paid') {
-      console.log(`💰 Payment SUCCESSFUL - Activating subscription for user ${payment.user_id}`);
+      const isUpgrade = payment.metadata?.is_upgrade === true;
+      console.log(`💰 Payment SUCCESSFUL - ${isUpgrade ? 'Upgrading' : 'Activating'} subscription for user ${payment.user_id}`);
+
       // Get package details
       const { data: packageData } = await supabase.from('packages').select('*').eq('id', payment.package_id).single();
       if (!packageData) {
@@ -320,19 +325,30 @@ async function handleWebhook(req, signature) {
           }
         });
       }
-      // Calculate expiry date based on package duration
+
       const now = new Date();
-      const expiryDate = new Date(now);
-      expiryDate.setDate(expiryDate.getDate() + (packageData.duration_days || 30));
-      // Update user subscription (table is 'user' not 'users')
-      const { error: subscriptionError } = await supabase.from('user').update({
+      let subscriptionUpdate: Record<string, any> = {
         package_id: payment.package_id,
         subscription_status: 'active',
-        subscription_start: now.toISOString(),
-        subscription_end: expiryDate.toISOString(),
         max_devices: packageData.max_devices,
         updated_at: now.toISOString()
-      }).eq('id', payment.user_id);
+      };
+
+      // For upgrades: keep existing subscription_end date (renewal stays the same)
+      // For new subscriptions: calculate new expiry date
+      if (isUpgrade) {
+        console.log('📦 Upgrade detected - keeping existing subscription_end date');
+        // Don't update subscription_start or subscription_end for upgrades
+      } else {
+        console.log('📦 New subscription - setting new expiry date');
+        const expiryDate = new Date(now);
+        expiryDate.setDate(expiryDate.getDate() + (packageData.duration_days || 30));
+        subscriptionUpdate.subscription_start = now.toISOString();
+        subscriptionUpdate.subscription_end = expiryDate.toISOString();
+      }
+
+      // Update user subscription (table is 'user' not 'users')
+      const { error: subscriptionError } = await supabase.from('user').update(subscriptionUpdate).eq('id', payment.user_id);
       if (subscriptionError) {
         console.error('❌ Error updating subscription:', subscriptionError);
         await supabase.from('payments').update({
