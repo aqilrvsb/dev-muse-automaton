@@ -131,8 +131,8 @@ export default function Billings() {
     const remainingDays = Math.ceil(remainingMs / (1000 * 60 * 60 * 24))
     const totalDays = currentPackage.duration_days || 30
 
-    // Within first 5 days: Full discount (only pay price difference)
-    if (daysUsed < FULL_DISCOUNT_DAYS) {
+    // Within first 5 days (inclusive): Full discount (only pay price difference)
+    if (daysUsed <= FULL_DISCOUNT_DAYS) {
       const priceDifference = Math.max(0, targetPackage.price - currentPackage.price)
       return {
         proratedAmount: priceDifference,
