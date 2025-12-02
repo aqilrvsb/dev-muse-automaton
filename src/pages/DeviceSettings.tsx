@@ -208,10 +208,12 @@ export default function DeviceSettings() {
   }
 
   const handleDeviceIdChange = (value: string) => {
-    setFormData({ ...formData, device_id: value })
+    // Remove spaces from device_id to prevent URL encoding issues
+    const sanitizedValue = value.replace(/\s/g, '')
+    setFormData({ ...formData, device_id: sanitizedValue })
     // Debounce the check
     const timer = setTimeout(() => {
-      checkDeviceIdExists(value)
+      checkDeviceIdExists(sanitizedValue)
     }, 500)
     return () => clearTimeout(timer)
   }
