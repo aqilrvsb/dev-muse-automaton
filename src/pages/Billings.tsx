@@ -80,6 +80,62 @@ export default function Billings() {
     }).format(amount)
   }
 
+  // Calculate prorated upgrade cost (Option A: based on remaining days)
+  const calculateProratedUpgrade = (targetPackage: Package): {
+    proratedAmount: number,
+    credit: number,
+    remainingDays: number,
+    totalDays: number
+  } => {
+    // If no current subscription or no subscription end date, charge full price
+    if (!user?.subscription_end || !currentPackage) {
+      return {
+        proratedAmount: targetPackage.price,
+        credit: 0,
+        remainingDays: 0,
+        totalDays: 30
+      }
+    }
+
+    const now = new Date()
+    const subscriptionEnd = new Date(user.subscription_end)
+
+    // If subscription already expired, charge full price
+    if (now >= subscriptionEnd) {
+      return {
+        proratedAmount: targetPackage.price,
+        credit: 0,
+        remainingDays: 0,
+        totalDays: 30
+      }
+    }
+
+    // Calculate remaining days
+    const remainingMs = subscriptionEnd.getTime() - now.getTime()
+    const remainingDays = Math.ceil(remainingMs / (1000 * 60 * 60 * 24))
+    const totalDays = currentPackage.duration_days || 30
+
+    // Calculate credit from current plan (unused days)
+    const dailyRate = currentPackage.price / totalDays
+    const credit = dailyRate * remainingDays
+
+    // Calculate prorated cost for new plan
+    const proratedAmount = Math.max(0, targetPackage.price - credit)
+
+    return {
+      proratedAmount: Math.round(proratedAmount * 100) / 100, // Round to 2 decimal places
+      credit: Math.round(credit * 100) / 100,
+      remainingDays,
+      totalDays
+    }
+  }
+
+  // Check if this is an upgrade (target price > current price)
+  const isUpgrade = (targetPackage: Package): boolean => {
+    if (!currentPackage) return false
+    return targetPackage.price > currentPackage.price
+  }
+
   const handleUpgrade = async (pkg: Package) => {
     if (!user?.id) {
       await Swal.fire({
@@ -99,6 +155,52 @@ export default function Billings() {
       return
     }
 
+    // Calculate prorated amount if upgrading
+    const upgrading = isUpgrade(pkg)
+    const prorated = upgrading ? calculateProratedUpgrade(pkg) : null
+    const finalAmount = prorated ? prorated.proratedAmount : pkg.price
+
+    // Show confirmation with prorated details for upgrades
+    if (upgrading && prorated && prorated.credit > 0) {
+      const confirmResult = await Swal.fire({
+        icon: 'info',
+        title: 'Upgrade to ' + pkg.name,
+        html: `
+          <div class="text-left">
+            <p class="mb-3">Your upgrade will be prorated based on your remaining subscription:</p>
+            <div class="bg-gray-50 p-4 rounded-lg text-sm">
+              <div class="flex justify-between mb-2">
+                <span>Remaining days:</span>
+                <span class="font-semibold">${prorated.remainingDays} days</span>
+              </div>
+              <div class="flex justify-between mb-2">
+                <span>Credit from ${currentPackage?.name}:</span>
+                <span class="font-semibold text-green-600">-${formatCurrency(prorated.credit, pkg.currency)}</span>
+              </div>
+              <div class="flex justify-between mb-2">
+                <span>${pkg.name} price:</span>
+                <span class="font-semibold">${formatCurrency(pkg.price, pkg.currency)}</span>
+              </div>
+              <hr class="my-2">
+              <div class="flex justify-between text-lg">
+                <span class="font-bold">Amount to pay:</span>
+                <span class="font-bold text-primary-600">${formatCurrency(prorated.proratedAmount, pkg.currency)}</span>
+              </div>
+            </div>
+            <p class="mt-3 text-xs text-gray-500">Your renewal date will remain: ${user.subscription_end ? formatDate(user.subscription_end) : 'N/A'}</p>
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: `Pay ${formatCurrency(prorated.proratedAmount, pkg.currency)}`,
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#7c3aed',
+      })
+
+      if (!confirmResult.isConfirmed) {
+        return
+      }
+    }
+
     setProcessing(true)
 
     try {
@@ -107,8 +209,12 @@ export default function Billings() {
         body: {
           user_id: user.id,
           package_id: pkg.id,
-          amount: pkg.price,
-          description: `Subscription - ${pkg.name}`,
+          amount: finalAmount,
+          description: upgrading && prorated && prorated.credit > 0
+            ? `Upgrade to ${pkg.name} (Prorated: ${formatCurrency(prorated.credit, pkg.currency)} credit applied)`
+            : `Subscription - ${pkg.name}`,
+          is_upgrade: upgrading,
+          prorated_credit: prorated?.credit || 0,
         },
       })
 
@@ -222,7 +328,11 @@ export default function Billings() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {packages.map((pkg) => (
+              {packages.map((pkg) => {
+                const upgrading = isUpgrade(pkg)
+                const prorated = upgrading ? calculateProratedUpgrade(pkg) : null
+
+                return (
                 <div
                   key={pkg.id}
                   className="bg-white border border-gray-200 rounded-xl p-6 hover:border-primary-500 hover:shadow-md transition-all shadow-sm"
@@ -236,6 +346,19 @@ export default function Billings() {
                     </span>
                     <span className="text-gray-600 ml-2">/month</span>
                   </div>
+
+                  {/* Show prorated upgrade info */}
+                  {upgrading && prorated && prorated.credit > 0 && (
+                    <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-3">
+                      <p className="text-xs text-green-700 font-medium">Upgrade Price (Prorated)</p>
+                      <p className="text-lg font-bold text-green-600">
+                        {formatCurrency(prorated.proratedAmount, pkg.currency)}
+                      </p>
+                      <p className="text-xs text-green-600">
+                        Credit: -{formatCurrency(prorated.credit, pkg.currency)} ({prorated.remainingDays} days remaining)
+                      </p>
+                    </div>
+                  )}
 
                   <ul className="space-y-2 mb-6">
                     {Array.isArray(pkg.features) && pkg.features.map((feature, idx) => (
@@ -254,7 +377,7 @@ export default function Billings() {
                     {processing ? 'Processing...' : user?.package_id === pkg.id ? 'Current Plan' : 'Upgrade'}
                   </button>
                 </div>
-              ))}
+              )})}
             </div>
           )}
         </div>
