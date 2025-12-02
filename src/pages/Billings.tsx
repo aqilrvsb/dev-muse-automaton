@@ -80,25 +80,35 @@ export default function Billings() {
     }).format(amount)
   }
 
-  // Calculate prorated upgrade cost (Option A: based on remaining days)
+  // Grace period: First 5 days = full discount (only pay price difference)
+  const FULL_DISCOUNT_DAYS = 5
+
+  // Calculate prorated upgrade cost
+  // - First 5 days: Full discount (pay only price difference)
+  // - After 5 days: Prorated based on remaining days
   const calculateProratedUpgrade = (targetPackage: Package): {
     proratedAmount: number,
     credit: number,
     remainingDays: number,
-    totalDays: number
+    totalDays: number,
+    isFullDiscount: boolean,
+    daysUsed: number
   } => {
     // If no current subscription or no subscription end date, charge full price
-    if (!user?.subscription_end || !currentPackage) {
+    if (!user?.subscription_end || !user?.subscription_start || !currentPackage) {
       return {
         proratedAmount: targetPackage.price,
         credit: 0,
         remainingDays: 0,
-        totalDays: 30
+        totalDays: 30,
+        isFullDiscount: false,
+        daysUsed: 0
       }
     }
 
     const now = new Date()
     const subscriptionEnd = new Date(user.subscription_end)
+    const subscriptionStart = new Date(user.subscription_start)
 
     // If subscription already expired, charge full price
     if (now >= subscriptionEnd) {
@@ -106,16 +116,35 @@ export default function Billings() {
         proratedAmount: targetPackage.price,
         credit: 0,
         remainingDays: 0,
-        totalDays: 30
+        totalDays: 30,
+        isFullDiscount: false,
+        daysUsed: 0
       }
     }
+
+    // Calculate days used since subscription start
+    const usedMs = now.getTime() - subscriptionStart.getTime()
+    const daysUsed = Math.floor(usedMs / (1000 * 60 * 60 * 24))
 
     // Calculate remaining days
     const remainingMs = subscriptionEnd.getTime() - now.getTime()
     const remainingDays = Math.ceil(remainingMs / (1000 * 60 * 60 * 24))
     const totalDays = currentPackage.duration_days || 30
 
-    // Calculate credit from current plan (unused days)
+    // Within first 5 days: Full discount (only pay price difference)
+    if (daysUsed < FULL_DISCOUNT_DAYS) {
+      const priceDifference = Math.max(0, targetPackage.price - currentPackage.price)
+      return {
+        proratedAmount: priceDifference,
+        credit: currentPackage.price, // Full credit for current package
+        remainingDays,
+        totalDays,
+        isFullDiscount: true,
+        daysUsed
+      }
+    }
+
+    // After 5 days: Prorated based on remaining days
     const dailyRate = currentPackage.price / totalDays
     const credit = dailyRate * remainingDays
 
@@ -126,7 +155,9 @@ export default function Billings() {
       proratedAmount: Math.round(proratedAmount * 100) / 100, // Round to 2 decimal places
       credit: Math.round(credit * 100) / 100,
       remainingDays,
-      totalDays
+      totalDays,
+      isFullDiscount: false,
+      daysUsed
     }
   }
 
@@ -165,10 +196,40 @@ export default function Billings() {
       const confirmResult = await Swal.fire({
         icon: 'info',
         title: 'Upgrade to ' + pkg.name,
-        html: `
+        html: prorated.isFullDiscount
+          ? `
+          <div class="text-left">
+            <p class="mb-3"><span class="text-green-600 font-semibold">Full Discount Applied!</span> You're within the first ${FULL_DISCOUNT_DAYS} days of your subscription.</p>
+            <div class="bg-green-50 p-4 rounded-lg text-sm border border-green-200">
+              <div class="flex justify-between mb-2">
+                <span>Days used:</span>
+                <span class="font-semibold">${prorated.daysUsed} of ${FULL_DISCOUNT_DAYS} days</span>
+              </div>
+              <div class="flex justify-between mb-2">
+                <span>${currentPackage?.name} credit:</span>
+                <span class="font-semibold text-green-600">-${formatCurrency(prorated.credit, pkg.currency)}</span>
+              </div>
+              <div class="flex justify-between mb-2">
+                <span>${pkg.name} price:</span>
+                <span class="font-semibold">${formatCurrency(pkg.price, pkg.currency)}</span>
+              </div>
+              <hr class="my-2 border-green-200">
+              <div class="flex justify-between text-lg">
+                <span class="font-bold">Amount to pay:</span>
+                <span class="font-bold text-green-600">${formatCurrency(prorated.proratedAmount, pkg.currency)}</span>
+              </div>
+            </div>
+            <p class="mt-3 text-xs text-gray-500">Your renewal date will remain: ${user.subscription_end ? formatDate(user.subscription_end) : 'N/A'}</p>
+          </div>
+        `
+          : `
           <div class="text-left">
             <p class="mb-3">Your upgrade will be prorated based on your remaining subscription:</p>
             <div class="bg-gray-50 p-4 rounded-lg text-sm">
+              <div class="flex justify-between mb-2">
+                <span>Days used:</span>
+                <span class="font-semibold">${prorated.daysUsed} days</span>
+              </div>
               <div class="flex justify-between mb-2">
                 <span>Remaining days:</span>
                 <span class="font-semibold">${prorated.remainingDays} days</span>
@@ -350,13 +411,27 @@ export default function Billings() {
                   {/* Show prorated upgrade info */}
                   {upgrading && prorated && prorated.credit > 0 && (
                     <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-3">
-                      <p className="text-xs text-green-700 font-medium">Upgrade Price (Prorated)</p>
-                      <p className="text-lg font-bold text-green-600">
-                        {formatCurrency(prorated.proratedAmount, pkg.currency)}
-                      </p>
-                      <p className="text-xs text-green-600">
-                        Credit: -{formatCurrency(prorated.credit, pkg.currency)} ({prorated.remainingDays} days remaining)
-                      </p>
+                      {prorated.isFullDiscount ? (
+                        <>
+                          <p className="text-xs text-green-700 font-medium">Full Discount (Day {prorated.daysUsed + 1} of {FULL_DISCOUNT_DAYS})</p>
+                          <p className="text-lg font-bold text-green-600">
+                            {formatCurrency(prorated.proratedAmount, pkg.currency)}
+                          </p>
+                          <p className="text-xs text-green-600">
+                            Only pay the difference!
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-xs text-green-700 font-medium">Upgrade Price (Prorated)</p>
+                          <p className="text-lg font-bold text-green-600">
+                            {formatCurrency(prorated.proratedAmount, pkg.currency)}
+                          </p>
+                          <p className="text-xs text-green-600">
+                            Credit: -{formatCurrency(prorated.credit, pkg.currency)} ({prorated.remainingDays} days remaining)
+                          </p>
+                        </>
+                      )}
                     </div>
                   )}
 
