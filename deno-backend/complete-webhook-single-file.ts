@@ -551,19 +551,20 @@ async function executePromptBasedFlow(params: {
     }
   }
 
-  // Step 2: Get prompt from prompts table
+  // Step 2: Get prompt from prompts table (filter by device_id AND user_id to avoid conflicts)
   const { data: prompt, error: promptError } = await supabaseAdmin
     .from("prompts")
     .select("*")
     .eq("device_id", deviceId)
+    .eq("user_id", device.user_id)
     .single();
 
   if (promptError || !prompt) {
-    console.error("❌ No prompt configured for this device");
+    console.error("❌ No prompt configured for this device and user");
     return;
   }
 
-  console.log(`✅ Found prompt: ${prompt.prompts_name}`);
+  console.log(`✅ Found prompt: ${prompt.prompts_name} (user: ${device.user_id})`);
 
   // Step 3: Check if conversation exists
   const { data: existingConversation } = await supabaseAdmin
