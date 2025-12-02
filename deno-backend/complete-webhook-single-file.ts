@@ -8,7 +8,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const JWT_SECRET = Deno.env.get("JWT_SECRET")!;
 const DEBOUNCE_DELAY_MS = parseInt(Deno.env.get("DEBOUNCE_DELAY_MS") || "5000");
 const WHACENTER_API_URL = Deno.env.get("WHACENTER_API_URL") || "https://api.whacenter.com";
-const WHACENTER_API_KEY = Deno.env.get("WHACENTER_API_KEY") || "abebe840-156c-441c-8252-da0342c5a07c";
+const WHACENTER_API_KEY = Deno.env.get("WHACENTER_API_KEY") || "d44ac50f-0bd8-4ed0-b85f-55465e08d7cf";
 
 // Initialize Supabase clients
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

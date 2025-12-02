@@ -2,7 +2,7 @@
 // Deploy this to Deno Deploy or any serverless platform
 
 const WHACENTER_API_BASE = 'https://api.whacenter.com';
-const WHACENTER_API_KEY = 'abebe840-156c-441c-8252-da0342c5a07c';
+const WHACENTER_API_KEY = 'd44ac50f-0bd8-4ed0-b85f-55465e08d7cf';
 
 // CORS headers to allow frontend requests
 const corsHeaders = {
