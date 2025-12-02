@@ -655,6 +655,7 @@ Ensure all placeholders in the confirmation template are dynamically replaced wi
       const { error } = await supabase
         .from('prompts')
         .update({
+          device_id: formData.device_id,
           niche: formData.niche,
           prompts_name: formData.prompts_name,
           prompts_data: formData.prompts_data,
