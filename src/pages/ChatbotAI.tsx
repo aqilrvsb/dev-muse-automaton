@@ -506,15 +506,29 @@ ${conv.conv_last || 'No conversation history'}
 
       // Build table HTML
       // Get current time in Malaysia timezone (UTC+8)
-      const nowMalaysia = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' }))
+      const now = new Date()
+      // Format current time as Malaysia time string for comparison
+      const nowMalaysiaStr = now.toLocaleString('en-CA', {
+        timeZone: 'Asia/Kuala_Lumpur',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }).replace(',', '')
+
       const tableRows = scheduledMessages.map((msg: any, index: number) => {
         // Use scheduled_time from sequence_scheduled_messages (per-flow time with delay)
-        // Database stores in Malaysia timezone format: 2025-12-03 10:26:00
-        // Display format: 03/12/2025, 10:26
+        // Database stores in Malaysia timezone format: 2025-12-03T10:26:00+08:00 or 2025-12-03 10:26:00
         const scheduledTime = msg.scheduled_time
-        // Parse the scheduled time (stored in Malaysia timezone)
-        const scheduledDate = new Date(scheduledTime)
-        const isPast = scheduledDate < nowMalaysia
+
+        // Parse scheduled time - extract just the datetime part for comparison
+        const scheduledStr = scheduledTime.replace('T', ' ').split('.')[0].split('+')[0]
+
+        // Compare as strings (both in Malaysia timezone format: YYYY-MM-DD HH:MM:SS)
+        const isPast = scheduledStr < nowMalaysiaStr
 
         const timestamp = scheduledTime.replace('T', ' ').split('.')[0]
         const [datePart, timePart] = timestamp.split(' ')
