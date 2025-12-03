@@ -240,12 +240,22 @@ export default function Sequences() {
 
   const handleEditSequence = async (sequence: Sequence) => {
     setCurrentSequence(sequence)
-    // Find matching prompt by combined niche format "niche (prompts_name)"
-    // The sequence.niche now stores the combined format
-    const matchingPrompt = prompts.find(p => `${p.niche} (${p.prompts_name})` === sequence.niche)
+    // Find matching prompt - try combined format first, then fallback to just niche name
+    // This handles both new format "niche (prompts_name)" and old format "niche"
+    let matchingPrompt = prompts.find(p => `${p.niche} (${p.prompts_name})` === sequence.niche)
+    if (!matchingPrompt) {
+      // Fallback: match by just niche name (for old sequences)
+      matchingPrompt = prompts.find(p => p.niche === sequence.niche)
+    }
+
+    // If we found a match but niche is in old format, update to new format
+    const nicheValue = matchingPrompt
+      ? `${matchingPrompt.niche} (${matchingPrompt.prompts_name})`
+      : sequence.niche
+
     setFormData({
       name: sequence.name,
-      niche: sequence.niche,
+      niche: nicheValue,
       prompt_id: matchingPrompt?.id || '',
       trigger: sequence.trigger,
       description: sequence.description,
