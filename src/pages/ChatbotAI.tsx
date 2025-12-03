@@ -471,7 +471,7 @@ ${conv.conv_last || 'No conversation history'}
   }
 
   // View scheduled sequences for a prospect
-  const viewSequences = async (prospectNum: string) => {
+  const viewSequences = async (prospectNum: string, currentStage?: string) => {
     try {
       // Fetch scheduled messages from sequence_scheduled_messages table
       const { data: scheduledMessages, error } = await supabase
@@ -548,20 +548,30 @@ ${conv.conv_last || 'No conversation history'}
           ? `<a href="${msg.image_url}" target="_blank" style="color: #667eea; text-decoration: underline;">View Image</a>`
           : '-'
 
-        // Hide delete button if scheduled time has passed
-        const deleteButton = isPast
-          ? `<span style="color: #9ca3af; font-size: 12px;">Sent</span>`
-          : `<button
+        // Check if current stage doesn't match sequence trigger (means backend cancelled/will cancel)
+        const isStageMismatch = currentStage && stageTrigger !== '-' && currentStage !== stageTrigger
+
+        // Hide delete button if:
+        // 1. Scheduled time has passed (already sent)
+        // 2. Current stage doesn't match sequence trigger (cancelled by backend)
+        let deleteButton = ''
+        if (isPast) {
+          deleteButton = `<span style="color: #9ca3af; font-size: 12px;">Sent</span>`
+        } else if (isStageMismatch) {
+          deleteButton = `<span style="color: #f97316; font-size: 12px;">Cancelled</span>`
+        } else {
+          deleteButton = `<button
               onclick="deleteScheduledMessage('${msg.id}', '${msg.whacenter_message_id}')"
               style="background: #ef4444; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600;"
             >
               🗑️ Delete
             </button>`
+        }
 
         return `
-          <tr style="border-bottom: 1px solid #e5e7eb; ${isPast ? 'opacity: 0.6;' : ''}">
+          <tr style="border-bottom: 1px solid #e5e7eb; ${isPast || isStageMismatch ? 'opacity: 0.6;' : ''}">
             <td style="padding: 12px; text-align: left;">${index + 1}</td>
-            <td style="padding: 12px; text-align: left;">${stageTrigger}</td>
+            <td style="padding: 12px; text-align: left;">${stageTrigger}${isStageMismatch ? ` <span style="color: #f97316; font-size: 10px;">(was)</span>` : ''}</td>
             <td style="padding: 12px; text-align: left;">${msg.flow_number}</td>
             <td style="padding: 12px; text-align: left;">${imagePreview}</td>
             <td style="padding: 12px; text-align: left; max-width: 300px; word-wrap: break-word;">${msg.message.substring(0, 100)}${msg.message.length > 100 ? '...' : ''}</td>
@@ -576,6 +586,7 @@ ${conv.conv_last || 'No conversation history'}
       Swal.fire({
         title: `Scheduled Messages for ${prospectNum}`,
         html: `
+          ${currentStage ? `<p style="margin-bottom: 12px; color: #6b7280; font-size: 13px;">Current Stage: <strong style="color: #374151;">${currentStage}</strong></p>` : ''}
           <div style="max-height: 500px; overflow-y: auto;">
             <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
               <thead style="background: #f3f4f6; position: sticky; top: 0;">
@@ -604,7 +615,7 @@ ${conv.conv_last || 'No conversation history'}
             await deleteScheduledMessage(messageId, whacenterMessageId)
             // Close and reopen modal with updated data
             Swal.close()
-            viewSequences(prospectNum)
+            viewSequences(prospectNum, currentStage)
           }
         }
       })
@@ -941,7 +952,7 @@ ${conv.conv_last || 'No conversation history'}
                         </td>
                         <td className="px-6 py-4">
                           <button
-                            onClick={() => viewSequences(conv.prospect_num)}
+                            onClick={() => viewSequences(conv.prospect_num, conv.stage)}
                             className="text-purple-600 hover:text-purple-800 transition-smooth text-lg"
                             title="View Scheduled Sequences"
                           >
