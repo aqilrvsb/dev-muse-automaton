@@ -78,7 +78,9 @@ export default function Sequences() {
     flow_number: 1,
     step_trigger: '',
     next_trigger: '',
-    delay_hours: 24,
+    delay_hours: 1, // Stored value (always in hours for DB)
+    delay_value: 1, // Display value (user input)
+    delay_unit: 'hours' as 'hours' | 'minutes',
     message: '',
     image_url: '',
     is_end: false,
@@ -370,6 +372,18 @@ export default function Sequences() {
     }
   }
 
+  // Helper to convert stored delay_hours to display values
+  const parseDelayToDisplay = (delayHours: number): { value: number, unit: 'hours' | 'minutes' } => {
+    // Check if it's a fractional hour (stored as minutes)
+    // If delay_hours < 1, it's stored as fraction of hour (minutes/60)
+    if (delayHours < 1 && delayHours > 0) {
+      const minutes = Math.round(delayHours * 60)
+      return { value: minutes, unit: 'minutes' }
+    }
+    // Otherwise it's hours
+    return { value: delayHours, unit: 'hours' }
+  }
+
   const handleOpenFlowEdit = (flowNumber: number, isCreateMode: boolean = false) => {
     setCurrentFlowNumber(flowNumber)
 
@@ -377,35 +391,41 @@ export default function Sequences() {
       // Load from tempFlows
       const existingFlow = tempFlows.find(f => f.flow_number === flowNumber)
       if (existingFlow) {
+        const parsed = parseDelayToDisplay(existingFlow.delay_hours)
         setFlowFormData({
           flow_number: existingFlow.flow_number,
           step_trigger: existingFlow.step_trigger,
           next_trigger: existingFlow.next_trigger || '',
           delay_hours: existingFlow.delay_hours,
+          delay_value: parsed.value,
+          delay_unit: parsed.unit,
           message: existingFlow.message,
           image_url: existingFlow.image_url || '',
           is_end: existingFlow.is_end,
         })
       } else {
         resetFlowForm()
-        setFlowFormData({ ...flowFormData, flow_number: flowNumber })
+        setFlowFormData(prev => ({ ...prev, flow_number: flowNumber }))
       }
     } else {
       // Load from sequenceFlows
       const existingFlow = sequenceFlows.find(f => f.flow_number === flowNumber)
       if (existingFlow) {
+        const parsed = parseDelayToDisplay(existingFlow.delay_hours)
         setFlowFormData({
           flow_number: existingFlow.flow_number,
           step_trigger: existingFlow.step_trigger,
           next_trigger: existingFlow.next_trigger || '',
           delay_hours: existingFlow.delay_hours,
+          delay_value: parsed.value,
+          delay_unit: parsed.unit,
           message: existingFlow.message,
           image_url: existingFlow.image_url || '',
           is_end: existingFlow.is_end,
         })
       } else {
         resetFlowForm()
-        setFlowFormData({ ...flowFormData, flow_number: flowNumber })
+        setFlowFormData(prev => ({ ...prev, flow_number: flowNumber }))
       }
     }
 
@@ -531,7 +551,9 @@ export default function Sequences() {
       flow_number: 1,
       step_trigger: '',
       next_trigger: '',
-      delay_hours: 24,
+      delay_hours: 1,
+      delay_value: 1,
+      delay_unit: 'hours',
       message: '',
       image_url: '',
       is_end: false,
@@ -982,15 +1004,58 @@ export default function Sequences() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Delay Hours</label>
-                  <input
-                    type="number"
-                    value={flowFormData.delay_hours}
-                    onChange={(e) => setFlowFormData({ ...flowFormData, delay_hours: parseInt(e.target.value) || 0 })}
-                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    min="0"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Hours to wait before next step</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Delay Time</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      value={flowFormData.delay_value}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value) || 0
+                        // Convert to hours for storage
+                        const delayHours = flowFormData.delay_unit === 'minutes'
+                          ? value / 60
+                          : value
+                        setFlowFormData({
+                          ...flowFormData,
+                          delay_value: value,
+                          delay_hours: delayHours
+                        })
+                      }}
+                      className="flex-1 bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      min={flowFormData.delay_unit === 'minutes' ? 10 : 1}
+                    />
+                    <select
+                      value={flowFormData.delay_unit}
+                      onChange={(e) => {
+                        const newUnit = e.target.value as 'hours' | 'minutes'
+                        // When switching units, set appropriate default values
+                        let newValue = flowFormData.delay_value
+                        if (newUnit === 'minutes' && flowFormData.delay_unit === 'hours') {
+                          // Switching from hours to minutes - set minimum 10
+                          newValue = Math.max(10, flowFormData.delay_value * 60)
+                        } else if (newUnit === 'hours' && flowFormData.delay_unit === 'minutes') {
+                          // Switching from minutes to hours - convert or default to 1
+                          newValue = Math.max(1, Math.round(flowFormData.delay_value / 60))
+                        }
+                        const delayHours = newUnit === 'minutes' ? newValue / 60 : newValue
+                        setFlowFormData({
+                          ...flowFormData,
+                          delay_unit: newUnit,
+                          delay_value: newValue,
+                          delay_hours: delayHours
+                        })
+                      }}
+                      className="bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    >
+                      <option value="hours">Hours</option>
+                      <option value="minutes">Minutes</option>
+                    </select>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {flowFormData.delay_unit === 'hours'
+                      ? 'Minimum: 1 hour'
+                      : 'Minimum: 10 minutes'}
+                  </p>
                 </div>
 
                 <div>
@@ -1052,6 +1117,24 @@ export default function Sequences() {
                           icon: 'warning',
                           title: 'Missing Required Fields',
                           text: 'Please fill in the Message field',
+                        })
+                        return
+                      }
+
+                      // Validate minimum delay values
+                      if (flowFormData.delay_unit === 'hours' && flowFormData.delay_value < 1) {
+                        Swal.fire({
+                          icon: 'warning',
+                          title: 'Invalid Delay',
+                          text: 'Minimum delay is 1 hour',
+                        })
+                        return
+                      }
+                      if (flowFormData.delay_unit === 'minutes' && flowFormData.delay_value < 10) {
+                        Swal.fire({
+                          icon: 'warning',
+                          title: 'Invalid Delay',
+                          text: 'Minimum delay is 10 minutes',
                         })
                         return
                       }
