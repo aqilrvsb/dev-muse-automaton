@@ -519,8 +519,8 @@ ${conv.conv_last || 'No conversation history'}
         const timestamp = scheduledTime.replace('T', ' ').split('.')[0]
         const [datePart, timePart] = timestamp.split(' ')
         const [year, month, day] = datePart.split('-')
-        const [hour, minute] = timePart.split(':')
-        const formattedTime = `${day}/${month}/${year}, ${hour}:${minute}`
+        const [hour, minute, second] = timePart.split(':')
+        const formattedTime = `${day}/${month}/${year}, ${hour}:${minute}:${second || '00'}`
 
         const stageTrigger = msg.sequences?.trigger || '-'
         const imagePreview = msg.image_url
