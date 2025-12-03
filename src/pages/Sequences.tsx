@@ -64,6 +64,7 @@ export default function Sequences() {
   const [formData, setFormData] = useState({
     name: '',
     niche: '',
+    prompt_id: '', // Track selected prompt ID to avoid niche name conflicts
     trigger: '',
     description: '',
     schedule_time: '09:00', // Keep in state for backward compatibility but won't show in UI
@@ -230,9 +231,12 @@ export default function Sequences() {
 
   const handleEditSequence = async (sequence: Sequence) => {
     setCurrentSequence(sequence)
+    // Find matching prompt by niche to set prompt_id for the dropdown
+    const matchingPrompt = prompts.find(p => p.niche === sequence.niche)
     setFormData({
       name: sequence.name,
       niche: sequence.niche,
+      prompt_id: matchingPrompt?.id || '',
       trigger: sequence.trigger,
       description: sequence.description,
       schedule_time: sequence.schedule_time,
@@ -512,6 +516,7 @@ export default function Sequences() {
     setFormData({
       name: '',
       niche: '',
+      prompt_id: '',
       trigger: '',
       description: '',
       schedule_time: '09:00',
@@ -678,14 +683,17 @@ export default function Sequences() {
                       Niche <span className="text-red-500">*</span>
                     </label>
                     <select
-                      value={formData.niche}
-                      onChange={(e) => setFormData({ ...formData, niche: e.target.value })}
+                      value={formData.prompt_id}
+                      onChange={(e) => {
+                        const selectedPrompt = prompts.find(p => p.id === e.target.value)
+                        setFormData({ ...formData, prompt_id: e.target.value, niche: selectedPrompt?.niche || '' })
+                      }}
                       className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
                       required
                     >
                       <option value="">Select Niche from Prompts</option>
                       {prompts.map((prompt) => (
-                        <option key={prompt.id} value={prompt.niche}>
+                        <option key={prompt.id} value={prompt.id}>
                           {prompt.niche} ({prompt.prompts_name})
                         </option>
                       ))}
@@ -835,14 +843,17 @@ export default function Sequences() {
                       Niche <span className="text-red-500">*</span>
                     </label>
                     <select
-                      value={formData.niche}
-                      onChange={(e) => setFormData({ ...formData, niche: e.target.value })}
+                      value={formData.prompt_id}
+                      onChange={(e) => {
+                        const selectedPrompt = prompts.find(p => p.id === e.target.value)
+                        setFormData({ ...formData, prompt_id: e.target.value, niche: selectedPrompt?.niche || '' })
+                      }}
                       className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
                       required
                     >
                       <option value="">Select Niche from Prompts</option>
                       {prompts.map((prompt) => (
-                        <option key={prompt.id} value={prompt.niche}>
+                        <option key={prompt.id} value={prompt.id}>
                           {prompt.niche} ({prompt.prompts_name})
                         </option>
                       ))}
