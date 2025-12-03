@@ -240,8 +240,9 @@ export default function Sequences() {
 
   const handleEditSequence = async (sequence: Sequence) => {
     setCurrentSequence(sequence)
-    // Find matching prompt by niche to set prompt_id for the dropdown
-    const matchingPrompt = prompts.find(p => p.niche === sequence.niche)
+    // Find matching prompt by combined niche format "niche (prompts_name)"
+    // The sequence.niche now stores the combined format
+    const matchingPrompt = prompts.find(p => `${p.niche} (${p.prompts_name})` === sequence.niche)
     setFormData({
       name: sequence.name,
       niche: sequence.niche,
@@ -780,7 +781,9 @@ export default function Sequences() {
                       value={formData.prompt_id}
                       onChange={(e) => {
                         const selectedPrompt = prompts.find(p => p.id === e.target.value)
-                        setFormData({ ...formData, prompt_id: e.target.value, niche: selectedPrompt?.niche || '' })
+                        // Store combined niche + prompts_name to make it unique
+                        const uniqueNiche = selectedPrompt ? `${selectedPrompt.niche} (${selectedPrompt.prompts_name})` : ''
+                        setFormData({ ...formData, prompt_id: e.target.value, niche: uniqueNiche })
                       }}
                       className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
                       required
@@ -940,7 +943,9 @@ export default function Sequences() {
                       value={formData.prompt_id}
                       onChange={(e) => {
                         const selectedPrompt = prompts.find(p => p.id === e.target.value)
-                        setFormData({ ...formData, prompt_id: e.target.value, niche: selectedPrompt?.niche || '' })
+                        // Store combined niche + prompts_name to make it unique
+                        const uniqueNiche = selectedPrompt ? `${selectedPrompt.niche} (${selectedPrompt.prompts_name})` : ''
+                        setFormData({ ...formData, prompt_id: e.target.value, niche: uniqueNiche })
                       }}
                       className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
                       required
