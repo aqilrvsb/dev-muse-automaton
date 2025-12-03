@@ -507,8 +507,8 @@ ${conv.conv_last || 'No conversation history'}
       // Build table HTML
       // Get current time in Malaysia timezone (UTC+8)
       const now = new Date()
-      // Format current time as Malaysia time string for comparison
-      const nowMalaysiaStr = now.toLocaleString('en-CA', {
+      // Convert to Malaysia timezone and format as YYYY-MM-DD HH:MM:SS
+      const malaysiaOptions: Intl.DateTimeFormatOptions = {
         timeZone: 'Asia/Kuala_Lumpur',
         year: 'numeric',
         month: '2-digit',
@@ -517,17 +517,24 @@ ${conv.conv_last || 'No conversation history'}
         minute: '2-digit',
         second: '2-digit',
         hour12: false
-      }).replace(',', '')
+      }
+      const parts = new Intl.DateTimeFormat('en-CA', malaysiaOptions).formatToParts(now)
+      const getPart = (type: string) => parts.find(p => p.type === type)?.value || '00'
+      const nowMalaysiaStr = `${getPart('year')}-${getPart('month')}-${getPart('day')} ${getPart('hour')}:${getPart('minute')}:${getPart('second')}`
+
+      console.log('Current Malaysia time:', nowMalaysiaStr)
 
       const tableRows = scheduledMessages.map((msg: any, index: number) => {
         // Use scheduled_time from sequence_scheduled_messages (per-flow time with delay)
-        // Database stores in Malaysia timezone format: 2025-12-03T10:26:00+08:00 or 2025-12-03 10:26:00
+        // Database stores in format: 2025-12-03T10:26:00+08:00 or 2025-12-03 10:26:00
         const scheduledTime = msg.scheduled_time
 
-        // Parse scheduled time - extract just the datetime part for comparison
+        // Parse scheduled time - extract just the datetime part for comparison (YYYY-MM-DD HH:MM:SS)
         const scheduledStr = scheduledTime.replace('T', ' ').split('.')[0].split('+')[0]
 
-        // Compare as strings (both in Malaysia timezone format: YYYY-MM-DD HH:MM:SS)
+        console.log(`Flow ${msg.flow_number}: scheduled=${scheduledStr}, now=${nowMalaysiaStr}, isPast=${scheduledStr < nowMalaysiaStr}`)
+
+        // Compare as strings (both in format: YYYY-MM-DD HH:MM:SS)
         const isPast = scheduledStr < nowMalaysiaStr
 
         const timestamp = scheduledTime.replace('T', ' ').split('.')[0]
