@@ -374,7 +374,9 @@ async function checkAndEnrollSequences(params: {
     let cumulativeDelayHours = 0;
 
     for (const flow of flows) {
-      cumulativeDelayHours += flow.delay_hours;
+      // Parse delay_hours as number (it may be stored as string in database)
+      const delayHours = Number(flow.delay_hours) || 0;
+      cumulativeDelayHours += delayHours;
 
       // Calculate scheduled time: current time + cumulative delay + 7 hours (Indonesia timezone offset from UTC)
       // WhatsApp Center API expects time in Indonesia timezone format (UTC+7)
@@ -386,7 +388,7 @@ async function checkAndEnrollSequences(params: {
         .replace('T', ' ')
         .substring(0, 19);
 
-      console.log(`📅 Scheduling flow ${flow.flow_number}: ${scheduleString} (delay: ${cumulativeDelayHours}h, Indonesia UTC+7)`);
+      console.log(`📅 Scheduling flow ${flow.flow_number}: ${scheduleString} (flow delay: ${delayHours}h, cumulative: ${cumulativeDelayHours}h, Indonesia UTC+7)`);
 
       try {
         // Send scheduled message to WhatsApp Center API

@@ -177,12 +177,19 @@ export default function Sequences() {
     if (!user?.id) return
 
     try {
-      // Create sequence first
+      // Create sequence first - don't include prompt_id (only for UI dropdown)
       const { data: sequenceData, error: sequenceError } = await supabase
         .from('sequences')
         .insert({
           user_id: user.id,
-          ...formData,
+          name: formData.name,
+          niche: formData.niche,
+          trigger: formData.trigger,
+          description: formData.description,
+          schedule_time: formData.schedule_time,
+          min_delay: formData.min_delay,
+          max_delay: formData.max_delay,
+          status: formData.status,
         })
         .select()
         .single()
@@ -274,10 +281,18 @@ export default function Sequences() {
     if (!currentSequence) return
 
     try {
+      // Don't include prompt_id - it's only used for UI dropdown, not stored in sequences table
       const { error } = await supabase
         .from('sequences')
         .update({
-          ...formData,
+          name: formData.name,
+          niche: formData.niche,
+          trigger: formData.trigger,
+          description: formData.description,
+          schedule_time: formData.schedule_time,
+          min_delay: formData.min_delay,
+          max_delay: formData.max_delay,
+          status: formData.status,
           updated_at: new Date().toISOString(),
         })
         .eq('id', currentSequence.id)
@@ -368,6 +383,59 @@ export default function Sequences() {
         icon: 'error',
         title: 'Failed to Update Status',
         text: error.message || 'Failed to update status',
+      })
+    }
+  }
+
+  // Copy/Duplicate sequence - opens create modal with pre-populated data
+  const handleCopySequence = async (sequence: Sequence) => {
+    try {
+      // Load flows for this sequence
+      const { data: flowsData, error: flowsError } = await supabase
+        .from('sequence_flows')
+        .select('*')
+        .eq('sequence_id', sequence.id)
+        .order('flow_number', { ascending: true })
+
+      if (flowsError) throw flowsError
+
+      // Find matching prompt by niche
+      const matchingPrompt = prompts.find(p => p.niche === sequence.niche)
+
+      // Pre-populate form data (name and niche empty for user to fill)
+      setFormData({
+        name: '', // User must fill this
+        niche: '', // User must select this
+        prompt_id: '', // User must select this
+        trigger: sequence.trigger,
+        description: sequence.description,
+        schedule_time: sequence.schedule_time,
+        min_delay: sequence.min_delay,
+        max_delay: sequence.max_delay,
+        status: 'inactive', // Default to inactive for new copy
+      })
+
+      // Copy flows to tempFlows (for create modal)
+      if (flowsData && flowsData.length > 0) {
+        const copiedFlows: SequenceFlow[] = flowsData.map(flow => ({
+          ...flow,
+          id: `temp-${flow.flow_number}`, // Temporary ID for create mode
+          sequence_id: '', // Will be set when created
+        }))
+        setTempFlows(copiedFlows)
+      } else {
+        setTempFlows([])
+      }
+
+      // Open create modal
+      setShowCreateModal(true)
+
+    } catch (error: any) {
+      console.error('Error copying sequence:', error)
+      await Swal.fire({
+        icon: 'error',
+        title: 'Failed to Copy',
+        text: error.message || 'Failed to copy sequence data',
       })
     }
   }
@@ -638,6 +706,13 @@ export default function Sequences() {
                       className="flex-1 bg-white border border-green-400 text-green-600 px-3 py-2 rounded-md transition-colors font-medium text-sm hover:bg-green-50"
                     >
                       ✎ Update
+                    </button>
+                    <button
+                      onClick={() => handleCopySequence(sequence)}
+                      className="flex-1 bg-white border border-blue-400 text-blue-600 px-3 py-2 rounded-md transition-colors font-medium text-sm hover:bg-blue-50"
+                      title="Copy sequence with all flows"
+                    >
+                      📋 Copy
                     </button>
                     <button
                       onClick={() => handleDeleteSequence(sequence.id)}
