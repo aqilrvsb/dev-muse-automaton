@@ -474,7 +474,6 @@ ${conv.conv_last || 'No conversation history'}
   const viewSequences = async (prospectNum: string) => {
     try {
       // Fetch scheduled messages from sequence_scheduled_messages table
-      // Join with sequence_enrollments to get the correct schedule_message time
       const { data: scheduledMessages, error } = await supabase
         .from('sequence_scheduled_messages')
         .select(`
@@ -484,11 +483,9 @@ ${conv.conv_last || 'No conversation history'}
           image_url,
           whacenter_message_id,
           sequence_id,
+          scheduled_time,
           sequences (
             trigger
-          ),
-          sequence_enrollments!inner (
-            schedule_message
           )
         `)
         .eq('prospect_num', prospectNum)
@@ -508,12 +505,18 @@ ${conv.conv_last || 'No conversation history'}
       }
 
       // Build table HTML
+      // Get current time in Malaysia timezone (UTC+8)
+      const nowMalaysia = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' }))
       const tableRows = scheduledMessages.map((msg: any, index: number) => {
-        // Format schedule_message from sequence_enrollments
-        // Database format: 2025-11-21 19:16:04.165+00
-        // Display format: 21/11/2025, 19:16
-        const scheduleMessage = msg.sequence_enrollments?.schedule_message || msg.scheduled_time
-        const timestamp = scheduleMessage.replace('T', ' ').split('.')[0]
+        // Use scheduled_time from sequence_scheduled_messages (per-flow time with delay)
+        // Database stores in Malaysia timezone format: 2025-12-03 10:26:00
+        // Display format: 03/12/2025, 10:26
+        const scheduledTime = msg.scheduled_time
+        // Parse the scheduled time (stored in Malaysia timezone)
+        const scheduledDate = new Date(scheduledTime)
+        const isPast = scheduledDate < nowMalaysia
+
+        const timestamp = scheduledTime.replace('T', ' ').split('.')[0]
         const [datePart, timePart] = timestamp.split(' ')
         const [year, month, day] = datePart.split('-')
         const [hour, minute] = timePart.split(':')
@@ -524,8 +527,18 @@ ${conv.conv_last || 'No conversation history'}
           ? `<a href="${msg.image_url}" target="_blank" style="color: #667eea; text-decoration: underline;">View Image</a>`
           : '-'
 
+        // Hide delete button if scheduled time has passed
+        const deleteButton = isPast
+          ? `<span style="color: #9ca3af; font-size: 12px;">Sent</span>`
+          : `<button
+              onclick="deleteScheduledMessage('${msg.id}', '${msg.whacenter_message_id}')"
+              style="background: #ef4444; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600;"
+            >
+              🗑️ Delete
+            </button>`
+
         return `
-          <tr style="border-bottom: 1px solid #e5e7eb;">
+          <tr style="border-bottom: 1px solid #e5e7eb; ${isPast ? 'opacity: 0.6;' : ''}">
             <td style="padding: 12px; text-align: left;">${index + 1}</td>
             <td style="padding: 12px; text-align: left;">${stageTrigger}</td>
             <td style="padding: 12px; text-align: left;">${msg.flow_number}</td>
@@ -533,12 +546,7 @@ ${conv.conv_last || 'No conversation history'}
             <td style="padding: 12px; text-align: left; max-width: 300px; word-wrap: break-word;">${msg.message.substring(0, 100)}${msg.message.length > 100 ? '...' : ''}</td>
             <td style="padding: 12px; text-align: left;">${formattedTime}</td>
             <td style="padding: 12px; text-align: center;">
-              <button
-                onclick="deleteScheduledMessage('${msg.id}', '${msg.whacenter_message_id}')"
-                style="background: #ef4444; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600;"
-              >
-                🗑️ Delete
-              </button>
+              ${deleteButton}
             </td>
           </tr>
         `
