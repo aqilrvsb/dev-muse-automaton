@@ -399,9 +399,6 @@ export default function Sequences() {
 
       if (flowsError) throw flowsError
 
-      // Find matching prompt by niche
-      const matchingPrompt = prompts.find(p => p.niche === sequence.niche)
-
       // Pre-populate form data (name and niche empty for user to fill)
       setFormData({
         name: '', // User must fill this
