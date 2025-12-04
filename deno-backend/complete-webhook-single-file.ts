@@ -218,12 +218,13 @@ async function checkAndEnrollSequences(params: {
   console.log(`📋 Checking sequences for stage: ${currentStage}`);
 
   try {
-    // Step 1: Find active sequences matching the current stage trigger (filter by user_id)
+    // Step 1: Find active sequences matching the current stage trigger (filter by user_id AND device_id)
     const { data: matchingSequences, error: sequenceError } = await supabaseAdmin
       .from("sequences")
       .select("*, sequence_flows(*)")
       .eq("trigger", currentStage)
       .eq("user_id", userId)
+      .eq("device_id", deviceId)
       .eq("status", "active")
       .order("created_at", { ascending: false });
 
@@ -380,7 +381,7 @@ async function checkAndEnrollSequences(params: {
 
       // Calculate scheduled time: current time + cumulative delay + 7 hours (Indonesia timezone offset from UTC)
       // WhatsApp Center API expects time in Indonesia timezone format (UTC+7)
-      const scheduledTime = new Date(now.getTime() + (cumulativeDelayHours * 60 * 60 * 1000) + (7 * 60 * 60 * 1000));
+      const scheduledTime = new Date(now.getTime() + (cumulativeDelayHours * 60 * 60 * 1000) + (8 * 60 * 60 * 1000));
 
       // Format: YYYY-MM-DD HH:MM:SS
       // This will be in Indonesia timezone when interpreted by WhatsApp Center

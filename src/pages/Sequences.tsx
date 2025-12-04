@@ -9,6 +9,7 @@ type Sequence = {
   user_id: string
   name: string
   niche: string
+  device_id: string
   trigger: string
   description: string
   schedule_time: string
@@ -38,6 +39,7 @@ type Prompt = {
   id: string
   niche: string
   prompts_name: string
+  device_id: string
 }
 
 type BankImage = {
@@ -65,6 +67,7 @@ export default function Sequences() {
     name: '',
     niche: '',
     prompt_id: '', // Track selected prompt ID to avoid niche name conflicts
+    device_id: '', // Track device_id from selected prompt
     trigger: '',
     description: '',
     schedule_time: '09:00', // Keep in state for backward compatibility but won't show in UI
@@ -143,7 +146,7 @@ export default function Sequences() {
 
       const { data, error } = await supabase
         .from('prompts')
-        .select('id, niche, prompts_name')
+        .select('id, niche, prompts_name, device_id')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
@@ -184,6 +187,7 @@ export default function Sequences() {
           user_id: user.id,
           name: formData.name,
           niche: formData.niche,
+          device_id: formData.device_id,
           trigger: formData.trigger,
           description: formData.description,
           schedule_time: formData.schedule_time,
@@ -257,6 +261,7 @@ export default function Sequences() {
       name: sequence.name,
       niche: nicheValue,
       prompt_id: matchingPrompt?.id || '',
+      device_id: matchingPrompt?.device_id || sequence.device_id || '',
       trigger: sequence.trigger,
       description: sequence.description,
       schedule_time: sequence.schedule_time,
@@ -298,6 +303,7 @@ export default function Sequences() {
         .update({
           name: formData.name,
           niche: formData.niche,
+          device_id: formData.device_id,
           trigger: formData.trigger,
           description: formData.description,
           schedule_time: formData.schedule_time,
@@ -415,6 +421,7 @@ export default function Sequences() {
         name: '', // User must fill this
         niche: '', // User must select this
         prompt_id: '', // User must select this
+        device_id: '', // Will be set when user selects niche
         trigger: sequence.trigger,
         description: sequence.description,
         schedule_time: sequence.schedule_time,
@@ -613,6 +620,7 @@ export default function Sequences() {
       name: '',
       niche: '',
       prompt_id: '',
+      device_id: '',
       trigger: '',
       description: '',
       schedule_time: '09:00',
@@ -793,7 +801,8 @@ export default function Sequences() {
                         const selectedPrompt = prompts.find(p => p.id === e.target.value)
                         // Store combined niche + prompts_name to make it unique
                         const uniqueNiche = selectedPrompt ? `${selectedPrompt.niche} (${selectedPrompt.prompts_name})` : ''
-                        setFormData({ ...formData, prompt_id: e.target.value, niche: uniqueNiche })
+                        const deviceId = selectedPrompt?.device_id || ''
+                        setFormData({ ...formData, prompt_id: e.target.value, niche: uniqueNiche, device_id: deviceId })
                       }}
                       className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
                       required
@@ -955,7 +964,8 @@ export default function Sequences() {
                         const selectedPrompt = prompts.find(p => p.id === e.target.value)
                         // Store combined niche + prompts_name to make it unique
                         const uniqueNiche = selectedPrompt ? `${selectedPrompt.niche} (${selectedPrompt.prompts_name})` : ''
-                        setFormData({ ...formData, prompt_id: e.target.value, niche: uniqueNiche })
+                        const deviceId = selectedPrompt?.device_id || ''
+                        setFormData({ ...formData, prompt_id: e.target.value, niche: uniqueNiche, device_id: deviceId })
                       }}
                       className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
                       required

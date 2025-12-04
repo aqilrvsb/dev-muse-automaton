@@ -13,6 +13,7 @@ export default function Sidebar() {
     { path: '/packages', icon: '📦', label: 'Packages' },
     { path: '/transactions', icon: '💰', label: 'Transactions' },
     { path: '/user-register', icon: '👥', label: 'User Register' },
+    { path: '/admin-device', icon: '📱', label: 'Admin Device' },
   ]
 
   // Regular user navigation items
