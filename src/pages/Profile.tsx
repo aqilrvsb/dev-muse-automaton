@@ -8,14 +8,53 @@ export default function Profile() {
   const [editing, setEditing] = useState(false)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState({ type: '', text: '' })
+  const [phoneError, setPhoneError] = useState('')
 
   const [formData, setFormData] = useState({
     full_name: user?.full_name || '',
     phone: user?.phone || '',
   })
 
+  // Validate phone number - must start with 6 (Malaysia format)
+  const validatePhone = (phone: string): boolean => {
+    if (!phone || phone.trim() === '') {
+      setPhoneError('Nombor WhatsApp diperlukan')
+      return false
+    }
+    if (!phone.startsWith('6')) {
+      setPhoneError('Nombor mesti bermula dengan 6 (contoh: 60123456789)')
+      return false
+    }
+    if (phone.length < 10 || phone.length > 12) {
+      setPhoneError('Nombor tidak sah (10-12 digit)')
+      return false
+    }
+    if (!/^\d+$/.test(phone)) {
+      setPhoneError('Nombor hanya boleh mengandungi digit')
+      return false
+    }
+    setPhoneError('')
+    return true
+  }
+
+  const handlePhoneChange = (value: string) => {
+    // Remove any non-digit characters
+    const cleanValue = value.replace(/\D/g, '')
+    setFormData({ ...formData, phone: cleanValue })
+    if (cleanValue) {
+      validatePhone(cleanValue)
+    } else {
+      setPhoneError('')
+    }
+  }
+
   const handleSave = async () => {
     if (!user?.id) return
+
+    // Validate phone before saving
+    if (!validatePhone(formData.phone)) {
+      return
+    }
 
     setLoading(true)
     setMessage({ type: '', text: '' })
@@ -105,17 +144,27 @@ export default function Profile() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-2">Phone Number</label>
+              <label className="block text-sm font-medium text-gray-600 mb-2">
+                Nombor WhatsApp get Notification <span className="text-red-500">*</span>
+              </label>
               {editing ? (
-                <input
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="+60123456789"
-                />
+                <div>
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => handlePhoneChange(e.target.value)}
+                    className={`w-full bg-white border ${phoneError ? 'border-red-500' : 'border-gray-300'} text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 ${phoneError ? 'focus:ring-red-500' : 'focus:ring-primary-500'}`}
+                    placeholder="60123456789"
+                  />
+                  {phoneError && (
+                    <p className="text-red-500 text-xs mt-1">{phoneError}</p>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">Nombor mesti bermula dengan 6 (contoh: 60123456789)</p>
+                </div>
               ) : (
-                <p className="text-gray-900">{user?.phone || 'Not set'}</p>
+                <div>
+                  <p className="text-gray-900">{user?.phone || <span className="text-red-500">Belum diisi - Sila klik Edit Profile</span>}</p>
+                </div>
               )}
             </div>
           </div>

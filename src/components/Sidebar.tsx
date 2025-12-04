@@ -3,10 +3,11 @@ import { useAuth } from '../contexts/AuthContext'
 
 export default function Sidebar() {
   const location = useLocation()
-  const { user, signOut, isSubscriptionExpired } = useAuth()
+  const { user, signOut, isSubscriptionExpired, isWhatsAppNumberMissing } = useAuth()
 
   const isActive = (path: string) => location.pathname === path
   const isExpired = isSubscriptionExpired()
+  const isMissingWhatsApp = isWhatsAppNumberMissing()
 
   // Admin-only navigation items
   const adminNavItems = [
@@ -49,8 +50,16 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-1">
+        {/* Show WhatsApp number warning only for non-admin users */}
+        {!isAdmin && isMissingWhatsApp && (
+          <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+            <p className="text-xs text-yellow-700 font-semibold">⚠️ Nombor WhatsApp Diperlukan</p>
+            <p className="text-xs text-yellow-600 mt-1">Sila isi nombor WhatsApp di Profile</p>
+          </div>
+        )}
+
         {/* Show subscription warning only for non-admin users */}
-        {!isAdmin && isExpired && (
+        {!isAdmin && isExpired && !isMissingWhatsApp && (
           <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3">
             <p className="text-xs text-red-700 font-semibold">⚠️ Subscription Expired</p>
             <p className="text-xs text-red-600 mt-1">Please renew to access all features</p>
@@ -59,7 +68,11 @@ export default function Sidebar() {
 
         {navItems.map((item: any) => {
           // Admins are never disabled
-          const isDisabled = !isAdmin && isExpired && item.path !== '/billings'
+          // If WhatsApp missing, only allow Profile page
+          // If subscription expired, only allow Billings page
+          const isDisabledByWhatsApp = !isAdmin && isMissingWhatsApp && item.path !== '/profile'
+          const isDisabledByExpiry = !isAdmin && isExpired && item.path !== '/billings' && item.path !== '/profile'
+          const isDisabled = isDisabledByWhatsApp || isDisabledByExpiry
 
           // Handle external links (like Support WhatsApp group)
           if (item.external) {
@@ -82,7 +95,7 @@ export default function Sidebar() {
             <div
               key={item.path}
               className="flex items-center gap-3 px-4 py-3 rounded-lg bg-gray-100 opacity-50 cursor-not-allowed"
-              title="Subscription expired - Please renew to access this feature"
+              title={isDisabledByWhatsApp ? "Sila isi Nombor WhatsApp di Profile" : "Subscription expired - Please renew to access this feature"}
             >
               <span className="text-xl">{item.icon}</span>
               <span className="font-medium text-sm text-gray-500">{item.label}</span>

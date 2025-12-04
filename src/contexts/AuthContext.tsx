@@ -12,6 +12,7 @@ type AuthContextType = {
   signOut: () => Promise<void>
   refreshUser: () => Promise<void>
   isSubscriptionExpired: () => boolean
+  isWhatsAppNumberMissing: () => boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -207,6 +208,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return today >= endDate
   }
 
+  // Check if WhatsApp notification number is missing
+  const isWhatsAppNumberMissing = (): boolean => {
+    if (!user) return false
+
+    // Admin users don't need WhatsApp number
+    if (user.role === 'admin') return false
+
+    // Check if phone is empty or doesn't start with 6
+    if (!user.phone || user.phone.trim() === '') return true
+    if (!user.phone.startsWith('6')) return true
+
+    return false
+  }
+
   // Initialize auth state
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -252,6 +267,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signOut,
     refreshUser,
     isSubscriptionExpired,
+    isWhatsAppNumberMissing,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

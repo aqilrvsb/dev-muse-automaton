@@ -71,6 +71,176 @@ setInterval(() => {
   cleanupOldQueueEntries();
 }, 1800000); // 30 minutes
 
+// ============================================================================
+// HOURLY DEVICE STATUS CHECK - Send notifications for offline devices
+// ============================================================================
+
+async function checkDeviceStatusAndNotify() {
+  console.log("\n🔍 === HOURLY DEVICE STATUS CHECK START ===");
+
+  try {
+    // Step 1: Get admin device for sending notifications
+    const { data: adminDevice, error: adminError } = await supabaseAdmin
+      .from("admin_device")
+      .select("*")
+      .single();
+
+    if (adminError || !adminDevice) {
+      console.log("⚠️  No admin device configured, skipping device status check");
+      return;
+    }
+
+    // Check if admin device is connected
+    const adminStatusResponse = await fetch(
+      `${WHACENTER_API_URL}/api/${WHACENTER_API_KEY}/statusDevice/${adminDevice.instance}`,
+      { method: 'GET' }
+    );
+    const adminStatusData = await adminStatusResponse.json();
+
+    if (!adminStatusData.status || adminStatusData.data?.status !== 'CONNECTED') {
+      console.log("⚠️  Admin device is not connected, skipping notifications");
+      return;
+    }
+
+    console.log("✅ Admin device is connected, proceeding with status checks");
+
+    // Step 2: Get all users who:
+    // - Are NOT trial (status != 'Trial')
+    // - Have not expired subscription (subscription_end > NOW())
+    // - Have phone number filled (starts with 6)
+    // - Are active
+    const { data: eligibleUsers, error: usersError } = await supabaseAdmin
+      .from("user")
+      .select("id, full_name, phone, subscription_end, role")
+      .neq("status", "Trial")
+      .eq("is_active", true)
+      .not("phone", "is", null);
+
+    if (usersError) {
+      console.error("❌ Error fetching users:", usersError);
+      return;
+    }
+
+    if (!eligibleUsers || eligibleUsers.length === 0) {
+      console.log("ℹ️  No eligible users found for device status check");
+      return;
+    }
+
+    console.log(`📋 Found ${eligibleUsers.length} eligible users to check`);
+
+    // Filter users with valid phone numbers and not expired
+    const now = new Date();
+    const validUsers = eligibleUsers.filter((user: { id: string; full_name: string; phone: string; subscription_end: string | null; role: string }) => {
+      // Skip admins
+      if (user.role === 'admin') return false;
+
+      // Check phone starts with 6
+      if (!user.phone || !user.phone.startsWith('6')) return false;
+
+      // Check subscription not expired
+      if (user.subscription_end) {
+        const endDate = new Date(user.subscription_end);
+        if (now > endDate) return false;
+      }
+
+      return true;
+    });
+
+    console.log(`📋 ${validUsers.length} users have valid phone and active subscription`);
+
+    // Step 3: For each valid user, check their devices
+    for (const user of validUsers) {
+      // Get devices for this user
+      const { data: devices, error: devicesError } = await supabaseAdmin
+        .from("device_setting")
+        .select("id, device_id, instance, status")
+        .eq("user_id", user.id);
+
+      if (devicesError || !devices || devices.length === 0) {
+        continue;
+      }
+
+      // Check each device status
+      for (const device of devices) {
+        if (!device.instance) continue;
+
+        try {
+          // Check device status with WhatsApp Center API
+          const statusResponse = await fetch(
+            `${WHACENTER_API_URL}/api/${WHACENTER_API_KEY}/statusDevice/${device.instance}`,
+            { method: 'GET' }
+          );
+          const statusData = await statusResponse.json();
+
+          const isConnected = statusData.status && statusData.data?.status === 'CONNECTED';
+          const newStatus = isConnected ? 'CONNECTED' : 'NOT_CONNECTED';
+
+          // Update status in database
+          await supabaseAdmin
+            .from("device_setting")
+            .update({ status: newStatus })
+            .eq("id", device.id);
+
+          // If device is offline, send notification
+          if (!isConnected) {
+            console.log(`📱 Device ${device.device_id} is OFFLINE for user ${user.full_name}`);
+
+            // Get Malaysia time
+            const malaysiaTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
+            const dateStr = malaysiaTime.toISOString().split('T')[0];
+            const timeStr = malaysiaTime.toISOString().split('T')[1].substring(0, 5);
+
+            // Format notification message
+            const notificationMessage = `*Notification PeningBot*
+
+Status Device : Offline ❌
+Name Device : ${device.device_id}
+Date : ${dateStr}
+Time : ${timeStr}
+
+Sila scan semula QR code di Device Settings.`;
+
+            // Send notification via admin device
+            const sendUrl = `${WHACENTER_API_URL}/api/send`;
+            const formData = new URLSearchParams();
+            formData.append('device_id', adminDevice.instance);
+            formData.append('number', user.phone);
+            formData.append('message', notificationMessage);
+
+            const sendResponse = await fetch(sendUrl, {
+              method: 'POST',
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body: formData.toString(),
+            });
+
+            if (sendResponse.ok) {
+              console.log(`✅ Sent offline notification to ${user.phone} for device ${device.device_id}`);
+            } else {
+              console.error(`❌ Failed to send notification: ${await sendResponse.text()}`);
+            }
+          }
+        } catch (deviceError) {
+          console.error(`❌ Error checking device ${device.device_id}:`, deviceError);
+        }
+      }
+    }
+
+    console.log("✅ === HOURLY DEVICE STATUS CHECK COMPLETE ===\n");
+  } catch (error) {
+    console.error("❌ Device status check error:", error);
+  }
+}
+
+// Run device status check on startup (after 10 seconds to allow initialization)
+setTimeout(() => {
+  checkDeviceStatusAndNotify();
+}, 10000);
+
+// Schedule hourly device status check
+setInterval(() => {
+  checkDeviceStatusAndNotify();
+}, 3600000); // 1 hour = 3600000ms
+
 // CORS headers
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
