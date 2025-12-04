@@ -231,15 +231,8 @@ Sila scan semula QR code di Device Settings.`;
   }
 }
 
-// Run device status check on startup (after 10 seconds to allow initialization)
-setTimeout(() => {
-  checkDeviceStatusAndNotify();
-}, 10000);
-
-// Schedule hourly device status check
-setInterval(() => {
-  checkDeviceStatusAndNotify();
-}, 3600000); // 1 hour = 3600000ms
+// NOTE: Device status check is triggered via API endpoint /api/check-device-status
+// Use Supabase pg_cron or external cron service to call this endpoint every hour
 
 // CORS headers
 const corsHeaders = {
@@ -2227,6 +2220,16 @@ serve(async (request: Request) => {
     if (path.startsWith("/api/conversations/") && method === "DELETE") {
       const prospectNum = path.split("/api/conversations/")[1];
       return await handleDeleteConversation(request, prospectNum);
+    }
+
+    // Device status check endpoint (called by cron)
+    if (path === "/api/check-device-status" && (method === "GET" || method === "POST")) {
+      console.log("🔔 Device status check triggered via API");
+      await checkDeviceStatusAndNotify();
+      return new Response(
+        JSON.stringify({ success: true, message: "Device status check completed" }),
+        { status: 200, headers: corsHeaders }
+      );
     }
 
     // Webhook endpoint - matches pattern /:device_id/:instance
