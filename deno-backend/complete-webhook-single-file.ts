@@ -284,16 +284,11 @@ async function checkAndEnrollSequences(params: {
         for (const msg of scheduledMessages) {
           if (msg.whacenter_message_id) {
             try {
-              // Use FormData with GET as per WhatsApp Center API JavaScript example
-              const deleteUrl = `${WHACENTER_API_URL}/api/deleteMessage`;
-              const formData = new FormData();
-              formData.append('device_id', instance);
-              formData.append('id', msg.whacenter_message_id);
+              // Use query parameters with GET request
+              const deleteUrl = `${WHACENTER_API_URL}/api/deleteMessage?device_id=${encodeURIComponent(instance)}&id=${encodeURIComponent(msg.whacenter_message_id)}`;
 
               const deleteResponse = await fetch(deleteUrl, {
                 method: 'GET',
-                body: formData,
-                redirect: 'follow',
               });
 
               if (deleteResponse.ok) {
@@ -1788,16 +1783,11 @@ async function handleWebhook(request: Request): Promise<Response> {
           for (const msg of scheduledMessages) {
             if (msg.whacenter_message_id) {
               try {
-                // Use FormData with GET as per WhatsApp Center API JavaScript example
-                const deleteUrl = `${WHACENTER_API_URL}/api/deleteMessage`;
-                const formData = new FormData();
-                formData.append('device_id', device.instance);
-                formData.append('id', msg.whacenter_message_id);
+                // Use query parameters with GET request
+                const deleteUrl = `${WHACENTER_API_URL}/api/deleteMessage?device_id=${encodeURIComponent(device.instance)}&id=${encodeURIComponent(msg.whacenter_message_id)}`;
 
                 const deleteResponse = await fetch(deleteUrl, {
                   method: 'GET',
-                  body: formData,
-                  redirect: 'follow',
                 });
 
                 if (deleteResponse.ok) {
