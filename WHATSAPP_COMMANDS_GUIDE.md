@@ -157,34 +157,11 @@ You send TO business WhatsApp: #60123456789
 
 ---
 
-#### **`%[phone number] Your message here`** - Send Custom Message via Bot
+#### **`%[phone number]`** - Cancel/Stop All Scheduled Sequence Messages
 **How to use:**
 1. Open WhatsApp on your **personal phone** (NOT the connected business device)
 2. Send a message **TO your connected business WhatsApp number**
-3. Type: `%60123456789 Hi, this is a custom message from me`
-4. Send the message
-
-**What happens:**
-- Your connected business WhatsApp receives the command
-- Bot sends YOUR custom message to the specified customer
-- Bot processes the message and AI generates appropriate response
-- Useful for initiating conversation or testing
-
-**Example:**
-```
-[From your personal phone]
-You send TO business WhatsApp: %60123456789 Hi, are you interested in our product?
-✅ Bot sends to customer: "Hi, are you interested in our product?"
-✅ Bot processes and generates AI response
-```
-
----
-
-#### **`![phone number]`** - Cancel/Stop All Scheduled Sequence Messages
-**How to use:**
-1. Open WhatsApp on your **personal phone** (NOT the connected business device)
-2. Send a message **TO your connected business WhatsApp number**
-3. Type: `!60123456789` (customer's phone number)
+3. Type: `%60123456789` (customer's phone number)
 4. Send the message
 
 **What happens:**
@@ -199,7 +176,7 @@ You send TO business WhatsApp: %60123456789 Hi, are you interested in our produc
 **Example:**
 ```
 [From your personal phone]
-You send TO business WhatsApp: !60123456789
+You send TO business WhatsApp: %60123456789
 ✅ Bot cancels all scheduled messages for +60123456789
 ✅ Database updated - sequence_stage cleared
 ✅ Customer removed from sequence
@@ -257,8 +234,7 @@ Method 2: REMOTE CONTROL (from your personal phone TO business WhatsApp)
 │  /60123456789                            │  →  Human mode for that number
 │  ?60123456789                            │  →  AI mode for that number
 │  #60123456789                            │  →  Trigger auto flow
-│  %60123456789 Custom message             │  →  Send custom message
-│  !60123456789                            │  →  Cancel all scheduled sequences
+│  %60123456789                            │  →  Cancel all scheduled sequences
 └──────────────────────────────────────────┘
 ✅ Use when you want to control from YOUR phone (not business WhatsApp)
 ```
@@ -283,7 +259,7 @@ Method 2: REMOTE CONTROL (from your personal phone TO business WhatsApp)
 - ✅ Deletes their own conversation
 - ✅ Used for: testing/resetting test conversations
 
-**Method 2: Remote from Personal Phone** (`/`, `?`, `#`, `%`, `!`)
+**Method 2: Remote from Personal Phone** (`/`, `?`, `#`, `%`)
 - ✅ Open YOUR personal WhatsApp (your 2nd phone)
 - ✅ Send command TO your business WhatsApp number
 - ✅ Include customer's phone number in command
@@ -403,7 +379,7 @@ Customer: Please stop sending me messages
 You: Sure, let me cancel all scheduled messages
 
 [From your personal phone, send TO business WhatsApp]
-You send: !60123456789
+You send: %60123456789
 
 ✅ Bot cancels all 5 remaining scheduled messages
 ✅ Clears sequence_stage from database
@@ -416,7 +392,7 @@ You send: !60123456789
 Customer already purchased, no need for nurturing sequence:
 
 [From your personal phone, send TO business WhatsApp]
-You send: !60123456789
+You send: %60123456789
 
 ✅ Stops all scheduled follow-up messages
 ✅ Customer removed from sequence automation
@@ -478,10 +454,9 @@ When you send commands, check the webhook logs (Deno Deploy dashboard):
 | `dmc` | Customer's chat | Deactivate human mode for current chat | `dmc` |
 | `/[phone]` | Any chat | Activate human mode for phone number | `/60123456789` |
 | `?[phone]` | Any chat | Deactivate human mode for phone number | `?60123456789` |
-| `![phone]` | Any chat | Cancel all scheduled sequence messages | `!60123456789` |
-| `DELETE` | Customer's chat | Delete conversation | `DELETE` |
 | `#[phone]` | Any chat | Trigger auto flow (send "Teruskan") | `#60123456789` |
-| `%[phone] [msg]` | Any chat | Send custom message via bot | `%60123456789 Hello!` |
+| `%[phone]` | Any chat | Cancel all scheduled sequence messages | `%60123456789` |
+| `DELETE` | Customer's chat | Delete conversation | `DELETE` |
 
 ---
 

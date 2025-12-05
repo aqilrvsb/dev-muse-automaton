@@ -723,6 +723,113 @@ ${conv.conv_last || 'No conversation history'}
     }
   }
 
+  // Delete ALL scheduled messages for a prospect
+  const deleteAllScheduledMessages = async (prospectNum: string, deviceId: string) => {
+    const result = await Swal.fire({
+      title: 'Delete All Scheduled Messages?',
+      html: `<p>This will cancel <strong>ALL</strong> scheduled messages for</p><p><strong>${prospectNum}</strong></p>`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Yes, delete all!',
+      cancelButtonText: 'Cancel'
+    })
+
+    if (!result.isConfirmed) return
+
+    try {
+      // Step 1: Get all scheduled messages for this prospect
+      const { data: scheduledMessages, error: fetchError } = await supabase
+        .from('sequence_scheduled_messages')
+        .select('id, whacenter_message_id, enrollment_id')
+        .eq('prospect_num', prospectNum)
+        .eq('device_id', deviceId)
+        .eq('status', 'scheduled')
+
+      if (fetchError) throw fetchError
+
+      if (!scheduledMessages || scheduledMessages.length === 0) {
+        Swal.fire({
+          title: 'No Messages',
+          text: 'No scheduled messages found for this prospect',
+          icon: 'info',
+          confirmButtonColor: '#667eea',
+        })
+        return
+      }
+
+      // Step 2: Get device instance for WhatsApp Center API
+      const { data: device } = await supabase
+        .from('device_setting')
+        .select('instance')
+        .eq('device_id', deviceId)
+        .single()
+
+      // Step 3: Try to delete from WhatsApp Center API
+      if (device) {
+        const WHACENTER_API_URL = import.meta.env.VITE_WHACENTER_API_URL || 'https://api.whacenter.com'
+
+        for (const msg of scheduledMessages) {
+          if (msg.whacenter_message_id) {
+            try {
+              const deleteUrl = `${WHACENTER_API_URL}/api/deleteMessage?device_id=${encodeURIComponent(device.instance)}&id=${encodeURIComponent(msg.whacenter_message_id)}`
+              await fetch(deleteUrl, {
+                method: 'GET',
+                mode: 'no-cors'
+              })
+            } catch {
+              // Ignore individual deletion errors
+            }
+          }
+        }
+      }
+
+      // Step 4: Update all scheduled messages to 'cancelled'
+      const { error: updateError } = await supabase
+        .from('sequence_scheduled_messages')
+        .update({ status: 'cancelled' })
+        .eq('prospect_num', prospectNum)
+        .eq('device_id', deviceId)
+        .eq('status', 'scheduled')
+
+      if (updateError) throw updateError
+
+      // Step 5: Delete enrollment records
+      const enrollmentIds = [...new Set(scheduledMessages.map(m => m.enrollment_id))]
+      for (const enrollmentId of enrollmentIds) {
+        await supabase
+          .from('sequence_enrollments')
+          .delete()
+          .eq('id', enrollmentId)
+      }
+
+      // Step 6: Clear sequence_stage in ai_whatsapp
+      await supabase
+        .from('ai_whatsapp')
+        .update({ sequence_stage: null })
+        .eq('device_id', deviceId)
+        .eq('prospect_num', prospectNum)
+
+      Swal.fire({
+        title: 'Deleted!',
+        text: `Cancelled ${scheduledMessages.length} scheduled message(s)`,
+        icon: 'success',
+        confirmButtonColor: '#667eea',
+        timer: 2000
+      })
+
+    } catch (error) {
+      console.error('Error deleting all scheduled messages:', error)
+      Swal.fire({
+        title: 'Error!',
+        text: 'Failed to delete scheduled messages',
+        icon: 'error',
+        confirmButtonColor: '#d33',
+      })
+    }
+  }
+
 
   return (
     <Layout>
@@ -951,13 +1058,22 @@ ${conv.conv_last || 'No conversation history'}
                           </button>
                         </td>
                         <td className="px-6 py-4">
-                          <button
-                            onClick={() => viewSequences(conv.prospect_num, conv.stage)}
-                            className="text-purple-600 hover:text-purple-800 transition-smooth text-lg"
-                            title="View Scheduled Sequences"
-                          >
-                            📅
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => viewSequences(conv.prospect_num, conv.stage)}
+                              className="text-purple-600 hover:text-purple-800 transition-smooth text-lg"
+                              title="View Scheduled Sequences"
+                            >
+                              📅
+                            </button>
+                            <button
+                              onClick={() => deleteAllScheduledMessages(conv.prospect_num, conv.device_id)}
+                              className="text-red-500 hover:text-red-700 transition-smooth text-lg"
+                              title="Delete All Scheduled Messages"
+                            >
+                              🗑️
+                            </button>
+                          </div>
                         </td>
                         <td className="px-6 py-4">
                           <button

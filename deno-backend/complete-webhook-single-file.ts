@@ -284,11 +284,16 @@ async function checkAndEnrollSequences(params: {
         for (const msg of scheduledMessages) {
           if (msg.whacenter_message_id) {
             try {
-              // Build URL with query parameters for GET request
-              const deleteUrl = `${WHACENTER_API_URL}/api/deleteMessage?device_id=${encodeURIComponent(instance)}&id=${encodeURIComponent(msg.whacenter_message_id)}`;
+              // Use FormData with GET as per WhatsApp Center API JavaScript example
+              const deleteUrl = `${WHACENTER_API_URL}/api/deleteMessage`;
+              const formData = new FormData();
+              formData.append('device_id', instance);
+              formData.append('id', msg.whacenter_message_id);
 
               const deleteResponse = await fetch(deleteUrl, {
                 method: 'GET',
+                body: formData,
+                redirect: 'follow',
               });
 
               if (deleteResponse.ok) {
@@ -1578,8 +1583,9 @@ async function handleWebhook(request: Request): Promise<Response> {
         );
       }
 
-      // Skip other isFromMe messages unless they start with '%' or '#'
-      if (firstChar !== '%' && firstChar !== '#') {
+      // Skip other isFromMe messages unless they start with special command characters
+      // Allowed: %, #, /, ? (remote control commands)
+      if (firstChar !== '%' && firstChar !== '#' && firstChar !== '/' && firstChar !== '?') {
         console.log("⚠️  Message from self (not special command), ignoring");
         return new Response(
           JSON.stringify({ success: true, message: "Self message ignored" }),
@@ -1702,6 +1708,22 @@ async function handleWebhook(request: Request): Promise<Response> {
 
       console.log(`✅ Set human mode to 1 for ${targetPhone} via / command`);
 
+      // Send reply to personal phone
+      const replyMessage = `Nombor ${targetPhone} Berjaya Active Human Mode`;
+      const sendUrl = `${WHACENTER_API_URL}/api/send`;
+      const formData = new URLSearchParams();
+      formData.append('device_id', device.instance);
+      formData.append('number', phone);
+      formData.append('message', replyMessage);
+
+      await fetch(sendUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: formData.toString(),
+      });
+
+      console.log(`📤 Sent reply to ${phone}: ${replyMessage}`);
+
       return new Response(
         JSON.stringify({ success: true, message: "Human mode activated" }),
         { status: 200, headers: corsHeaders }
@@ -1720,17 +1742,33 @@ async function handleWebhook(request: Request): Promise<Response> {
 
       console.log(`✅ Set human mode to null for ${targetPhone} via ? command`);
 
+      // Send reply to personal phone
+      const replyMessage = `Nombor ${targetPhone} Berjaya Active AI Mode`;
+      const sendUrl = `${WHACENTER_API_URL}/api/send`;
+      const formData = new URLSearchParams();
+      formData.append('device_id', device.instance);
+      formData.append('number', phone);
+      formData.append('message', replyMessage);
+
+      await fetch(sendUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: formData.toString(),
+      });
+
+      console.log(`📤 Sent reply to ${phone}: ${replyMessage}`);
+
       return new Response(
         JSON.stringify({ success: true, message: "Human mode deactivated" }),
         { status: 200, headers: corsHeaders }
       );
     }
 
-    // Command '!' - Cancel/delete all scheduled sequence messages for a phone number
-    if (firstChar === '!') {
+    // Command '%' - Delete all scheduled sequence messages for a phone number
+    if (firstChar === '%') {
       const targetPhone = message.substring(1).trim();
 
-      console.log(`🛑 Cancelling all scheduled messages for ${targetPhone} via ! command`);
+      console.log(`🛑 Deleting all scheduled messages for ${targetPhone} via % command`);
 
       try {
         // Get all scheduled messages for this prospect
@@ -1744,17 +1782,22 @@ async function handleWebhook(request: Request): Promise<Response> {
         if (scheduledError) {
           console.error("❌ Error fetching scheduled messages:", scheduledError);
         } else if (scheduledMessages && scheduledMessages.length > 0) {
-          console.log(`📋 Found ${scheduledMessages.length} scheduled messages to cancel`);
+          console.log(`📋 Found ${scheduledMessages.length} scheduled messages to delete`);
 
           // Delete from WhatsApp Center API
           for (const msg of scheduledMessages) {
             if (msg.whacenter_message_id) {
               try {
-                // Build URL with query parameters for GET request
-                const deleteUrl = `${WHACENTER_API_URL}/api/deleteMessage?device_id=${encodeURIComponent(device.instance)}&id=${encodeURIComponent(msg.whacenter_message_id)}`;
+                // Use FormData with GET as per WhatsApp Center API JavaScript example
+                const deleteUrl = `${WHACENTER_API_URL}/api/deleteMessage`;
+                const formData = new FormData();
+                formData.append('device_id', device.instance);
+                formData.append('id', msg.whacenter_message_id);
 
                 const deleteResponse = await fetch(deleteUrl, {
                   method: 'GET',
+                  body: formData,
+                  redirect: 'follow',
                 });
 
                 if (deleteResponse.ok) {
@@ -1779,7 +1822,7 @@ async function handleWebhook(request: Request): Promise<Response> {
           if (updateError) {
             console.error("❌ Error updating scheduled messages status:", updateError);
           } else {
-            console.log(`✅ Cancelled ${scheduledMessages.length} scheduled messages`);
+            console.log(`✅ Deleted ${scheduledMessages.length} scheduled messages`);
           }
 
           // Delete enrollment records
@@ -1803,15 +1846,48 @@ async function handleWebhook(request: Request): Promise<Response> {
 
           console.log(`✅ Cleared sequence_stage for ${targetPhone}`);
 
+          // Send reply to personal phone
+          const replyMessage = `Nombor ${targetPhone} Berjaya Delete Semua Schedule (${scheduledMessages.length} messages)`;
+          const sendUrl = `${WHACENTER_API_URL}/api/send`;
+          const formData = new URLSearchParams();
+          formData.append('device_id', device.instance);
+          formData.append('number', phone);
+          formData.append('message', replyMessage);
+
+          await fetch(sendUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: formData.toString(),
+          });
+
+          console.log(`📤 Sent reply to ${phone}: ${replyMessage}`);
+
           return new Response(
             JSON.stringify({
               success: true,
-              message: `Cancelled ${scheduledMessages.length} scheduled messages and deleted enrollments for ${targetPhone}`
+              message: `Deleted ${scheduledMessages.length} scheduled messages and enrollments for ${targetPhone}`
             }),
             { status: 200, headers: corsHeaders }
           );
         } else {
           console.log(`ℹ️  No scheduled messages found for ${targetPhone}`);
+
+          // Send reply to personal phone (no messages found)
+          const replyMessage = `Nombor ${targetPhone} - Tiada Schedule Messages untuk dipadam`;
+          const sendUrl = `${WHACENTER_API_URL}/api/send`;
+          const formData = new URLSearchParams();
+          formData.append('device_id', device.instance);
+          formData.append('number', phone);
+          formData.append('message', replyMessage);
+
+          await fetch(sendUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: formData.toString(),
+          });
+
+          console.log(`📤 Sent reply to ${phone}: ${replyMessage}`);
+
           return new Response(
             JSON.stringify({
               success: true,
@@ -1821,7 +1897,7 @@ async function handleWebhook(request: Request): Promise<Response> {
           );
         }
       } catch (error) {
-        console.error(`❌ Error cancelling scheduled messages:`, error);
+        console.error(`❌ Error deleting scheduled messages:`, error);
         return new Response(
           JSON.stringify({ success: false, error: String(error) }),
           { status: 500, headers: corsHeaders }
@@ -1844,6 +1920,22 @@ async function handleWebhook(request: Request): Promise<Response> {
       });
 
       console.log(`✅ Manual trigger for ${targetPhone} via # command`);
+
+      // Send reply to personal phone
+      const replyMessage = `Nombor ${targetPhone} Berjaya Trigger Flow`;
+      const sendUrl = `${WHACENTER_API_URL}/api/send`;
+      const formData = new URLSearchParams();
+      formData.append('device_id', device.instance);
+      formData.append('number', phone);
+      formData.append('message', replyMessage);
+
+      await fetch(sendUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: formData.toString(),
+      });
+
+      console.log(`📤 Sent reply to ${phone}: ${replyMessage}`);
 
       return new Response(
         JSON.stringify({ success: true, message: "Manual message queued" }),

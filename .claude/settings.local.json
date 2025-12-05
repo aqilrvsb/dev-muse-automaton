@@ -42,7 +42,14 @@
       "Bash(if [ -d \"C:\\Users\\aqilz\\Documents\\dev-muse-automaton-main\\public\" ])",
       "Bash(then)",
       "Bash(else)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(git checkout:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx typescript:*)",
+      "Bash(node_modules.bintsc --noEmit)",
+      "Bash(npx supabase functions deploy:*)",
+      "Bash(npx supabase login)",
+      "Bash(npx supabase db execute:*)"
     ],
     "deny": [],
     "ask": []
