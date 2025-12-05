@@ -285,7 +285,7 @@ async function checkAndEnrollSequences(params: {
           if (msg.whacenter_message_id) {
             try {
               // Use query parameters with GET request
-              const deleteUrl = `${WHACENTER_API_URL}/api/deleteMessage?device_id=${encodeURIComponent(instance)}&id=${encodeURIComponent(msg.whacenter_message_id)}`;
+              const deleteUrl = `${WHACENTER_API_URL}/api/deleteMessage?api_key=${encodeURIComponent(WHACENTER_API_KEY)}&device_id=${encodeURIComponent(instance)}&id=${encodeURIComponent(msg.whacenter_message_id)}`;
 
               const deleteResponse = await fetch(deleteUrl, {
                 method: 'GET',
@@ -1612,7 +1612,7 @@ async function handleWebhook(request: Request): Promise<Response> {
             if (msg.whacenter_message_id) {
               try {
                 // Build URL with query parameters for GET request
-                const deleteUrl = `${WHACENTER_API_URL}/api/deleteMessage?device_id=${encodeURIComponent(device.instance)}&id=${encodeURIComponent(msg.whacenter_message_id)}`;
+                const deleteUrl = `${WHACENTER_API_URL}/api/deleteMessage?api_key=${encodeURIComponent(WHACENTER_API_KEY)}&device_id=${encodeURIComponent(device.instance)}&id=${encodeURIComponent(msg.whacenter_message_id)}`;
 
                 const deleteResponse = await fetch(deleteUrl, {
                   method: 'GET',
@@ -1784,7 +1784,7 @@ async function handleWebhook(request: Request): Promise<Response> {
             if (msg.whacenter_message_id) {
               try {
                 // Use query parameters with GET request
-                const deleteUrl = `${WHACENTER_API_URL}/api/deleteMessage?device_id=${encodeURIComponent(device.instance)}&id=${encodeURIComponent(msg.whacenter_message_id)}`;
+                const deleteUrl = `${WHACENTER_API_URL}/api/deleteMessage?api_key=${encodeURIComponent(WHACENTER_API_KEY)}&device_id=${encodeURIComponent(device.instance)}&id=${encodeURIComponent(msg.whacenter_message_id)}`;
 
                 const deleteResponse = await fetch(deleteUrl, {
                   method: 'GET',
