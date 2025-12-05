@@ -943,7 +943,21 @@ export default function DeviceSettings() {
         {showEditModal && editingDevice && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl">
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Edit Device</h3>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-gray-900">Edit Device</h3>
+                <button
+                  onClick={() => {
+                    if (editingDevice) {
+                      setShowEditModal(false)
+                      handleRefreshQR(editingDevice)
+                    }
+                  }}
+                  className="text-sm text-primary-600 hover:text-primary-800 hover:underline font-medium"
+                  title="Generate new instance (delete old device, create new, register webhook)"
+                >
+                  🔄 Regenerate Device
+                </button>
+              </div>
 
               <form onSubmit={handleUpdateDevice} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

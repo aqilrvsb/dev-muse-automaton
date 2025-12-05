@@ -5,6 +5,20 @@ import { supabase, User, Package } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import Swal from 'sweetalert2'
 
+// WhatsApp Center API config
+const WHACENTER_API_URL = 'https://api.whacenter.com'
+const WHACENTER_API_KEY = 'd44ac50f-0bd8-4ed0-b85f-55465e08d7cf'
+const WEBHOOK_BASE_URL = 'https://pening-bot.deno.dev'
+
+interface DeviceSetting {
+  id: string
+  device_id: string
+  instance: string | null
+  phone_number: string | null
+  status: string
+  user_id: string
+}
+
 export default function UserRegister() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -14,6 +28,14 @@ export default function UserRegister() {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [loggingIn, setLoggingIn] = useState<string | null>(null)
+
+  // Device modal state
+  const [deviceModalOpen, setDeviceModalOpen] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [userDevices, setUserDevices] = useState<DeviceSetting[]>([])
+  const [loadingDevices, setLoadingDevices] = useState(false)
+  const [savingDevice, setSavingDevice] = useState<string | null>(null)
+  const [editedInstances, setEditedInstances] = useState<Record<string, string>>({})
 
   useEffect(() => {
     // Check if user is admin
@@ -336,6 +358,138 @@ export default function UserRegister() {
     }
   }
 
+  // Open device modal and load user's devices
+  const openDeviceModal = async (targetUser: User) => {
+    setSelectedUser(targetUser)
+    setDeviceModalOpen(true)
+    setLoadingDevices(true)
+    setEditedInstances({})
+
+    try {
+      const { data, error } = await supabase
+        .from('device_setting')
+        .select('id, device_id, instance, phone_number, status, user_id')
+        .eq('user_id', targetUser.id)
+        .order('created_at', { ascending: true })
+
+      if (error) throw error
+
+      setUserDevices(data || [])
+
+      // Initialize edited instances with current values
+      const instances: Record<string, string> = {}
+      data?.forEach(d => {
+        instances[d.id] = d.instance || ''
+      })
+      setEditedInstances(instances)
+    } catch (error) {
+      console.error('Error loading devices:', error)
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to load user devices',
+      })
+    } finally {
+      setLoadingDevices(false)
+    }
+  }
+
+  // Close device modal
+  const closeDeviceModal = () => {
+    setDeviceModalOpen(false)
+    setSelectedUser(null)
+    setUserDevices([])
+    setEditedInstances({})
+  }
+
+  // Save device instance and register webhook
+  const saveDeviceInstance = async (device: DeviceSetting) => {
+    const newInstance = editedInstances[device.id]?.trim()
+
+    if (!newInstance) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Instance Required',
+        text: 'Please enter an instance ID',
+      })
+      return
+    }
+
+    setSavingDevice(device.id)
+
+    try {
+      // Step 1: Update instance in database
+      const { error: updateError } = await supabase
+        .from('device_setting')
+        .update({
+          instance: newInstance,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', device.id)
+
+      if (updateError) throw updateError
+
+      // Step 2: Register new webhook with WhatsApp Center API
+      const webhookUrl = `${WEBHOOK_BASE_URL}/${device.device_id}/${newInstance}`
+
+      const registerResponse = await fetch(
+        `${WHACENTER_API_URL}/api/${WHACENTER_API_KEY}/setWebhook/${newInstance}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ webhookUrl }),
+        }
+      )
+
+      const registerData = await registerResponse.json()
+      console.log('Webhook registration response:', registerData)
+
+      // Step 3: Check device status
+      const statusResponse = await fetch(
+        `${WHACENTER_API_URL}/api/${WHACENTER_API_KEY}/statusDevice/${newInstance}`,
+        { method: 'GET' }
+      )
+      const statusData = await statusResponse.json()
+
+      // Update status in database
+      const newStatus = statusData.status && statusData.data?.status === 'CONNECTED' ? 'CONNECTED' : 'NOT_CONNECTED'
+      await supabase
+        .from('device_setting')
+        .update({ status: newStatus })
+        .eq('id', device.id)
+
+      // Refresh device list
+      const { data: refreshedDevices } = await supabase
+        .from('device_setting')
+        .select('id, device_id, instance, phone_number, status, user_id')
+        .eq('user_id', selectedUser?.id)
+        .order('created_at', { ascending: true })
+
+      setUserDevices(refreshedDevices || [])
+
+      await Swal.fire({
+        icon: 'success',
+        title: 'Device Updated',
+        html: `
+          <p>Instance: <strong>${newInstance}</strong></p>
+          <p>Webhook: <strong>${webhookUrl}</strong></p>
+          <p>Status: <strong>${newStatus}</strong></p>
+        `,
+        timer: 3000,
+        showConfirmButton: true,
+      })
+    } catch (error) {
+      console.error('Error saving device:', error)
+      await Swal.fire({
+        icon: 'error',
+        title: 'Save Failed',
+        text: 'Failed to save device instance',
+      })
+    } finally {
+      setSavingDevice(null)
+    }
+  }
+
   const viewUserDetails = (targetUser: User) => {
     Swal.fire({
       title: 'User Details',
@@ -487,7 +641,15 @@ export default function UserRegister() {
                           {u.is_active ? 'Active' : 'Inactive'}
                         </span>
                       </td>
-                      <td className="px-4 py-4 text-sm text-gray-600">{u.max_devices}</td>
+                      <td className="px-4 py-4 text-sm">
+                        <button
+                          onClick={() => openDeviceModal(u)}
+                          className="text-primary-600 hover:text-primary-800 hover:underline font-semibold cursor-pointer"
+                          title="Click to manage devices"
+                        >
+                          {u.max_devices}
+                        </button>
+                      </td>
                       <td className="px-4 py-4 text-sm">
                         <div className="flex gap-2">
                           <button
@@ -528,6 +690,129 @@ export default function UserRegister() {
           )}
         </div>
       </div>
+
+      {/* Device Management Modal */}
+      {deviceModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="bg-primary-600 text-white px-6 py-4 flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-bold">Device Management</h3>
+                <p className="text-sm text-primary-100">{selectedUser?.full_name || selectedUser?.email}</p>
+              </div>
+              <button
+                onClick={closeDeviceModal}
+                className="text-white hover:text-primary-200 text-2xl font-bold"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto max-h-[60vh]">
+              {loadingDevices ? (
+                <div className="flex items-center justify-center h-32">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                </div>
+              ) : userDevices.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">No devices found for this user</p>
+                  <p className="text-sm text-gray-400 mt-2">User needs to create a device in Device Settings first</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {userDevices.map((device, index) => (
+                    <div key={device.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h4 className="font-semibold text-gray-900">
+                            Device {index + 1}: {device.device_id}
+                          </h4>
+                          <p className="text-sm text-gray-500">
+                            Phone: {device.phone_number || '-'}
+                          </p>
+                        </div>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          device.status === 'CONNECTED'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {device.status || 'UNKNOWN'}
+                        </span>
+                      </div>
+
+                      <div className="flex gap-3 items-end">
+                        <div className="flex-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Instance ID
+                          </label>
+                          <input
+                            type="text"
+                            value={editedInstances[device.id] || ''}
+                            onChange={(e) => setEditedInstances({
+                              ...editedInstances,
+                              [device.id]: e.target.value
+                            })}
+                            placeholder="Enter instance ID from WhatsApp Center"
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          />
+                        </div>
+                        <button
+                          onClick={() => saveDeviceInstance(device)}
+                          disabled={savingDevice === device.id}
+                          className={`px-4 py-2 rounded-lg text-white font-medium transition-colors ${
+                            savingDevice === device.id
+                              ? 'bg-gray-400 cursor-not-allowed'
+                              : 'bg-primary-600 hover:bg-primary-700'
+                          }`}
+                        >
+                          {savingDevice === device.id ? (
+                            <span className="flex items-center gap-2">
+                              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                              </svg>
+                              Saving...
+                            </span>
+                          ) : (
+                            'Save'
+                          )}
+                        </button>
+                      </div>
+
+                      {device.instance && (
+                        <div className="mt-3 text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                          <p><strong>Webhook URL:</strong></p>
+                          <code className="text-primary-600 break-all">
+                            {WEBHOOK_BASE_URL}/{device.device_id}/{device.instance}
+                          </code>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
+              <div className="flex justify-between items-center">
+                <p className="text-sm text-gray-500">
+                  Max Devices: <span className="font-semibold">{selectedUser?.max_devices}</span> |
+                  Used: <span className="font-semibold">{userDevices.length}</span>
+                </p>
+                <button
+                  onClick={closeDeviceModal}
+                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   )
 }
