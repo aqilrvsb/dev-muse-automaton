@@ -871,12 +871,11 @@ export default function DeviceSettings() {
                       onChange={(e) => setFormData({ ...formData, api_key_option: e.target.value })}
                       className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
-                      <option value="openai/gpt-5-chat">GPT-5 Chat</option>
+                      <option value="openai/gpt-4.1">GPT-4.1</option>
+                      <option value="openai/gpt-4.1-mini">GPT-4.1 Mini</option>
                       <option value="openai/gpt-5-mini">GPT-5 Mini</option>
                       <option value="openai/chatgpt-4o-latest">GPT-4o Latest</option>
-                      <option value="openai/gpt-4.1">GPT-4.1</option>
-                      <option value="google/gemini-2.5-pro">Gemini 2.5 Pro</option>
-                      <option value="google/gemini-pro-1.5">Gemini Pro 1.5</option>
+                      <option value="x-ai/grok-4.1-fast">Grok 4.1 Fast</option>
                     </select>
                   </div>
 
@@ -988,12 +987,11 @@ export default function DeviceSettings() {
                       onChange={(e) => setFormData({ ...formData, api_key_option: e.target.value })}
                       className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
-                      <option value="openai/gpt-5-chat">GPT-5 Chat</option>
+                      <option value="openai/gpt-4.1">GPT-4.1</option>
+                      <option value="openai/gpt-4.1-mini">GPT-4.1 Mini</option>
                       <option value="openai/gpt-5-mini">GPT-5 Mini</option>
                       <option value="openai/chatgpt-4o-latest">GPT-4o Latest</option>
-                      <option value="openai/gpt-4.1">GPT-4.1</option>
-                      <option value="google/gemini-2.5-pro">Gemini 2.5 Pro</option>
-                      <option value="google/gemini-pro-1.5">Gemini Pro 1.5</option>
+                      <option value="x-ai/grok-4.1-fast">Grok 4.1 Fast</option>
                     </select>
                   </div>
 
