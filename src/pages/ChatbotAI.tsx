@@ -79,7 +79,7 @@ export default function ChatbotAI() {
       let query = supabase
         .from('ai_whatsapp')
         .select('*')
-        .order('date_insert', { ascending: false })
+        .order('id_prospect', { ascending: false })
 
       // For non-admin users, filter by their device IDs
       if (user && user.role !== 'admin' && userDeviceIds.length > 0) {
