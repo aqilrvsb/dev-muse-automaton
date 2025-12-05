@@ -61,6 +61,7 @@ export default function Sequences() {
   const [currentFlowNumber, setCurrentFlowNumber] = useState<number>(1)
   const [sequenceFlows, setSequenceFlows] = useState<SequenceFlow[]>([])
   const [tempFlows, setTempFlows] = useState<SequenceFlow[]>([]) // For create modal
+  const [flowsToDelete, setFlowsToDelete] = useState<string[]>([]) // Track flow IDs to delete on update
 
   // Form state for creating/editing sequences
   const [formData, setFormData] = useState({
@@ -280,6 +281,7 @@ export default function Sequences() {
 
       if (error) throw error
       setSequenceFlows(flowsData || [])
+      setFlowsToDelete([]) // Reset delete list when opening edit modal
       setShowEditModal(true)
     } catch (error) {
       console.error('Error loading flows:', error)
@@ -316,6 +318,18 @@ export default function Sequences() {
 
       if (error) throw error
 
+      // Delete flows that were marked for deletion (cleared with X button)
+      if (flowsToDelete.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('sequence_flows')
+          .delete()
+          .in('id', flowsToDelete)
+
+        if (deleteError) {
+          console.error('Error deleting cleared flows:', deleteError)
+        }
+      }
+
       await Swal.fire({
         icon: 'success',
         title: 'Sequence Updated!',
@@ -327,6 +341,7 @@ export default function Sequences() {
       setShowEditModal(false)
       setCurrentSequence(null)
       setSequenceFlows([])
+      setFlowsToDelete([]) // Clear the delete list
       resetForm()
       loadSequences()
     } catch (error: any) {
@@ -653,64 +668,26 @@ export default function Sequences() {
     }
   }
 
-  // Clear flow data (remove flow from sequence)
-  const handleClearFlow = async (flowNumber: number, isCreateMode: boolean = false, e: React.MouseEvent) => {
+  // Clear flow data locally (does NOT delete from database - that happens on Update Sequence)
+  const handleClearFlow = (flowNumber: number, isCreateMode: boolean = false, e: React.MouseEvent) => {
     e.stopPropagation() // Prevent opening the edit modal
 
     if (isCreateMode) {
-      // Remove from tempFlows
+      // Remove from tempFlows (for create mode, just remove from local state)
       setTempFlows(tempFlows.filter(f => f.flow_number !== flowNumber))
     } else {
-      // Delete from database
-      if (!currentSequence) return
-
+      // For edit mode: mark flow for deletion and remove from local state
+      // Actual deletion happens when "Update Sequence" is clicked
       const existingFlow = sequenceFlows.find(f => f.flow_number === flowNumber)
       if (!existingFlow) return
 
-      const result = await Swal.fire({
-        icon: 'warning',
-        title: `Clear Flow ${flowNumber}?`,
-        text: 'This will remove the message and image from this flow.',
-        showCancelButton: true,
-        confirmButtonText: 'Yes, clear it',
-        cancelButtonText: 'Cancel',
-        confirmButtonColor: '#ef4444',
-      })
-
-      if (!result.isConfirmed) return
-
-      try {
-        const { error } = await supabase
-          .from('sequence_flows')
-          .delete()
-          .eq('id', existingFlow.id)
-
-        if (error) throw error
-
-        // Reload flows
-        const { data: flowsData } = await supabase
-          .from('sequence_flows')
-          .select('*')
-          .eq('sequence_id', currentSequence.id)
-          .order('flow_number', { ascending: true })
-
-        setSequenceFlows(flowsData || [])
-
-        await Swal.fire({
-          icon: 'success',
-          title: 'Flow Cleared!',
-          text: `Flow ${flowNumber} has been cleared.`,
-          timer: 1500,
-          showConfirmButton: false,
-        })
-      } catch (error: any) {
-        console.error('Error clearing flow:', error)
-        await Swal.fire({
-          icon: 'error',
-          title: 'Failed to Clear Flow',
-          text: error.message || 'Failed to clear flow',
-        })
+      // Add to delete list (only if it's a real flow from DB, not a temp one)
+      if (existingFlow.id && !existingFlow.id.startsWith('temp-')) {
+        setFlowsToDelete(prev => [...prev, existingFlow.id])
       }
+
+      // Remove from local sequenceFlows state
+      setSequenceFlows(sequenceFlows.filter(f => f.flow_number !== flowNumber))
     }
   }
 
@@ -1004,6 +981,7 @@ export default function Sequences() {
                     setShowEditModal(false)
                     setCurrentSequence(null)
                     setSequenceFlows([])
+                    setFlowsToDelete([]) // Clear delete list when closing modal
                     resetForm()
                   }}
                   className="text-gray-400 hover:text-gray-600 text-2xl"
@@ -1149,6 +1127,7 @@ export default function Sequences() {
                       setShowEditModal(false)
                       setCurrentSequence(null)
                       setSequenceFlows([])
+                      setFlowsToDelete([]) // Clear delete list when canceling
                       resetForm()
                     }}
                     className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-medium transition-colors"
