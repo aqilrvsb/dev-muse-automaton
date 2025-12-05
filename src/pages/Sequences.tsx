@@ -653,6 +653,67 @@ export default function Sequences() {
     }
   }
 
+  // Clear flow data (remove flow from sequence)
+  const handleClearFlow = async (flowNumber: number, isCreateMode: boolean = false, e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent opening the edit modal
+
+    if (isCreateMode) {
+      // Remove from tempFlows
+      setTempFlows(tempFlows.filter(f => f.flow_number !== flowNumber))
+    } else {
+      // Delete from database
+      if (!currentSequence) return
+
+      const existingFlow = sequenceFlows.find(f => f.flow_number === flowNumber)
+      if (!existingFlow) return
+
+      const result = await Swal.fire({
+        icon: 'warning',
+        title: `Clear Flow ${flowNumber}?`,
+        text: 'This will remove the message and image from this flow.',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, clear it',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#ef4444',
+      })
+
+      if (!result.isConfirmed) return
+
+      try {
+        const { error } = await supabase
+          .from('sequence_flows')
+          .delete()
+          .eq('id', existingFlow.id)
+
+        if (error) throw error
+
+        // Reload flows
+        const { data: flowsData } = await supabase
+          .from('sequence_flows')
+          .select('*')
+          .eq('sequence_id', currentSequence.id)
+          .order('flow_number', { ascending: true })
+
+        setSequenceFlows(flowsData || [])
+
+        await Swal.fire({
+          icon: 'success',
+          title: 'Flow Cleared!',
+          text: `Flow ${flowNumber} has been cleared.`,
+          timer: 1500,
+          showConfirmButton: false,
+        })
+      } catch (error: any) {
+        console.error('Error clearing flow:', error)
+        await Swal.fire({
+          icon: 'error',
+          title: 'Failed to Clear Flow',
+          text: error.message || 'Failed to clear flow',
+        })
+      }
+    }
+  }
+
   return (
     <Layout>
       <div className="p-8">
@@ -871,27 +932,39 @@ export default function Sequences() {
                   <h4 className="text-lg font-bold text-gray-900 mb-4">Sequence Flow</h4>
                   <div className="grid grid-cols-7 gap-2">
                     {Array.from({ length: 31 }, (_, i) => i + 1).map((flowNum) => (
-                      <button
-                        key={flowNum}
-                        type="button"
-                        onClick={() => handleOpenFlowEdit(flowNum, true)}
-                        className={`px-3 py-6 rounded-lg border-2 font-medium text-sm transition-colors ${
-                          isFlowSet(flowNum, true)
-                            ? 'bg-green-50 border-green-400 text-green-700'
-                            : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
-                        }`}
-                      >
-                        <div className="text-center">
-                          <div className="font-bold mb-1">Flow {flowNum}</div>
-                          <div className="text-xs">
-                            {isFlowSet(flowNum, true) ? (
-                              <span className="text-green-600">✓ Set</span>
-                            ) : (
-                              <span className="text-gray-500">⊕ Add</span>
-                            )}
+                      <div key={flowNum} className="relative">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenFlowEdit(flowNum, true)}
+                          className={`w-full px-3 py-6 rounded-lg border-2 font-medium text-sm transition-colors ${
+                            isFlowSet(flowNum, true)
+                              ? 'bg-green-50 border-green-400 text-green-700'
+                              : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
+                          }`}
+                        >
+                          <div className="text-center">
+                            <div className="font-bold mb-1">Flow {flowNum}</div>
+                            <div className="text-xs">
+                              {isFlowSet(flowNum, true) ? (
+                                <span className="text-green-600">✓ Set</span>
+                              ) : (
+                                <span className="text-gray-500">⊕ Add</span>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </button>
+                        </button>
+                        {/* X button to clear flow - only shown when flow is set */}
+                        {isFlowSet(flowNum, true) && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleClearFlow(flowNum, true, e)}
+                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold shadow-md transition-colors"
+                            title="Clear this flow"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -1032,27 +1105,39 @@ export default function Sequences() {
                   <h4 className="text-lg font-bold text-gray-900 mb-4">Sequence Flow</h4>
                   <div className="grid grid-cols-7 gap-2">
                     {Array.from({ length: 31 }, (_, i) => i + 1).map((flowNum) => (
-                      <button
-                        key={flowNum}
-                        type="button"
-                        onClick={() => handleOpenFlowEdit(flowNum, false)}
-                        className={`px-3 py-6 rounded-lg border-2 font-medium text-sm transition-colors ${
-                          isFlowSet(flowNum, false)
-                            ? 'bg-green-50 border-green-400 text-green-700'
-                            : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
-                        }`}
-                      >
-                        <div className="text-center">
-                          <div className="font-bold mb-1">Flow {flowNum}</div>
-                          <div className="text-xs">
-                            {isFlowSet(flowNum, false) ? (
-                              <span className="text-green-600">✓ Set</span>
-                            ) : (
-                              <span className="text-gray-500">⊕ Add</span>
-                            )}
+                      <div key={flowNum} className="relative">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenFlowEdit(flowNum, false)}
+                          className={`w-full px-3 py-6 rounded-lg border-2 font-medium text-sm transition-colors ${
+                            isFlowSet(flowNum, false)
+                              ? 'bg-green-50 border-green-400 text-green-700'
+                              : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
+                          }`}
+                        >
+                          <div className="text-center">
+                            <div className="font-bold mb-1">Flow {flowNum}</div>
+                            <div className="text-xs">
+                              {isFlowSet(flowNum, false) ? (
+                                <span className="text-green-600">✓ Set</span>
+                              ) : (
+                                <span className="text-gray-500">⊕ Add</span>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </button>
+                        </button>
+                        {/* X button to clear flow - only shown when flow is set */}
+                        {isFlowSet(flowNum, false) && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleClearFlow(flowNum, false, e)}
+                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold shadow-md transition-colors"
+                            title="Clear this flow"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
                     ))}
                   </div>
                 </div>
