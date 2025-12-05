@@ -886,15 +886,29 @@ async function executePromptBasedFlow(params: {
       updateData.detail = extractedDetails;
       console.log(`📝 Saving customer details: ${extractedDetails.substring(0, 100)}...`);
 
-      // Send closing notification to user's WhatsApp
-      await sendClosingNotification({
-        deviceId: device.device_id,
-        userId: device.user_id,
-        prospectName: conversation.prospect_name || '-',
-        prospectNum: phone,
-        niche: conversation.niche || '-',
-        extractedDetails: extractedDetails,
-      });
+      // Send closing notification ONLY if:
+      // 1. Details contain "RM" (has price/sales amount)
+      // 2. Notification not sent yet (using notification_sent column)
+      const hasRM = /RM\s*\d+/i.test(extractedDetails);
+      const notificationNotSentYet = conversation.notification_sent !== true;
+
+      if (hasRM && notificationNotSentYet) {
+        console.log(`🔔 Details with RM found and notification not sent yet - sending notification...`);
+        await sendClosingNotification({
+          deviceId: device.device_id,
+          userId: device.user_id,
+          prospectName: conversation.prospect_name || '-',
+          prospectNum: phone,
+          niche: conversation.niche || '-',
+          extractedDetails: extractedDetails,
+        });
+        // Mark notification as sent
+        updateData.notification_sent = true;
+      } else if (!hasRM) {
+        console.log(`⏭️  Details don't contain RM - skipping notification`);
+      } else {
+        console.log(`⏭️  Notification already sent for this customer - skipping`);
+      }
     }
 
     // Update conversation with conv_last, stage, details, and clear conv_current
@@ -1279,24 +1293,14 @@ async function sendClosingNotification(params: {
       return;
     }
 
-    // Step 2: Check if admin device is connected
-    const adminStatusResponse = await fetch(
-      `${WHACENTER_API_URL}/api/${WHACENTER_API_KEY}/statusDevice/${adminDevice.instance}`,
-      { method: 'GET' }
-    );
-    const adminStatusData = await adminStatusResponse.json();
-
-    if (!adminStatusData.status || adminStatusData.data?.status !== 'CONNECTED') {
-      console.log("⚠️  Admin device is not connected, skipping closing notification");
-      return;
-    }
-
-    // Step 3: Get user's phone number (Nombor WhatsApp get Notification)
+    // Step 2: Get user's phone number (Nombor WhatsApp get Notification)
     const { data: userData, error: userError } = await supabaseAdmin
       .from("user")
       .select("phone, full_name, role, status, subscription_end")
       .eq("id", userId)
       .single();
+
+    console.log(`👤 User data for notification:`, JSON.stringify(userData));
 
     if (userError || !userData) {
       console.log("⚠️  User not found, skipping closing notification");
