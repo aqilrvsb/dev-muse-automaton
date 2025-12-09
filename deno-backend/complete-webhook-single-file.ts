@@ -1540,6 +1540,15 @@ async function handleWebhook(request: Request): Promise<Response> {
     const message = payload.message?.trim() || "";
     const name = payload.pushName || "Unknown";
 
+    // Skip non-Malaysian phone numbers (must start with 60 or 01)
+    if (phone && !phone.startsWith("60") && !phone.startsWith("01")) {
+      console.log(`⚠️  Non-Malaysian phone number (${phone}), skipping`);
+      return new Response(
+        JSON.stringify({ success: true, message: "Non-Malaysian phone number skipped" }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
     if (!message) {
       console.log("⚠️  Empty message, ignoring");
       return new Response(
