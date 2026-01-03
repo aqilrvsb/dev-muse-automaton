@@ -269,6 +269,15 @@ serve(async (req) => {
 
     let leadId: string;
 
+    // Build detail string from WooCommerce order data
+    const orderDetails = `NAMA: ${customerName}
+NO FONE: ${customerPhone}
+ALAMAT: ${fullAddress}
+PRODUK: ${productNames}
+HARGA: RM${totalPrice}
+ORDER ID: ${wooOrder.id}
+STATUS: ${wooOrder.status}`;
+
     if (existingLead) {
       // Update existing lead
       console.log(`Existing lead found: ${existingLead.id_prospect}`);
@@ -279,6 +288,7 @@ serve(async (req) => {
         .update({
           prospect_name: customerName,
           stage: (deviceSettings.ecom_webhook_stage || 'NEW').toUpperCase(),
+          detail: orderDetails,  // ✅ Save order details
           last_message_at: new Date().toISOString(),
         })
         .eq("id_prospect", leadId);
@@ -298,6 +308,7 @@ serve(async (req) => {
           prospect_name: customerName,
           prospect_num: customerPhone,
           stage: (deviceSettings.ecom_webhook_stage || 'NEW').toUpperCase(),
+          detail: orderDetails,  // ✅ Save order details
           ai_enabled: true,
           messages: [],
           last_message_at: new Date().toISOString(),
