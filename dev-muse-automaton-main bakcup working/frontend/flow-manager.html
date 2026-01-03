@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flow Manager - DevMuse Automaton</title>
+    <link rel="stylesheet" href="assets/css/dashboard.css">
+    <link rel="stylesheet" href="assets/css/device-settings.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+    <!-- Background Gradient -->
+    <div class="background-gradient"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <span class="logo-icon">🤖</span>
+                <h1 class="logo-text">
+                    <span class="logo-dev">Dev</span><span class="logo-muse">Muse</span>
+                </h1>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="dashboard.html" class="nav-item">
+                <span class="nav-icon">📊</span>
+                <span class="nav-text">Dashboard</span>
+            </a>
+            <a href="device-settings.html" class="nav-item">
+                <span class="nav-icon">⚙️</span>
+                <span class="nav-text">Device Settings</span>
+            </a>
+            <a href="profile.html" class="nav-item">
+                <span class="nav-icon">👤</span>
+                <span class="nav-text">Profile</span>
+            </a>
+            <a href="/billings.html" class="nav-item">
+                <span class="nav-icon">💳</span>
+                <span class="nav-text">Billings</span>
+            </a>
+            <a href="set-stage.html" class="nav-item">
+                <span class="nav-icon">🎯</span>
+                <span class="nav-text">Set Stage</span>
+            </a>
+            <a href="flow-builder.html" class="nav-item">
+                <span class="nav-icon">🔀</span>
+                <span class="nav-text">Flow Builder</span>
+            </a>
+            <a href="flow-manager.html" class="nav-item active">
+                <span class="nav-icon">📋</span>
+                <span class="nav-text">Flow Manager</span>
+            </a>
+            <a href="/chatbot-ai.html" class="nav-item">
+                <span class="nav-icon">🤖</span>
+                <span class="nav-text">Chatbot AI</span>
+            </a>
+            <a href="/whatsapp-bot.html" class="nav-item">
+                <span class="nav-icon">💬</span>
+                <span class="nav-text">WhatsApp Bot</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">👤</div>
+                <div class="user-details">
+                    <div class="user-email" id="userEmail">Loading...</div>
+                    <button class="btn-logout" onclick="logout()">Logout</button>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header -->
+        <header class="page-header">
+            <div class="header-content">
+                <div>
+                    <h1 class="page-title">Flow Manager</h1>
+                    <p class="page-subtitle">Manage all your chatbot flows</p>
+                </div>
+            </div>
+        </header>
+
+        <!-- Flows Table -->
+        <div class="devices-grid">
+            <div class="table-container">
+                <table class="devices-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Device ID</th>
+                            <th>Flow Name</th>
+                            <th>Niche</th>
+                            <th>Created At</th>
+                            <th>Updated At</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="flowsTableBody">
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 3rem;">
+                                <div class="loading-spinner">Loading flows...</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script src="assets/js/flow-manager.js"></script>
+</body>
+</html>

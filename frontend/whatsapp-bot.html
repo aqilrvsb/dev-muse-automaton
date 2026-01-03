@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Bot - PeningBot</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="stylesheet" href="/assets/css/dashboard.css">
+    <link rel="stylesheet" href="/assets/css/device-settings.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="background-gradient"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" style="display: none;">
+        <div class="sidebar-header">
+            <div class="logo">
+                <span class="logo-icon">🤖</span>
+                <span class="logo-text">
+                    <span class="logo-dev">Dev</span><span class="logo-muse">Muse</span>
+                </span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="/dashboard.html" class="nav-item">
+                <span class="nav-icon">📊</span>
+                <span class="nav-text">Dashboard</span>
+            </a>
+            <a href="/device-settings.html" class="nav-item">
+                <span class="nav-icon">📱</span>
+                <span class="nav-text">Device Settings</span>
+            </a>
+            <a href="/profile.html" class="nav-item">
+                <span class="nav-icon">👤</span>
+                <span class="nav-text">Profile</span>
+            </a>
+            <a href="/billings.html" class="nav-item">
+                <span class="nav-icon">💳</span>
+                <span class="nav-text">Billings</span>
+            </a>
+            <a href="/packages.html" class="nav-item" id="packagesTab" style="display: none;">
+                <span class="nav-icon">💳</span>
+                <span class="nav-text">Billings</span>
+            </a>
+            <a href="/set-stage.html" class="nav-item">
+                <span class="nav-icon">🎯</span>
+                <span class="nav-text">Set Stage</span>
+            </a>
+            <a href="/flow-builder.html" class="nav-item">
+                <span class="nav-icon">🔀</span>
+                <span class="nav-text">Flow Builder</span>
+            </a>
+            <a href="/flow-manager.html" class="nav-item">
+                <span class="nav-icon">📋</span>
+                <span class="nav-text">Flow Manager</span>
+            </a>
+            <a href="/chatbot-ai.html" class="nav-item">
+                <span class="nav-icon">🤖</span>
+                <span class="nav-text">Chatbot AI</span>
+            </a>
+            <a href="/whatsapp-bot.html" class="nav-item active">
+                <span class="nav-icon">💬</span>
+                <span class="nav-text">WhatsApp Bot</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">👤</div>
+                <div class="user-details">
+                    <div class="user-email" id="userEmail">Loading...</div>
+                    <button class="btn-logout" onclick="logout()">Logout</button>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content" style="margin-left: 0;">
+        <div class="content-wrapper">
+            <!-- Page Header -->
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">WhatsApp Bot Conversations</h1>
+                    <p class="page-subtitle">Monitor and manage your WhatsApp bot flow-based interactions</p>
+                </div>
+            </div>
+
+            <!-- Filter Section -->
+            <div class="filter-section">
+                <div class="filter-container">
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label for="deviceFilter">Device</label>
+                            <select id="deviceFilter" class="filter-select" onchange="applyFilters()">
+                                <option value="">All Devices</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="stageFilter">Stage</label>
+                            <select id="stageFilter" class="filter-select" onchange="applyFilters()">
+                                <option value="">All Stages</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="startDateFilter">Start Date</label>
+                            <input type="date" id="startDateFilter" class="filter-date-input" onchange="applyFilters()">
+                        </div>
+                        <div class="filter-group">
+                            <label for="endDateFilter">End Date</label>
+                            <input type="date" id="endDateFilter" class="filter-date-input" onchange="applyFilters()">
+                        </div>
+                        <div class="filter-group filter-search">
+                            <label for="searchInput">Search</label>
+                            <input type="text" id="searchInput" class="filter-input" placeholder="Search by name, phone, or niche..." oninput="applyFilters()">
+                        </div>
+                    </div>
+                    <div class="filter-actions">
+                        <button class="btn-filter-reset" onclick="resetFilters()">
+                            <span>🔄</span>
+                            <span>Reset</span>
+                        </button>
+                        <button class="btn-export" onclick="exportToCSV()">
+                            <span>📥</span>
+                            <span>Export CSV</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics Cards -->
+            <div class="analytics-grid">
+                <div class="analytics-card">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        <span>📊</span>
+                    </div>
+                    <div class="card-content">
+                        <div class="card-label">Total Conversations</div>
+                        <div class="card-value" id="totalConversations">0</div>
+                        <div class="card-change positive" id="totalChange">0% vs last period</div>
+                    </div>
+                </div>
+
+                <div class="analytics-card">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                        <span>✅</span>
+                    </div>
+                    <div class="card-content">
+                        <div class="card-label">Active Flows</div>
+                        <div class="card-value" id="activeFlows">0</div>
+                        <div class="card-change" id="flowsChange">0% of total</div>
+                    </div>
+                </div>
+
+                <div class="analytics-card">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                        <span>⏸️</span>
+                    </div>
+                    <div class="card-content">
+                        <div class="card-label">Waiting Reply</div>
+                        <div class="card-value" id="waitingReply">0</div>
+                        <div class="card-change" id="waitingChange">0% of total</div>
+                    </div>
+                </div>
+
+                <div class="analytics-card">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                        <span>📱</span>
+                    </div>
+                    <div class="card-content">
+                        <div class="card-label">Active Devices</div>
+                        <div class="card-value" id="activeDevices">0</div>
+                        <div class="card-change" id="deviceChange">0% vs last period</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">📈 Daily Conversation Trends</h3>
+                        <select id="trendPeriod" class="chart-select">
+                            <option value="7">Daily</option>
+                            <option value="30">Monthly</option>
+                        </select>
+                    </div>
+                    <div class="chart-content">
+                        <canvas id="dailyTrendsChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">🎯 Stage Distribution</h3>
+                        <button class="chart-button" onclick="refreshStageChart()">By Stage</button>
+                    </div>
+                    <div class="chart-content">
+                        <div id="stageDistribution" class="stage-bars"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Conversations Table -->
+            <div class="stage-section">
+                <div id="conversationsList" class="table-container">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">💬</div>
+                        <h2 class="empty-state-title">Loading Conversations...</h2>
+                        <p class="empty-state-text">Please wait while we fetch your WhatsApp bot conversations</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/assets/js/whatsapp-bot.js"></script>
+</body>
+</html>

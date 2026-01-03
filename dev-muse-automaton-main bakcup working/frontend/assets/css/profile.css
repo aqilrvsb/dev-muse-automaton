@@ -1,0 +1,253 @@
+/* Profile Page Styles */
+
+.profile-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem;
+    margin-top: 2rem;
+    max-width: 1400px;
+}
+
+.profile-card {
+    background: linear-gradient(135deg, rgba(20, 20, 20, 0.95) 0%, rgba(30, 30, 30, 0.9) 100%);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 2rem;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    transition: all 0.3s ease;
+}
+
+.profile-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(229, 9, 20, 0.3);
+    box-shadow: 0 12px 48px rgba(229, 9, 20, 0.2);
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.card-icon {
+    font-size: 2rem;
+    background: linear-gradient(135deg, var(--netflix-red) 0%, #b00710 100%);
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(229, 9, 20, 0.3);
+}
+
+.card-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--netflix-white);
+    margin: 0;
+}
+
+.card-subtitle {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9rem;
+    margin-bottom: 2rem;
+    margin-top: 0.5rem;
+}
+
+.info-group {
+    margin-bottom: 1.5rem;
+}
+
+.info-group label, .form-group label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--netflix-gold);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.5rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 0.9rem 1rem;
+    background: rgba(51, 51, 51, 0.7);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: var(--netflix-white);
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    font-family: 'Inter', sans-serif;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: var(--netflix-red);
+    background: rgba(51, 51, 51, 0.9);
+    box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.1);
+}
+
+.form-group input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.info-value {
+    font-size: 1rem;
+    color: var(--netflix-white);
+    padding: 0.75rem 1rem;
+    background: rgba(51, 51, 51, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+.info-note {
+    display: block;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.4);
+    margin-top: 0.25rem;
+    font-style: italic;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 0.5rem 1.5rem;
+    background: linear-gradient(135deg, var(--netflix-red) 0%, #b00710 100%);
+    color: var(--netflix-white);
+    border-radius: 50px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 16px rgba(229, 9, 20, 0.3);
+}
+
+.account-id {
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    word-break: break-all;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* Password Card */
+.password-card {
+    grid-column: 1 / -1;
+    max-width: 600px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.password-card .form-group {
+    margin-bottom: 1.5rem;
+}
+
+.password-card .form-group label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--netflix-gold);
+    margin-bottom: 0.5rem;
+}
+
+.password-card .form-group input {
+    width: 100%;
+    padding: 0.9rem 1rem;
+    background: rgba(51, 51, 51, 0.7);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: var(--netflix-white);
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    font-family: 'Inter', sans-serif;
+}
+
+.password-card .form-group input:focus {
+    outline: none;
+    border-color: var(--netflix-red);
+    background: rgba(51, 51, 51, 0.9);
+    box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.1);
+}
+
+.password-card .form-group input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.btn-change-password {
+    width: 100%;
+    padding: 1rem;
+    background: linear-gradient(135deg, var(--netflix-red) 0%, #b00710 100%);
+    border: none;
+    border-radius: 8px;
+    color: var(--netflix-white);
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 16px rgba(229, 9, 20, 0.3);
+    margin-top: 1rem;
+}
+
+.btn-change-password:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(229, 9, 20, 0.5);
+    background: linear-gradient(135deg, #ff0a16 0%, #d00813 100%);
+}
+
+.btn-change-password:active {
+    transform: translateY(0);
+}
+
+.btn-save-profile {
+    width: 100%;
+    padding: 1rem;
+    background: linear-gradient(135deg, var(--netflix-gold) 0%, #d4af37 100%);
+    border: none;
+    border-radius: 8px;
+    color: var(--netflix-black);
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 16px rgba(255, 215, 0, 0.3);
+    margin-top: 1rem;
+}
+
+.btn-save-profile:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(255, 215, 0, 0.5);
+    background: linear-gradient(135deg, #ffd700 0%, #f0c020 100%);
+}
+
+.btn-save-profile:active {
+    transform: translateY(0);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .profile-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    .profile-card {
+        padding: 1.5rem;
+    }
+
+    .card-title {
+        font-size: 1.25rem;
+    }
+
+    .password-card {
+        max-width: 100%;
+    }
+}
