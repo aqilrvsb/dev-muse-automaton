@@ -30,10 +30,9 @@ export default function DeviceSettings() {
   const [showWebhookSettingsModal, setShowWebhookSettingsModal] = useState(false)
   const [webhookSettingsDevice, setWebhookSettingsDevice] = useState<Device | null>(null)
   const [webhookFormData, setWebhookFormData] = useState({
-    ecom_webhook_stage: 'new',
+    ecom_webhook_stage: 'NEW',
     ecom_webhook_template: 'Hi {{name}}, thank you for your order!\n\nOrder Details:\n- Order ID: {{order_id}}\n- Product: {{product}}\n- Total: RM{{total}}\n\nWe will process your order shortly. Thank you for shopping with us!',
   })
-  const [stages, setStages] = useState<{id: string, name: string}[]>([])
 
   // Form state
   const [formData, setFormData] = useState({
@@ -47,28 +46,8 @@ export default function DeviceSettings() {
   })
 
   useEffect(() => {
-    const initializePage = async () => {
-      await loadDevices()
-      await loadStages()
-    }
-    initializePage()
+    loadDevices()
   }, [])
-
-  const loadStages = async () => {
-    try {
-      if (!user?.id) return
-      const { data, error } = await supabase
-        .from('stages')
-        .select('id, name')
-        .eq('user_id', user.id)
-        .order('order', { ascending: true })
-
-      if (error) throw error
-      setStages(data || [])
-    } catch (error) {
-      console.error('Error loading stages:', error)
-    }
-  }
 
   // QR Modal countdown effect - starts only when modal is open and QR is valid
   useEffect(() => {
@@ -747,7 +726,7 @@ export default function DeviceSettings() {
   const openWebhookSettings = (device: Device) => {
     setWebhookSettingsDevice(device)
     setWebhookFormData({
-      ecom_webhook_stage: device.ecom_webhook_stage || 'new',
+      ecom_webhook_stage: (device.ecom_webhook_stage || 'NEW').toUpperCase(),
       ecom_webhook_template: device.ecom_webhook_template || 'Hi {{name}}, thank you for your order!\n\nOrder Details:\n- Order ID: {{order_id}}\n- Product: {{product}}\n- Total: RM{{total}}\n\nWe will process your order shortly. Thank you for shopping with us!',
     })
     setShowWebhookSettingsModal(true)
@@ -939,25 +918,15 @@ export default function DeviceSettings() {
                         </div>
                       </div>
 
-                      {/* Settings Icons */}
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => openWebhookSettings(device)}
-                          className="flex-1 flex items-center justify-center gap-2 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 px-3 py-2 rounded-lg transition-colors text-sm"
-                          title="Set Stage & Template"
-                        >
-                          <span>🎯</span>
-                          <span>Stage: {device.ecom_webhook_stage || 'new'}</span>
-                        </button>
-                        <button
-                          onClick={() => openWebhookSettings(device)}
-                          className="flex items-center justify-center gap-1 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-700 px-3 py-2 rounded-lg transition-colors text-sm"
-                          title="Edit Message Template"
-                        >
-                          <span>📝</span>
-                          <span>Template</span>
-                        </button>
-                      </div>
+                      {/* Settings Button */}
+                      <button
+                        onClick={() => openWebhookSettings(device)}
+                        className="w-full flex items-center justify-center gap-2 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-700 px-3 py-2 rounded-lg transition-colors text-sm"
+                        title="Configure Webhook Settings"
+                      >
+                        <span>⚙️</span>
+                        <span>Configure Settings</span>
+                      </button>
                     </div>
                   )}
                 </div>
@@ -1463,21 +1432,13 @@ export default function DeviceSettings() {
                   {/* Stage Selection */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Lead Stage</label>
-                    <select
+                    <input
+                      type="text"
                       value={webhookFormData.ecom_webhook_stage}
-                      onChange={(e) => setWebhookFormData({ ...webhookFormData, ecom_webhook_stage: e.target.value })}
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    >
-                      <option value="new">New Lead</option>
-                      <option value="contacted">Contacted</option>
-                      <option value="qualified">Qualified</option>
-                      <option value="customer">Customer</option>
-                      <option value="completed">Completed</option>
-                      {stages.map((stage) => (
-                        <option key={stage.id} value={stage.name}>{stage.name}</option>
-                      ))}
-                    </select>
-                    <p className="text-xs text-gray-500 mt-1">Stage to assign when a new lead is created from WooCommerce order</p>
+                      onChange={(e) => setWebhookFormData({ ...webhookFormData, ecom_webhook_stage: e.target.value.toUpperCase() })}
+                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 uppercase"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Stage to assign when a new lead is created from WooCommerce order (auto uppercase)</p>
                   </div>
 
                   {/* Message Template */}

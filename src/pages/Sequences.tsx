@@ -860,11 +860,11 @@ export default function Sequences() {
                   <input
                     type="text"
                     value={formData.trigger}
-                    onChange={(e) => setFormData({ ...formData, trigger: e.target.value })}
-                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="e.g., fitness_start, onboarding_begin"
+                    onChange={(e) => setFormData({ ...formData, trigger: e.target.value.toUpperCase() })}
+                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 uppercase"
+                    placeholder="e.g., FITNESS_START, ONBOARDING_BEGIN"
                   />
-                  <p className="text-xs text-gray-500 mt-1">This trigger will be used to identify and enroll leads into this sequence</p>
+                  <p className="text-xs text-gray-500 mt-1">This trigger will be used to identify and enroll leads into this sequence (auto uppercase)</p>
                 </div>
 
                 <div>
@@ -1036,9 +1036,10 @@ export default function Sequences() {
                   <input
                     type="text"
                     value={formData.trigger}
-                    onChange={(e) => setFormData({ ...formData, trigger: e.target.value })}
-                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    onChange={(e) => setFormData({ ...formData, trigger: e.target.value.toUpperCase() })}
+                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 uppercase"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Auto uppercase</p>
                 </div>
 
                 <div>

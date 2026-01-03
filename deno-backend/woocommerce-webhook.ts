@@ -278,7 +278,7 @@ serve(async (req) => {
         .from("ai_whatsapp")
         .update({
           prospect_name: customerName,
-          stage: deviceSettings.ecom_webhook_stage || 'new',
+          stage: (deviceSettings.ecom_webhook_stage || 'NEW').toUpperCase(),
           last_message_at: new Date().toISOString(),
         })
         .eq("id_prospect", leadId);
@@ -297,7 +297,7 @@ serve(async (req) => {
           device_id: deviceSettings.device_id,
           prospect_name: customerName,
           prospect_num: customerPhone,
-          stage: deviceSettings.ecom_webhook_stage || 'new',
+          stage: (deviceSettings.ecom_webhook_stage || 'NEW').toUpperCase(),
           ai_enabled: true,
           messages: [],
           last_message_at: new Date().toISOString(),

@@ -934,7 +934,7 @@ async function executePromptBasedFlow(params: {
     // Prepare update data with stage and details
     const updateData: any = {
       conv_last: convLast,
-      stage: aiResponse.Stage || null,  // ✅ Update stage from AI response
+      stage: aiResponse.Stage ? aiResponse.Stage.toUpperCase() : null,  // ✅ Update stage from AI response (UPPERCASE)
       conv_current: null,  // ✅ Clear conv_current after processing
     };
 
@@ -984,7 +984,7 @@ async function executePromptBasedFlow(params: {
     await checkAndEnrollSequences({
       deviceId: device.device_id,
       prospectNum: phone,
-      currentStage: aiResponse.Stage || null,
+      currentStage: aiResponse.Stage ? aiResponse.Stage.toUpperCase() : null,  // ✅ UPPERCASE for sequence matching
       idProspect: conversation.id_prospect,
       instance: device.instance,
       userId: device.user_id,
